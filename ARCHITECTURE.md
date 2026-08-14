@@ -59,14 +59,14 @@ means M4L.
 - **Load** — fetch the purchased asset bytes, save to the User Library,
   trigger Live browser refresh / rack import.
 
-### Layer 2 — Recommendation service (backend, new)
+### Layer 2 — Recommendation service (backend, shipped)
 - Input: project context from the device (BPM, key, genre, devices).
-- Output: ranked catalog items.
-- Engine: reuse the **DAW engine** (`backend/app/services/daw/`) — the same
-  parsers that power smart diffs verify asset contents ("24 Serum presets
-  inside, verified") and match context to assets.
-- The M4L prototype ships with a stub BPM→genre mapping; this service is
-  the production version.
+- Output: ranked catalog items (`GET /api/assets/recommend`).
+- Engine: `backend/app/services/catalog.py` scores assets by genre match,
+  BPM proximity, key and device/plugin overlap. The DAW engine
+  (`backend/app/services/daw/`) verifies asset contents ("24 Serum presets
+  inside, verified") and feeds the metadata — same parsers that power
+  smart diffs.
 
 ### Layer 3 — Settlement (on-chain, done)
 | Contract | Role in the flow |
@@ -76,13 +76,15 @@ means M4L.
 | `SoundHubRelease` | (optional) mint a Release NFT per listed pack: royalties, collaborator splits |
 | `SoundHubGovernor` | platform governance: fees, curation, grants |
 
-### Layer 4 — Asset delivery (backend, existing + new)
-- Purchased asset bytes live in the content-addressed blob store (SHA-256
-  dedup already implemented).
-- New endpoint: authenticated, license-scoped download for the device
-  (`GET /api/assets/{id}/download` with a short-lived token).
-- For the demo, `assetUri` is a `soundhub://` repo path; production adds
-  IPFS pinning.
+### Layer 4 — Asset delivery (backend, shipped)
+- `GET /api/assets/{id}/token` issues a short-lived HMAC token;
+  `GET /api/assets/{id}/download?token=` serves the asset bytes with
+  license headers (X-License, X-Asset-Name).
+- Production gates token issuance on the on-chain purchase (buyer ==
+  wallet, escrowed > 0) and serves real files from the content-addressed
+  blob store (SHA-256 dedup already implemented).
+- For the demo, payloads are seeded in the catalog; production maps
+  `soundhub://` URIs to blob paths / IPFS pins.
 
 ## Purchase flow (happy path)
 
@@ -111,11 +113,12 @@ The user sees **Buy & Load** — not `approve`, not gas, not RPC. Details:
 | # | Stream | Status |
 |---|---|---|
 | 1 | M4L device: catalog + BPM context + buy intent + load stub | ✅ prototype in `m4l/` |
-| 2 | Recommendation service (DAW-engine backed) + `/api/recommend` | ⏳ next |
-| 3 | Asset delivery endpoint (license-scoped download for the device) | ⏳ next |
-| 4 | Full Live import (browser refresh, rack insert) | ⏳ |
-| 5 | WalletConnect signing inside M4L / relayer | ⏳ |
-| 6 | FL Studio / Cubase / REAPER equivalents | ⏳ later |
+| 2 | Recommendation service (DAW-engine backed) — `GET /api/assets/recommend` + catalog metadata | ✅ `backend/app/services/catalog.py` |
+| 3 | Asset delivery — `GET /api/assets/{id}/token` → `/download` (short-lived signed token) | ✅ |
+| 4 | Token gating: issue tokens only after on-chain purchase check (buyer == wallet, escrowed > 0) | ⏳ next |
+| 5 | Full Live import (browser refresh, rack insert) | ⏳ |
+| 6 | WalletConnect signing inside M4L / relayer | ⏳ |
+| 7 | FL Studio / Cubase / REAPER equivalents | ⏳ later |
 
 ## Constraints
 

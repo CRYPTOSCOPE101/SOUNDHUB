@@ -76,6 +76,7 @@ function pad32(h) {
 }
 
 function rpc(method, params, cb) {
+  // POST JSON-RPC to the EVM node.
   if (!http) http = this.patcher.apply(this.patcher, ["httprequest"]);
   var body = JSON.stringify({
     jsonrpc: "2.0",
@@ -85,24 +86,29 @@ function rpc(method, params, cb) {
   });
   http.text = body;
   http.method = 1; // POST
-  http.host = config.rpc.replace(/^https?:\/\//, "").split("/")[0];
-  http.port = 443;
-  http.path = "/";
+  var u = config.rpc.replace(/^https?:\/\//, "");
+  http.host = u.split("/")[0];
+  http.port = (config.rpc.indexOf("https://") === 0) ? 443 : 80;
+  http.path = "/" + u.split("/").slice(1).join("/");
   http.callback = function (err, resp) {
     if (err) {
       cb(null, { error: String(err) });
       return;
     }
-    var text = "";
-    if (typeof resp === "string") text = resp;
-    else if (resp && resp.text) text = resp.text;
-    else if (resp && resp.body) text = resp.body;
-    else text = JSON.stringify(resp);
+    var text = responseText(resp);
     var data;
     try { data = JSON.parse(text); } catch (e) { data = null; }
     cb(data, data && data.error ? null : null);
   };
   http.exec();
+}
+
+// Normalize an httprequest response (string / object) into text.
+function responseText(resp) {
+  if (typeof resp === "string") return resp;
+  if (resp && resp.text) return resp.text;
+  if (resp && resp.body) return resp.body;
+  return JSON.stringify(resp);
 }
 
 function intFromHex(h) {
@@ -205,36 +211,59 @@ function decodeStr(hex, offsetBytes) {
 
 function suggestForBpm(bpm) {
   if (!bpm) return;
-  out(OUT_STATUS, "Live set BPM: " + bpm + " \u2014 matching assets\u2026");
-  // crude genre tag by BPM range; production version uses the DAW engine
-  var tag = "";
-  if (bpm >= 120 && bpm <= 128) tag = "house";
-  else if (bpm >= 128 && bpm <= 132) tag = "techno";
-  else if (bpm >= 140 && bpm <= 150) tag = "dubstep";
-  else if (bpm >= 85 && bpm <= 100) tag = "trap";
-  else tag = "generic";
-  // The device also re-reads the last catalog (outlet 0) and we match here.
-  // This is a stub hook for the recommendation engine.
-  out(OUT_MATCH, tag);
+  out(OUT_STATUS, "Live set BPM: " + bpm + " \u2014 asking SoundHub backend\u2026");
+  // The recommendation engine lives in the SoundHub backend and reuses the
+  // DAW engine metadata (see backend/app/services/catalog.py). We send the
+  // Live context (BPM for now; key/tracks/devices next) and get ranked
+  // assets back.
+  var url = config.backend + "/api/assets/recommend?bpm=" + bpm + "&limit=3";
+  httpGet(url, function (ok, text) {
+    if (!ok) {
+      out(OUT_STATUS, "Recommendation failed: " + text);
+      return;
+    }
+    var recs;
+    try { recs = JSON.parse(text); } catch (e) { recs = []; }
+    if (!recs.length) {
+      out(OUT_MATCH, "no matches for " + bpm + " BPM");
+      return;
+    }
+    var top = recs[0];
+    out(OUT_MATCH, "\u25b6 " + top.name + " \u00b7 " + top.price_snd + " SND \u00b7 " +
+        top.license + " (" + top.match_reasons.join(", ") + ")");
+    out(OUT_STATUS, recs.length + " suggestion(s) for " + bpm + " BPM");
+    pendingId = top.listing_id || 1;
+  });
 }
 
-// ---- buying (testnet, raw signed txs) ---------------------------------------
-
-function buy(id) {
-  if (!config.key) {
-    out(OUT_STATUS, "No private key configured. Set the `key` message (testnet only!).");
-    return;
-  }
-  pendingId = id;
-  out(OUT_STATUS, "Buying #" + id + " \u2014 approving SND\u2026");
-  // This is where the production flow connects to the escrow contract:
-  //  1. approve(token, market, price)
-  //  2. market.buy(id)
-  //  3. on success -> loadAsset(assetUri)
-  // The full implementation needs an EIP-1559 signer; for the prototype we
-  // leave the tx-building to the web app (same wallet) and just show intent.
-  out(OUT_STATUS, "Open soundhub.com/marketplace to complete the purchase (same wallet), then hit Load.");
+// Fetch an asset payload via the backend (signed short-lived token):
+//   GET /api/assets/{id}/token  -> { token }
+//   GET /api/assets/{id}/download?token=...  -> asset bytes
+function loadAssetById(listingId, name) {
+  var url = config.backend + "/api/assets/" + listingId + "/token";
+  httpGet(url, function (ok, text) {
+    if (!ok) {
+      out(OUT_STATUS, "Token request failed: " + text);
+      return;
+    }
+    var body;
+    try { body = JSON.parse(text); } catch (e) { body = null; }
+    if (!body || !body.token) {
+      out(OUT_STATUS, "No download token returned");
+      return;
+    }
+    var dl = config.backend + "/api/assets/" + listingId + "/download?token=" + body.token;
+    out(OUT_STATUS, "Downloading " + dl + "\u2026 (drag the file into a track \u2014 prototype)");
+    loadAsset(dl, name || ("asset_" + listingId));
+  });
 }
+
+// ---- buying ----------------------------------------------------------------
+// The actual purchase (approve SND -> market.buy -> escrow) happens in the
+// web app with the user's wallet (WalletConnect / browser extension). The
+// device's third button loads the suggested asset through the backend's
+// signed-token endpoint so the loop can be tested end-to-end. A future
+// version signs the escrow tx inside M4L (EIP-1559) or via a relayer.
 
 // ---- loading assets into the Live project -----------------------------------
 
@@ -242,24 +271,31 @@ function loadAsset(url, name) {
   var tmp = config.tempDir || "/tmp";
   var target = tmp + "/soundhub_" + name.replace(/[^a-zA-Z0-9._-]/g, "_");
   out(OUT_STATUS, "Downloading " + url + "\u2026");
+  httpGet(url, function (ok, text) {
+    if (!ok) {
+      out(OUT_STATUS, "Download failed: " + text);
+      return;
+    }
+    // Save bytes and insert into the Live set. Real implementation:
+    //   - write the response bytes to `target`
+    //   - find the device's track via live.thisdevice
+    //   - push the file into the browser via Live API (Song.capture_midi etc.)
+    out(OUT_STATUS, "Asset ready at " + target + " \u2014 drag into a track (prototype).");
+  });
+}
+
+// Shared GET helper over httprequest (text responses).
+function httpGet(url, cb) {
   if (!http) http = this.patcher.apply(this.patcher, ["httprequest"]);
   http.text = "";
   http.method = 0; // GET
   var u = url.replace(/^https?:\/\//, "");
   http.host = u.split("/")[0];
-  http.port = 443;
+  http.port = (url.indexOf("https://") === 0) ? 443 : 80;
   http.path = "/" + u.split("/").slice(1).join("/");
-  http.callback = function (err) {
-    if (err) {
-      out(OUT_STATUS, "Download failed: " + err);
-      return;
-    }
-    // Save bytes and insert into the Live set. Real implementation:
-    //   - write http.response to `target`
-    //   - this.patcher.apply(this.patcher, ["live.thisdevice"]) to find the track
-    //   - create a `live.groove`/`live.audiofile` or push the file into the
-    //     browser via Live API (Song.capture_midi etc.)
-    out(OUT_STATUS, "Asset ready at " + target + " \u2014 drag into a track (prototype).");
+  http.callback = function (err, resp) {
+    if (err) { cb(false, String(err)); return; }
+    cb(true, responseText(resp));
   };
   http.exec();
 }
@@ -272,14 +308,13 @@ function bang() {
 }
 
 function msg_int(v) {
-  // 0 = refresh catalog, 1 = suggest for current BPM, 2 = buy
+  // 0 = refresh catalog, 1 = suggest for current BPM, 2 = load suggested asset
   if (v === 0) loadCatalog();
   else if (v === 1) suggestForBpm(readBpm());
-  else if (v === 2) buy(pendingId >= 0 ? pendingId : 1);
+  else if (v === 2) loadAssetById(pendingId >= 0 ? pendingId : 1, "suggested_asset");
 }
 
 function readBpm() {
-  var v = this.patcher.apply(this.patcher, ["live.object", "id"]);
   try {
     var s = new LiveAPI(this.patcher, "live_set");
     return s.get("tempo");

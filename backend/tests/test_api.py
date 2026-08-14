@@ -151,6 +151,72 @@ def test_wallet_login_flow(client):
     assert again.status_code == 401
 
 
+def test_asset_catalog_and_recommend(client):
+    # catalog is public (the M4L device browses without auth)
+    r = client.get("/api/assets")
+    assert r.status_code == 200
+    catalog = r.json()
+    assert any(a["listing_id"] == 1 for a in catalog)  # seeded demo listing
+    assert all("verified" in a for a in catalog)
+
+    # context-aware recommendations: 128 BPM + techno + Serum
+    r = client.get(
+        "/api/assets/recommend",
+        params={"bpm": 128, "genre": "techno, house", "devices": "Serum, Kick"},
+    )
+    assert r.status_code == 200
+    recs = r.json()
+    assert recs, "expected at least one recommendation"
+    top = recs[0]
+    assert top["match_score"] >= 4.0, top  # genre + bpm + device overlap
+    assert "genre match" in top["match_reasons"]
+    # ranking is stable: BPM-fit first for a 128 BPM techno context
+    assert top["name"] == "Neon Dreams — Serum Preset Pack"
+
+    # wrong context -> different top pick (cinematic impact for a trailer)
+    r2 = client.get("/api/assets/recommend", params={"genre": "cinematic, trailer"})
+    assert r2.status_code == 200
+    assert r2.json()[0]["name"] == "Cinematic Impacts Vol.1"
+
+    # bpm out of range scores low / absent
+    r3 = client.get("/api/assets/recommend", params={"bpm": 60})
+    assert r3.status_code == 200
+    assert all(a["bpm"] is None or a["bpm"][0] > 60 for a in r3.json())
+
+
+def test_asset_download_token(client):
+    from app import config
+    from app.services import catalog
+
+    # valid short-lived token (signed with the app secret)
+    token = catalog.make_download_token(config.SECRET_KEY, listing_id=1)
+    r = client.get("/api/assets/1/download", params={"token": token})
+    assert r.status_code == 200
+    assert r.headers["X-License"] == "Commercial"
+    assert r.content[:4] == b"RIFF"  # wav payload
+
+    # token for another listing is rejected
+    r = client.get("/api/assets/2/download", params={"token": token})
+    assert r.status_code == 401
+
+    # garbage token is rejected
+    r = client.get("/api/assets/1/download", params={"token": "x" * 40})
+    assert r.status_code == 401
+
+    # expired token is rejected: sign at real time with a 1s lifetime, then
+    # verify after time has moved beyond the expiry
+    import time as _t
+
+    expired = catalog.make_download_token(config.SECRET_KEY, listing_id=1, expires_in=1)
+    old = _t.time
+    _t.time = lambda: old() + 10000  # noqa: B023 — verification now sees t > exp
+    try:
+        r = client.get("/api/assets/1/download", params={"token": expired})
+    finally:
+        _t.time = old
+    assert r.status_code == 401
+
+
 def test_ownership_isolation(client):
     token_a = _register(client)
     r = client.post(
