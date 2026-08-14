@@ -12,3 +12,10 @@ frontend/dist/
 *.log
 .DS_Store
 *.tsbuildinfo
+
+# personal conversation log — keep local
+CONVERSATION_LOG.md
+
+# local screenshot tooling (puppeteer cache + extracted browser libs)
+.puppeteer-cache/
+.local-libs/
