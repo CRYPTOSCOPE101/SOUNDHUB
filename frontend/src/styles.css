@@ -1,15 +1,46 @@
-:root {
-  --bg: #0d0f14;
-  --bg2: #141821;
-  --bg3: #1b2130;
-  --border: #262d3d;
-  --text: #e6e9f0;
-  --muted: #8b93a7;
-  --accent: #7c5cff;
-  --accent2: #22d3ee;
-  --green: #3ddc84;
-  --red: #ff5c7a;
-  --yellow: #f5c542;
+/* ==========================================================================
+   SoundHub — GitHub-clone UI in Ableton brand colors
+   Light theme (default) mirrors ableton.com: white, black, Ableton yellow.
+   Dark theme mirrors GitHub Dark with the same yellow accents.
+   ========================================================================== */
+
+:root,
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --bg2: #f6f8fa;         /* panels, header */
+  --bg3: #eef1f4;         /* hover, inputs */
+  --border: #d0d7de;
+  --text: #1f2328;
+  --muted: #656d76;
+  --accent: #ffd900;      /* Ableton yellow */
+  --accent-hover: #f5c400;
+  --accent-text: #000000; /* black on yellow */
+  --link: #9a7b00;        /* readable yellow-link on white */
+  --green: #1a7f37;
+  --red: #cf222e;
+  --yellow: #ffd900;
+  --code-bg: #f6f8fa;
+  --shadow: 0 1px 3px rgba(27, 31, 36, 0.08);
+  --tab-active-border: #ffd900;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0d1117;
+  --bg2: #161b22;
+  --bg3: #21262d;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #ffd900;
+  --accent-hover: #ffe033;
+  --accent-text: #000000;
+  --link: #ffd900;
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #ffd900;
+  --code-bg: #0d1117;
+  --shadow: 0 1px 3px rgba(1, 4, 9, 0.6);
+  --tab-active-border: #f78166;
 }
 
 * {
@@ -22,6 +53,17 @@ body {
   color: var(--text);
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 14px;
+  line-height: 1.5;
+  transition: background 0.2s, color 0.2s;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 .app {
@@ -30,30 +72,45 @@ body {
   flex-direction: column;
 }
 
+/* ---------------- top bar ---------------- */
+
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
+  padding: 10px 24px;
   border-bottom: 1px solid var(--border);
   background: var(--bg2);
   position: sticky;
   top: 0;
   z-index: 10;
+  gap: 12px;
 }
 
 .brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 17px;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
+}
+
+.brand a {
+  color: var(--text);
 }
 
 .logo {
-  color: var(--accent2);
-  font-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 900;
+  font-size: 15px;
 }
 
 .tagline {
@@ -65,11 +122,27 @@ body {
 .userbox {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .username {
   color: var(--muted);
+  font-weight: 500;
+}
+
+.theme-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.theme-toggle:hover {
+  color: var(--text);
+  border-color: var(--muted);
 }
 
 .content {
@@ -86,12 +159,12 @@ h1 {
 }
 
 h2 {
-  font-size: 16px;
+  font-size: 14px;
   margin: 0 0 12px;
-  color: var(--muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  color: var(--text);
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .muted {
@@ -105,20 +178,27 @@ h2 {
   flex-wrap: wrap;
 }
 
+.spacer {
+  flex: 1;
+}
+
+/* ---------------- buttons ---------------- */
+
 .btn {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-text);
   border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-weight: 700;
   cursor: pointer;
-  font-size: 14px;
-  transition: filter 0.15s;
+  font-size: 13px;
+  transition: background 0.15s;
 }
 
 .btn:hover {
-  filter: brightness(1.15);
+  background: var(--accent-hover);
+  filter: none;
 }
 
 .btn.ghost {
@@ -127,27 +207,44 @@ h2 {
   color: var(--muted);
 }
 
+.btn.ghost:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+
 .btn.danger {
   background: transparent;
   border: 1px solid var(--red);
   color: var(--red);
 }
 
+.btn.danger:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+.btn.sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
 input[type="text"],
 input[type="password"],
-textarea {
-  background: var(--bg3);
+textarea,
+select {
+  background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
   font-family: inherit;
   width: 100%;
 }
 
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
   outline: none;
   border-color: var(--accent);
 }
@@ -155,7 +252,7 @@ textarea:focus {
 .card {
   background: var(--bg2);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 18px;
 }
 
@@ -190,14 +287,172 @@ textarea:focus {
   min-height: 36px;
 }
 
-/* file list */
+/* ---------------- repo header (GitHub clone) ---------------- */
+
+.repo-header {
+  margin-bottom: 16px;
+}
+
+.repo-breadcrumb {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.repo-breadcrumb .owner {
+  color: var(--link);
+}
+
+.repo-breadcrumb .sep {
+  color: var(--muted);
+  margin: 0 4px;
+}
+
+.repo-breadcrumb .name {
+  color: var(--text);
+}
+
+.visibility-chip {
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 20px;
+  padding: 2px 10px;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+
+.repo-desc {
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+
+/* repo tabs */
+.repo-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-top: 14px;
+  overflow-x: auto;
+}
+
+.repo-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.repo-tab:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.repo-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--tab-active-border);
+}
+
+/* branch selector (GitHub style) */
+.branch-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.branch-selector:hover {
+  background: var(--bg3);
+}
+
+.branch-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.branch-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 280px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  z-index: 30;
+  padding: 6px 0;
+}
+
+.branch-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.branch-menu-item:hover {
+  background: var(--bg3);
+}
+
+.branch-menu-item.active {
+  font-weight: 700;
+}
+
+.branch-menu-item .default-star {
+  color: var(--yellow);
+  font-size: 12px;
+}
+
+/* file table (GitHub code view) */
+.file-table {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.file-table-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .file-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
+  font-size: 13px;
+}
+
+.file-row:last-child {
+  border-bottom: none;
 }
 
 .file-row:hover {
@@ -205,10 +460,190 @@ textarea:focus {
 }
 
 .file-icon {
-  width: 22px;
+  width: 18px;
   text-align: center;
+  color: var(--muted);
 }
 
+.file-name {
+  flex: 1;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.file-name:hover {
+  color: var(--link);
+}
+
+.file-size {
+  color: var(--muted);
+  font-size: 12px;
+  width: 70px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.file-actions a {
+  margin-left: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.file-actions a:hover {
+  color: var(--link);
+  text-decoration: none;
+}
+
+/* README box */
+.readme-box {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.readme-head {
+  padding: 8px 14px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.readme-body {
+  padding: 16px 20px;
+  font-size: 14px;
+  overflow-x: auto;
+}
+
+.readme-body h1 {
+  font-size: 22px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.readme-body h2 {
+  font-size: 17px;
+  margin-top: 20px;
+}
+
+.readme-body pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 12.5px;
+}
+
+.readme-body code {
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+
+.readme-body li {
+  margin: 4px 0;
+}
+
+/* commit list (GitHub style) */
+.commit-list {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.commit-list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.commit-list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.commit-list-row:last-child {
+  border-bottom: none;
+}
+
+.commit-list-row:hover {
+  background: var(--bg3);
+}
+
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.commit-msg {
+  flex: 1;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-msg:hover {
+  color: var(--link);
+}
+
+.commit-meta {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.sha {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  color: var(--link);
+  font-size: 12px;
+}
+
+/* branches page */
+.branches-table {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.branches-table .file-row {
+  cursor: default;
+}
+
+.branches-table .file-row:hover {
+  background: transparent;
+}
+
+.default-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1px 8px;
+}
+
+/* badges / chips */
 .badge {
   font-size: 10px;
   font-weight: 800;
@@ -219,62 +654,6 @@ textarea:focus {
 
 .badge-daw {
   color: #0d0f14;
-}
-
-/* commits */
-.commit-item {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  text-decoration: none;
-  color: var(--text);
-  display: block;
-}
-
-.commit-item:hover {
-  background: var(--bg3);
-}
-
-.commit-item .msg {
-  font-weight: 600;
-}
-
-.commit-marker {
-  color: var(--accent2);
-  font-family: monospace;
-}
-
-/* diff */
-.diff-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 14px 0;
-}
-
-.diff-change {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: var(--bg3);
-  border-left: 3px solid var(--border);
-}
-
-.diff-change.kind-bpm {
-  border-left-color: var(--yellow);
-}
-
-.diff-change.kind-track_added,
-.diff-change.kind-plugin_added,
-.diff-change.kind-sample_added {
-  border-left-color: var(--green);
-}
-
-.diff-change.kind-track_removed,
-.diff-change.kind-plugin_removed,
-.diff-change.kind-sample_removed {
-  border-left-color: var(--red);
 }
 
 .chip {
@@ -298,10 +677,67 @@ textarea:focus {
   border-color: var(--red);
 }
 
+/* commits sidebar (kept for compat) */
+.commit-item {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--text);
+  display: block;
+}
+
+.commit-item:hover {
+  background: var(--bg3);
+}
+
+.commit-item .msg {
+  font-weight: 600;
+}
+
+.commit-marker {
+  color: var(--link);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 12px;
+}
+
+/* diff */
+.diff-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.diff-change {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--bg2);
+  border-left: 3px solid var(--border);
+}
+
+.diff-change.kind-bpm {
+  border-left-color: var(--yellow);
+}
+
+.diff-change.kind-track_added,
+.diff-change.kind-plugin_added,
+.diff-change.kind-sample_added {
+  border-left-color: var(--green);
+}
+
+.diff-change.kind-track_removed,
+.diff-change.kind-plugin_removed,
+.diff-change.kind-sample_removed {
+  border-left-color: var(--red);
+}
+
 pre.diff-raw {
-  background: #0a0c10;
+  background: var(--code-bg);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 6px;
   padding: 14px;
   overflow-x: auto;
   font-size: 12px;
@@ -320,25 +756,25 @@ pre.diff-raw code {
 }
 
 .diff-line.add {
-  background: rgba(61, 220, 132, 0.12);
+  background: rgba(63, 185, 80, 0.14);
   color: var(--green);
 }
 
 .diff-line.del {
-  background: rgba(255, 92, 122, 0.12);
+  background: rgba(248, 81, 73, 0.14);
   color: var(--red);
 }
 
 .diff-line.hunk {
-  color: var(--accent2);
+  color: var(--link);
 }
 
 /* daw info */
 .daw-box {
-  margin-top: 8px;
-  background: #0f1220;
+  margin: 8px 14px;
+  background: var(--code-bg);
   border: 1px dashed var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 12px;
 }
 
@@ -386,7 +822,7 @@ pre.diff-raw code {
 /* upload */
 .upload-zone {
   border: 2px dashed var(--border);
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 18px;
   text-align: center;
   color: var(--muted);
@@ -428,6 +864,18 @@ pre.diff-raw code {
   font-size: 13px;
 }
 
-.spacer {
-  flex: 1;
+/* GitHub repo page (the SoundHub code repo itself) */
+.gh-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 12px;
+}
+
+.gh-stat b {
+  color: var(--text);
 }

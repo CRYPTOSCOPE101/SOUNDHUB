@@ -203,7 +203,7 @@ website and a tool.
   full Live browser/rack import
 - ⏳ **Trust layer** — verification badges from the DAW engine, seller
   reputation, license enforcement
-- ⏳ Branches & merges (snapshot → DAG), audio preview, real-time collaboration
+- ✅ **Branches** — named pointers, per-branch history/tree/diff; ⏳ merges (DAG), audio preview, real-time collaboration
 - ⏳ WalletConnect signing inside M4L / relayer; FL Studio, Cubase, REAPER
   equivalents
 - ⏳ **Base mainnet deployment + token distribution vote**

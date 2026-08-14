@@ -1,12 +1,23 @@
+import { useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 import { isLoggedIn, useAuth } from "./auth";
+import BranchesPage from "./pages/BranchesPage";
 import CommitPage from "./pages/CommitPage";
 import DiffPage from "./pages/DiffPage";
 import DAOPage from "./pages/DAOPage";
+import GitHubRepoPage from "./pages/GitHubRepoPage";
 import LoginPage from "./pages/LoginPage";
 import MarketplacePage from "./pages/MarketplacePage";
 import ProjectPage from "./pages/ProjectPage";
 import ProjectsPage from "./pages/ProjectsPage";
+
+const THEME_KEY = "soundhub_theme";
+
+function getInitialTheme(): "light" | "dark" {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === "light" || saved === "dark") return saved;
+  return "light";
+}
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   if (!isLoggedIn()) return <Navigate to="/login" replace />;
@@ -15,12 +26,23 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 
 export default function App() {
   const { user, logout } = useAuth();
+  const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+
   return (
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="logo">◉</span>
-          <span>SoundHub</span>
+          <Link to="/projects" className="logo" title="SoundHub">
+            S
+          </Link>
+          <Link to="/projects">SoundHub</Link>
           <span className="tagline">version control for music</span>
         </div>
         {user && (
@@ -31,6 +53,12 @@ export default function App() {
             <Link to="/dao" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
               🗳 DAO
             </Link>
+            <Link to="/github" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
+              ◈ GitHub
+            </Link>
+            <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+              {theme === "light" ? "🌙" : "☀️"}
+            </button>
             <span className="username">{user.username}</span>
             <button className="btn ghost" onClick={logout}>
               logout
@@ -54,6 +82,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <ProjectPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/projects/:id/branches"
+            element={
+              <RequireAuth>
+                <BranchesPage />
               </RequireAuth>
             }
           />
@@ -86,6 +122,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <MarketplacePage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/github"
+            element={
+              <RequireAuth>
+                <GitHubRepoPage />
               </RequireAuth>
             }
           />

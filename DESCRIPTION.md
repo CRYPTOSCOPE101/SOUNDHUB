@@ -98,7 +98,7 @@ speculation.
 | **1 · Buy flow** ✅ | `SoundHubMarket` live on Base Sepolia → list/buy/confirm/refund in the UI → SND faucet for testers |
 | **2 · In-DAW** ✅/⏳ | **SoundHub inside Ableton Live** — M4L prototype shipped (catalog, BPM suggestions, buy & load); next: recommendation service, asset delivery, full import |
 | **3 · Trust layer** | Asset verification badge from the DAW engine, seller reputation, license enforcement, packs as composable assets (bundles, drops, forks) |
-| **4 · Collaboration** | Branches & merges, remix forks, audio preview, comments on tracks |
+| **4 · Collaboration** | ✅ Branches (named pointers, per-branch diff) → ⏳ merges (DAG), remix forks, audio preview, comments on tracks |
 | **5 · Mainnet** | Base mainnet deployment, SND distribution vote, DAO treasury |
 
 ## SoundHub vs. alternatives
