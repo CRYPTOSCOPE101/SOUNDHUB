@@ -23,12 +23,6 @@ REAPER (`.rpp`) and FL Studio (`.flp`). Version your tracks, see *what
 actually changed* between versions (not just "file modified"), and
 collaborate without zip-files floating around a Discord server.
 
-## Screenshots
-
-| Main page (dark) | Repo page | Branch selector |
-|---|---|---|
-| ![Main page dark](screenshots/main-dark.png) | ![Repo page](screenshots/repo-page.png) | ![Branch selector](screenshots/repo-page-branches.png) |
-
 ## Why this is different from git/GitHub
 
 DAW project files are opaque blobs to normal version control. GitHub
