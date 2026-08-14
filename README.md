@@ -6,6 +6,8 @@ SoundHub is a tokenized marketplace where music producers buy and sell finished 
 loops, stems and packs, paid for with SND — from the SoundHub panel in
 Ableton Live (Max for Live prototype in `m4l/`) or the web app.
 
+![SoundHub main page](screenshots/main-light.png)
+
 📄 Read the [Project description](DESCRIPTION.md) — what SoundHub is, live
 features vs roadmap, and how it compares to existing tools.
 
@@ -23,15 +25,9 @@ collaborate without zip-files floating around a Discord server.
 
 ## Screenshots
 
-Repo-first UI in Ableton brand colors, light and dark themes:
-
-| Main page (light) | Main page (dark) |
-|---|---|
-| ![Main page light](screenshots/main-light.png) | ![Main page dark](screenshots/main-dark.png) |
-
-| Repo page | Branch selector |
-|---|---|
-| ![Repo page](screenshots/repo-page.png) | ![Branch selector](screenshots/repo-page-branches.png) |
+| Main page (dark) | Repo page | Branch selector |
+|---|---|---|
+| ![Main page dark](screenshots/main-dark.png) | ![Repo page](screenshots/repo-page.png) | ![Branch selector](screenshots/repo-page-branches.png) |
 
 ## Why this is different from git/GitHub
 
