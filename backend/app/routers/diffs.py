@@ -19,13 +19,20 @@ def get_diff(
     path: str = Query(...),
     from_commit: int | None = None,
     to_commit: int | None = None,
+    from_branch: str | None = None,
+    to_branch: str | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     project = get_project_or_404(db, user, project_id)
     try:
-        commit_b = versioning.get_commit(db, project, to_commit)
-        if from_commit is not None:
+        if to_branch:
+            commit_b = versioning.get_commit(db, project, None, to_branch)
+        else:
+            commit_b = versioning.get_commit(db, project, to_commit)
+        if from_branch:
+            commit_a = versioning.get_commit(db, project, None, from_branch)
+        elif from_commit is not None:
             commit_a = versioning.get_commit(db, project, from_commit)
         elif commit_b.parent_id is not None:
             commit_a = db.get(Commit, commit_b.parent_id)

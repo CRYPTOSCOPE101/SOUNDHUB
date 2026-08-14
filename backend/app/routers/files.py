@@ -18,12 +18,13 @@ def file_info(
     project_id: int,
     path: str,
     commit_id: int | None = None,
+    branch: str | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     project = get_project_or_404(db, user, project_id)
     try:
-        commit = versioning.get_commit(db, project, commit_id)
+        commit = versioning.get_commit(db, project, commit_id, branch)
     except LookupError:
         raise HTTPException(404, "Commit not found")
     snap = versioning.file_in_commit(db, commit, path)
@@ -46,13 +47,14 @@ def download_file(
     project_id: int,
     path: str,
     commit_id: int | None = None,
+    branch: str | None = None,
     download: bool = False,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     project = get_project_or_404(db, user, project_id)
     try:
-        commit = versioning.get_commit(db, project, commit_id)
+        commit = versioning.get_commit(db, project, commit_id, branch)
     except LookupError:
         raise HTTPException(404, "Commit not found")
     snap = versioning.file_in_commit(db, commit, path)

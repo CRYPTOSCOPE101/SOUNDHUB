@@ -1,42 +1,88 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import ReleaseSection from "../components/ReleaseSection";
-import { DAW_COLORS, humanSize, shortDate, type Commit, type DawInfo, type Project, type ProjectFile, type Tree } from "../types";
+import {
+  DAW_COLORS,
+  humanSize,
+  shortDate,
+  type Branch,
+  type Commit,
+  type DawInfo,
+  type Project,
+  type ProjectFile,
+  type Tree,
+} from "../types";
+
+type Tab = "code" | "commits";
 
 export default function ProjectPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const pid = Number(id);
   const [project, setProject] = useState<Project | null>(null);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branch, setBranch] = useState<string>(() => searchParams.get("branch") || "main");
   const [tree, setTree] = useState<Tree | null>(null);
   const [commits, setCommits] = useState<Commit[]>([]);
+  const [tab, setTab] = useState<Tab>("code");
   const [error, setError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
   const [asFolder, setAsFolder] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [readme, setReadme] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     try {
-      const [p, t, c] = await Promise.all([
-        api.getProject(pid),
-        api.getTree(pid),
-        api.listCommits(pid),
-      ]);
+      const [p, b] = await Promise.all([api.getProject(pid), api.listBranches(pid)]);
       setProject(p);
-      setTree(t);
-      setCommits(c);
+      setBranches(b);
+      const current = b.some((x) => x.name === branch) ? branch : p.default_branch;
+      setBranch(current);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load project");
     }
-  }, [pid]);
+  }, [pid, branch]);
+
+  const loadBranch = useCallback(
+    async (name: string) => {
+      try {
+        setError(null);
+        const [t, c] = await Promise.all([api.getTree(pid, { branch: name }), api.listCommits(pid, name)]);
+        setTree(t);
+        setCommits(c);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load branch");
+      }
+    },
+    [pid]
+  );
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (project) loadBranch(branch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branch, project?.id]);
+
+  // fetch README text when the tree changes
+  useEffect(() => {
+    setReadme(null);
+    if (!tree) return;
+    const readmeFile = tree.files.find((f) => /^readme\.md$/i.test(f.path.split("/").pop() || ""));
+    if (!readmeFile) return;
+    fetch(api.fileUrl(pid, readmeFile.path, false, branch))
+      .then((r) => r.text())
+      .then((t) => setReadme(t))
+      .catch(() => setReadme(null));
+  }, [tree, pid, branch]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -48,9 +94,10 @@ export default function ProjectPage() {
     setUploading(true);
     setNotice(null);
     try {
-      await api.createCommit(pid, message.trim() || "Update project files", files);
+      await api.createCommit(pid, message.trim() || "Update project files", files, branch);
       setMessage("");
       if (fileInput.current) fileInput.current.value = "";
+      await loadBranch(branch);
       await load();
       setNotice("Commit created ✓");
     } catch (err) {
@@ -62,47 +109,63 @@ export default function ProjectPage() {
 
   const dawBadge = (f: ProjectFile) =>
     f.daw_format && (
-      <span
-        className="badge badge-daw"
-        style={{ background: DAW_COLORS[f.daw_format] ?? "#888" }}
-      >
+      <span className="badge badge-daw" style={{ background: DAW_COLORS[f.daw_format] ?? "#888" }}>
         {f.daw_format.toUpperCase()}
       </span>
     );
 
   const headCommit = tree ? tree.commit_id : commits[0]?.id;
   const prevCommit = commits.find((c) => c.id !== headCommit)?.id;
+  const activeBranch = branches.find((b) => b.name === branch);
 
   return (
     <div>
-      <div className="row" style={{ marginBottom: 6 }}>
-        <Link to="/projects" className="muted" style={{ fontSize: 13 }}>
-          ← projects
-        </Link>
-        <span className="spacer" />
-        <button
-          className="btn danger"
-          onClick={async () => {
-            if (confirm("Delete this project and all its commits?")) {
-              await api.deleteProject(pid);
-              window.location.href = "/projects";
-            }
-          }}
-        >
-          Delete repo
-        </button>
-      </div>
-
       {project && (
-        <div style={{ marginBottom: 16 }}>
-          <h1>🎛 {project.name}</h1>
-          <p className="muted" style={{ margin: "4px 0 0" }}>
-            {project.description || "No description"}
-          </p>
+        <div className="repo-header">
+          <div className="repo-breadcrumb">
+            <span className="owner">{project.owner.username}</span>
+            <span className="sep">/</span>
+            <span className="name">{project.name}</span>
+            <span className="visibility-chip">Public</span>
+          </div>
+          <p className="repo-desc">{project.description || "No description"}</p>
+          <div className="row" style={{ marginTop: 6 }}>
+            <Link to="/projects" className="btn ghost sm">
+              ← projects
+            </Link>
+            <span className="spacer" />
+            <button
+              className="btn danger sm"
+              onClick={async () => {
+                if (confirm("Delete this project and all its commits?")) {
+                  await api.deleteProject(pid);
+                  window.location.href = "/projects";
+                }
+              }}
+            >
+              Delete repo
+            </button>
+          </div>
+          <div className="repo-tabs">
+            <button className={`repo-tab ${tab === "code" ? "active" : ""}`} onClick={() => setTab("code")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+              <span>📄</span> Code
+            </button>
+            <button className={`repo-tab ${tab === "commits" ? "active" : ""}`} onClick={() => setTab("commits")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+              <span>🕘</span> Commits
+              {commits.length > 0 && <span className="muted" style={{ fontSize: 11 }}>({commits.length})</span>}
+            </button>
+            <Link to={`/projects/${pid}/branches`} className="repo-tab">
+              <span>⎇</span> Branches
+              {branches.length > 0 && <span className="muted" style={{ fontSize: 11 }}>({branches.length})</span>}
+            </Link>
+            <span className="repo-tab" style={{ cursor: "default" }}>
+              <span>🎛</span> Release
+            </span>
+          </div>
         </div>
       )}
 
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" style={{ margin: "10px 0" }}>{error}</div>}
 
       {project && (
         <ReleaseSection
@@ -115,11 +178,48 @@ export default function ProjectPage() {
         />
       )}
 
-      <div className="split">
-        <div>
-          {/* Upload */}
-          <form className="card" onSubmit={submit} style={{ marginBottom: 20 }}>
-            <h2>Commit files</h2>
+      {tab === "code" && (
+        <>
+          {/* branch selector + commit form */}
+          <div className="row" style={{ margin: "14px 0" }}>
+            <div className="branch-dropdown">
+              <button className="branch-selector" onClick={() => setMenuOpen((o) => !o)}>
+                ⎇ {branch}
+                <span className="muted" style={{ fontSize: 11 }}>
+                  {activeBranch ? `${activeBranch.commit_count} commit(s)` : ""}
+                </span>
+              </button>
+              {menuOpen && (
+                <div className="branch-menu">
+                  {branches.map((b) => (
+                    <div
+                      key={b.name}
+                      className={`branch-menu-item ${b.name === branch ? "active" : ""}`}
+                      onClick={() => {
+                        setBranch(b.name);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      {b.is_default && <span className="default-star">★</span>}
+                      <span>⎇</span> {b.name}
+                      <span className="spacer" />
+                      <span className="muted" style={{ fontSize: 11 }}>
+                        {b.head_message.slice(0, 40)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <span className="muted" style={{ fontSize: 12 }}>
+              {tree ? `HEAD · ${tree.commit_message}` : "no commits yet"}
+            </span>
+            <span className="spacer" />
+          </div>
+
+          {/* commit form */}
+          <form className="card" onSubmit={submit} style={{ marginBottom: 16 }}>
+            <h2>Commit files to {branch}</h2>
             <input
               type="text"
               placeholder="Commit message, e.g. 'Add synth lead to arrangement'"
@@ -135,17 +235,12 @@ export default function ProjectPage() {
                 hidden
                 {...(asFolder ? { webkitdirectory: "", directory: "" } : {})}
               />
-              Click to select files{asFolder ? " (folder)" : ""} — .als, .cpr,
-              .rpp, .flp and samples all work.
+              Click to select files{asFolder ? " (folder)" : ""} — .als, .cpr, .rpp, .flp and samples all work.
             </label>
             <div className="row" style={{ marginTop: 10 }}>
               <label className="muted" style={{ fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  checked={asFolder}
-                  onChange={(e) => setAsFolder(e.target.checked)}
-                />{" "}
-                upload whole folder (keeps paths)
+                <input type="checkbox" checked={asFolder} onChange={(e) => setAsFolder(e.target.checked)} />
+                {" "}upload whole folder (keeps paths)
               </label>
               <span className="spacer" />
               <button className="btn" disabled={uploading}>
@@ -159,19 +254,16 @@ export default function ProjectPage() {
             )}
           </form>
 
-          {/* Files */}
-          <div className="card">
-            <div className="row" style={{ marginBottom: 10 }}>
-              <h2 style={{ margin: 0 }}>Files</h2>
-              <span className="spacer" />
-              {tree && (
-                <span className="commit-marker">
-                  HEAD · {tree.commit_message}
-                </span>
-              )}
+          {/* file table */}
+          <div className="file-table">
+            <div className="file-table-head">
+              <span>Files on {branch}</span>
+              <span>
+                {tree ? `${tree.files.length} file(s)` : ""}
+              </span>
             </div>
             {!tree ? (
-              <p className="muted">No commits yet — upload your project files.</p>
+              <div className="file-row muted">No commits yet — upload your project files.</div>
             ) : (
               tree.files.map((f) => {
                 const isOpen = expanded === f.path;
@@ -179,33 +271,27 @@ export default function ProjectPage() {
                   <div key={f.path}>
                     <div className="file-row" onClick={() => setExpanded(isOpen ? null : f.path)}>
                       <span className="file-icon">{f.daw_format ? "🎛" : "📄"}</span>
-                      <span style={{ flex: 1, fontFamily: "monospace", fontSize: 13 }}>
-                        {f.path}
-                      </span>
+                      <span className="file-name">{f.path}</span>
                       {dawBadge(f)}
-                      <span className="muted" style={{ fontSize: 12, width: 60, textAlign: "right" }}>
-                        {humanSize(f.size)}
-                      </span>
-                      <a
-                        className="muted"
-                        style={{ fontSize: 12, textDecoration: "none" }}
-                        href={api.fileUrl(pid, f.path, true)}
-                        title="Download"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        ⬇
-                      </a>
-                      {headCommit && prevCommit && (
-                        <Link
-                          className="muted"
-                          style={{ fontSize: 12, textDecoration: "none" }}
-                          to={`/projects/${pid}/diff?path=${encodeURIComponent(f.path)}&from=${prevCommit}&to=${headCommit}`}
-                          title="Diff vs previous commit"
+                      <span className="file-size">{humanSize(f.size)}</span>
+                      <span className="file-actions">
+                        {headCommit && prevCommit && (
+                          <Link
+                            to={`/projects/${pid}/diff?path=${encodeURIComponent(f.path)}&from=${prevCommit}&to=${headCommit}`}
+                            title="Diff vs previous commit"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            ⇄
+                          </Link>
+                        )}
+                        <a
+                          href={api.fileUrl(pid, f.path, true, branch)}
+                          title="Download"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          ⇄
-                        </Link>
-                      )}
+                          ⬇
+                        </a>
+                      </span>
                     </div>
                     {isOpen && <DawInfoBox info={f.daw_info} />}
                   </div>
@@ -213,33 +299,44 @@ export default function ProjectPage() {
               })
             )}
           </div>
-        </div>
 
-        {/* Commits sidebar */}
-        <div className="card sidebar-card">
-          <h2>History</h2>
-          {commits.length === 0 ? (
-            <p className="muted">No commits</p>
-          ) : (
-            commits.map((c) => (
-              <Link
-                key={c.id}
-                className="commit-item"
-                to={`/projects/${pid}/commit/${c.id}`}
-              >
-                <div className="msg">{c.message || "(no message)"}</div>
-                <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
-                  <span className="commit-marker">#{c.id}</span> · {c.author.username} ·{" "}
-                  {shortDate(c.created_at)}
-                </div>
-                <div className="muted" style={{ fontSize: 12 }}>
-                  {c.file_count} file(s) · {humanSize(c.total_size)}
-                </div>
-              </Link>
-            ))
+          {/* README */}
+          {readme && (
+            <div className="readme-box">
+              <div className="readme-head">README.md</div>
+              <div className="readme-body">
+                <pre style={{ fontFamily: "inherit", whiteSpace: "pre-wrap", background: "none", border: "none", padding: 0, margin: 0 }}>
+                  {readme}
+                </pre>
+              </div>
+            </div>
           )}
+        </>
+      )}
+
+      {tab === "commits" && (
+        <div className="commit-list">
+          <div className="commit-list-head">
+            <span>Commits on {branch}</span>
+            <span>
+              {activeBranch ? `${activeBranch.commit_count} commit(s)` : ""}
+            </span>
+          </div>
+          {commits.length === 0 && <div className="file-row muted">No commits.</div>}
+          {commits.map((c) => (
+            <div className="commit-list-row" key={c.id}>
+              <span className="avatar">{c.author.username.slice(0, 1).toUpperCase()}</span>
+              <Link className="commit-msg" to={`/projects/${pid}/commit/${c.id}`}>
+                {c.message || "(no message)"}
+              </Link>
+              <span className="sha">#{c.id.toString().padStart(7, "0")}</span>
+              <span className="commit-meta">
+                {c.author.username} · {shortDate(c.created_at)}
+              </span>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }

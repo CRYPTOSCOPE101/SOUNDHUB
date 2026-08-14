@@ -1,7 +1,10 @@
 import type {
+  Branch,
   Commit,
   CommitDetail,
   Diff,
+  GhBranch,
+  GhCommit,
   Project,
   TokenResponse,
   Tree,
@@ -83,36 +86,82 @@ export const api = {
   getProject: (id: number) => request<Project>(`/api/projects/${id}`),
   deleteProject: (id: number) =>
     request<void>(`/api/projects/${id}`, { method: "DELETE" }),
-  getTree: (id: number, commitId?: number) =>
-    request<Tree>(
-      `/api/projects/${id}/tree${commitId ? `?commit_id=${commitId}` : ""}`
+  getTree: (id: number, opts: { commitId?: number; branch?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (opts.commitId) q.set("commit_id", String(opts.commitId));
+    if (opts.branch) q.set("branch", opts.branch);
+    const qs = q.toString();
+    return request<Tree>(`/api/projects/${id}/tree${qs ? `?${qs}` : ""}`);
+  },
+  listCommits: (id: number, branch?: string) =>
+    request<Commit[]>(
+      `/api/projects/${id}/commits${branch ? `?branch=${encodeURIComponent(branch)}` : ""}`
     ),
-  listCommits: (id: number) => request<Commit[]>(`/api/projects/${id}/commits`),
   getCommit: (id: number, commitId: number) =>
     request<CommitDetail>(`/api/projects/${id}/commits/${commitId}`),
-  createCommit: (id: number, message: string, files: FileList | File[]) =>
+  listBranches: (id: number) => request<Branch[]>(`/api/projects/${id}/branches`),
+  createBranch: (id: number, name: string, fromBranch?: string) =>
+    request<Branch>(`/api/projects/${id}/branches`, {
+      method: "POST",
+      body: JSON.stringify({ name, from_branch: fromBranch }),
+    }),
+  deleteBranch: (id: number, name: string) =>
+    request<void>(`/api/projects/${id}/branches/${encodeURIComponent(name)}`, {
+      method: "DELETE",
+    }),
+  createCommit: (id: number, message: string, files: FileList | File[], branch = "main") =>
     request<Commit>(`/api/projects/${id}/commits`, {
       method: "POST",
       body: (() => {
         const fd = new FormData();
         fd.append("message", message);
+        fd.append("branch", branch);
         Array.from(files).forEach((f) => fd.append("files", f, f.webkitRelativePath || f.name));
         return fd;
       })(),
     }),
-  getDiff: (id: number, path: string, from?: number, to?: number) => {
+  getDiff: (id: number, path: string, opts: { from?: number; to?: number; fromBranch?: string; toBranch?: string } = {}) => {
     const q = new URLSearchParams({ path });
-    if (from) q.set("from_commit", String(from));
-    if (to) q.set("to_commit", String(to));
+    if (opts.from) q.set("from_commit", String(opts.from));
+    if (opts.to) q.set("to_commit", String(opts.to));
+    if (opts.fromBranch) q.set("from_branch", opts.fromBranch);
+    if (opts.toBranch) q.set("to_branch", opts.toBranch);
     return request<Diff>(`/api/projects/${id}/diff?${q.toString()}`);
   },
-  fileUrl: (id: number, path: string, download = false) => {
+  fileUrl: (id: number, path: string, download = false, branch?: string) => {
     const q = new URLSearchParams();
     if (download) q.set("download", "1");
+    if (branch) q.set("branch", branch);
     return `/api/projects/${id}/files/${encodePath(path)}${q.size ? `?${q}` : ""}`;
   },
+  // GitHub API (public, unauthenticated) — the SoundHub code repo itself
+  ghBranches: () =>
+    fetch("https://api.github.com/repos/CRYPTOSCOPE101/SOUNDHUB/branches").then((r) =>
+      r.ok ? (r.json() as Promise<GhBranch[]>) : Promise.reject(new Error("GitHub API error"))
+    ),
+  ghBranchCommits: (branch: string) =>
+    fetch(
+      `https://api.github.com/repos/CRYPTOSCOPE101/SOUNDHUB/commits?sha=${encodeURIComponent(branch)}&per_page=15`
+    ).then((r) =>
+      r.ok
+        ? r.json().then((rows) => ghCommits(rows as Array<Record<string, unknown>>))
+        : Promise.reject(new Error("GitHub API error"))
+    ),
 };
 
 function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
+}
+
+function ghCommits(rows: Array<Record<string, unknown>>): GhCommit[] {
+  return rows.map((row) => {
+    const c = (row as { commit?: { message?: string; author?: { name?: string | null; date?: string | null } } }).commit;
+    const sha = String((row as { sha?: string }).sha || "");
+    return {
+      sha,
+      message: (c?.message || "").split("\n")[0],
+      author: c?.author?.name ?? null,
+      date: c?.author?.date ?? null,
+    };
+  });
 }

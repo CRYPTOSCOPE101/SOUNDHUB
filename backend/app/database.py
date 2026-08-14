@@ -40,9 +40,14 @@ def _migrate() -> None:
             conn.execute(
                 text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_wallet_address ON users (wallet_address)")
             )
-        for col in ("release_token_id", "release_contract", "release_name"):
+        for col, ddl in (
+            ("release_token_id", "INTEGER"),
+            ("release_contract", "VARCHAR(256)"),
+            ("release_name", "VARCHAR(256)"),
+            ("default_branch", "VARCHAR(64) DEFAULT 'main'"),
+        ):
             if col not in projects_cols:
-                conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} VARCHAR(256)"))
+                conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} {ddl}"))
         if "password_hash" in users_cols and not inspector.get_columns("users"):
             pass  # no-op guard
 

@@ -18,7 +18,7 @@ export default function DiffPage() {
     if (!path) return;
     setDiff(null);
     api
-      .getDiff(pid, path, from, to)
+      .getDiff(pid, path, { from, to })
       .then(setDiff)
       .catch((err) => setError(err instanceof Error ? err.message : "Failed"));
   }, [pid, path, from, to]);

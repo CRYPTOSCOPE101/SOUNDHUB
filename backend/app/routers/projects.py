@@ -9,6 +9,8 @@ from ..config import MAX_UPLOAD_SIZE
 from ..database import get_db
 from ..models import Commit, FileSnapshot, Project, User
 from ..schemas import (
+    BranchCreate,
+    BranchOut,
     CommitDetailOut,
     CommitOut,
     FileOut,
@@ -136,16 +138,69 @@ def delete_project(
     db.commit()
 
 
-@router.get("/{project_id}/tree", response_model=TreeOut)
-def get_tree(
+@router.get("/{project_id}/branches", response_model=list[BranchOut])
+def list_branches(
     project_id: int,
-    commit_id: int | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    project = get_project_or_404(db, user, project_id)
+    return versioning.list_branches(db, project)
+
+
+@router.post("/{project_id}/branches", response_model=BranchOut, status_code=status.HTTP_201_CREATED)
+def create_branch(
+    project_id: int,
+    payload: BranchCreate,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     project = get_project_or_404(db, user, project_id)
     try:
-        commit = versioning.get_commit(db, project, commit_id)
+        row = versioning.create_branch(db, project, payload.name.strip(), payload.from_branch)
+    except LookupError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+    head = db.get(Commit, row.head_commit_id) if row.head_commit_id else None
+    return BranchOut(
+        name=row.name,
+        is_default=row.name == project.default_branch,
+        head_commit_id=row.head_commit_id,
+        head_message=head.message if head else "",
+        head_sha=f"{head.id:08x}"[:7] if head else None,
+        head_author=head.author.username if head and head.author else "",
+        head_date=head.created_at if head else None,
+        commit_count=len(versioning.iter_commits(db, project, row.name)),
+        created_at=row.created_at,
+    )
+
+
+@router.delete("/{project_id}/branches/{name}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_branch(
+    project_id: int,
+    name: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    project = get_project_or_404(db, user, project_id)
+    try:
+        deleted = versioning.delete_branch(db, project, name)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+    if not deleted:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Branch not found")
+
+
+@router.get("/{project_id}/tree", response_model=TreeOut)
+def get_tree(
+    project_id: int,
+    commit_id: int | None = None,
+    branch: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    project = get_project_or_404(db, user, project_id)
+    try:
+        commit = versioning.get_commit(db, project, commit_id, branch)
     except LookupError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Commit not found")
     snapshots = versioning.tree_files(db, commit)
@@ -187,15 +242,12 @@ def _analyze_cached(snap: FileSnapshot) -> dict | None:
 @router.get("/{project_id}/commits", response_model=list[CommitOut])
 def list_commits(
     project_id: int,
+    branch: str | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     project = get_project_or_404(db, user, project_id)
-    commits = db.scalars(
-        select(Commit)
-        .where(Commit.project_id == project.id)
-        .order_by(Commit.id.desc())
-    ).all()
+    commits = versioning.iter_commits(db, project, branch)
     return [_commit_out(db, c) for c in commits]
 
 
@@ -270,6 +322,7 @@ def unbind_release(
 def create_commit(
     project_id: int,
     message: str = Form(""),
+    branch: str = Form("main"),
     files: list[UploadFile] = File(default=[]),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -285,5 +338,5 @@ def create_commit(
         if path in tree:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Duplicate path: {path}")
         tree[path] = data
-    commit = versioning.create_commit(db, project, user, message.strip(), tree)
+    commit = versioning.create_commit(db, project, user, message.strip(), tree, branch=branch.strip() or "main")
     return _commit_out(db, commit)

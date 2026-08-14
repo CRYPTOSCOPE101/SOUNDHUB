@@ -257,6 +257,83 @@ def test_asset_download64_base64(client):
     assert r.status_code == 401
 
 
+def test_branches_flow(client):
+    token = _register(client)
+    h = _auth(token)
+    pid = client.post(
+        "/api/projects", json={"name": "Track", "description": ""}, headers=h
+    ).json()["id"]
+
+    # initial commit on default branch
+    r = client.post(
+        f"/api/projects/{pid}/commits",
+        headers=h,
+        data={"message": "first", "branch": "main"},
+        files=[("files", ("A.als", make_als(bpm=128.0), "application/octet-stream"))],
+    )
+    assert r.status_code == 201
+
+    # create a branch from main
+    r = client.post(
+        f"/api/projects/{pid}/branches",
+        headers=h,
+        json={"name": "remix", "from_branch": "main"},
+    )
+    assert r.status_code == 201
+    assert r.json()["is_default"] is False
+    assert r.json()["commit_count"] == 1
+
+    # commit on the new branch
+    r = client.post(
+        f"/api/projects/{pid}/commits",
+        headers=h,
+        data={"message": "remix edit", "branch": "remix"},
+        files=[("files", ("A.als", make_als(bpm=134.0), "application/octet-stream"))],
+    )
+    assert r.status_code == 201
+
+    # branches list: remix has 2 commits, main still 1
+    branches = client.get(f"/api/projects/{pid}/branches", headers=h).json()
+    by_name = {b["name"]: b for b in branches}
+    assert set(by_name) == {"main", "remix"}
+    assert by_name["main"]["is_default"] is True
+    assert by_name["main"]["commit_count"] == 1
+    assert by_name["remix"]["commit_count"] == 2
+
+    # tree on each branch reflects its own head
+    t_main = client.get(f"/api/projects/{pid}/tree", params={"branch": "main"}, headers=h).json()
+    t_remix = client.get(f"/api/projects/{pid}/tree", params={"branch": "remix"}, headers=h).json()
+    assert t_main["commit_id"] != t_remix["commit_id"]
+    als_main = next(f for f in t_main["files"] if f["path"] == "A.als")
+    als_remix = next(f for f in t_remix["files"] if f["path"] == "A.als")
+    assert als_main["daw_info"]["bpm"] == 128.0
+    assert als_remix["daw_info"]["bpm"] == 134.0
+
+    # commits per branch
+    c_main = client.get(f"/api/projects/{pid}/commits", params={"branch": "main"}, headers=h).json()
+    c_remix = client.get(f"/api/projects/{pid}/commits", params={"branch": "remix"}, headers=h).json()
+    assert len(c_main) == 1
+    assert len(c_remix) == 2
+
+    # cross-branch diff: main (128 BPM) -> remix (134 BPM)
+    d = client.get(
+        f"/api/projects/{pid}/diff",
+        params={"path": "A.als", "from_branch": "main", "to_branch": "remix"},
+        headers=h,
+    )
+    assert d.status_code == 200
+    kinds = {c["kind"] for c in d.json()["summary"]}
+    assert "bpm" in kinds
+
+    # cannot delete default branch; can delete the other
+    r = client.delete(f"/api/projects/{pid}/branches/main", headers=h)
+    assert r.status_code == 400
+    r = client.delete(f"/api/projects/{pid}/branches/remix", headers=h)
+    assert r.status_code == 204
+    branches = client.get(f"/api/projects/{pid}/branches", headers=h).json()
+    assert [b["name"] for b in branches] == ["main"]
+
+
 def test_ownership_isolation(client):
     token_a = _register(client)
     r = client.post(

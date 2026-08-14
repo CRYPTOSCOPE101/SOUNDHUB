@@ -31,6 +31,7 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(128), index=True)
     slug: Mapped[str] = mapped_column(String(160))
     description: Mapped[str] = mapped_column(Text, default="")
+    default_branch: Mapped[str] = mapped_column(String(64), default="main")
     # on-chain release NFT binding (SoundHubRelease token)
     release_token_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     release_contract: Mapped[str | None] = mapped_column(String(42), nullable=True)
@@ -46,6 +47,30 @@ class Project(Base):
     commits: Mapped[list["Commit"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
+    branches: Mapped[list["Branch"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
+
+
+class Branch(Base):
+    """A named pointer to a commit (git-like). History of a branch is the
+    parent chain walked from `head_commit_id`."""
+
+    __tablename__ = "branches"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    head_commit_id: Mapped[int | None] = mapped_column(ForeignKey("commits.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_project_branch_name"),)
+
+    project: Mapped["Project"] = relationship(back_populates="branches")
+
+    @property
+    def is_default(self) -> bool:
+        return self.name == self.project.default_branch
 
 
 class Commit(Base):

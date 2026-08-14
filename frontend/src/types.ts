@@ -15,12 +15,38 @@ export interface Project {
   name: string;
   slug: string;
   description: string;
+  default_branch: string;
   release_token_id: number | null;
   release_contract: string | null;
   release_name: string | null;
   created_at: string;
   updated_at: string;
   owner: User;
+}
+
+export interface Branch {
+  name: string;
+  is_default: boolean;
+  head_commit_id: number | null;
+  head_message: string;
+  head_sha: string | null;
+  head_author: string;
+  head_date: string | null;
+  commit_count: number;
+  created_at: string;
+}
+
+export interface GhBranch {
+  name: string;
+  protected: boolean;
+  sha: string;
+}
+
+export interface GhCommit {
+  sha: string;
+  message: string;
+  author: string | null;
+  date: string | null;
 }
 
 export interface DawTrack {

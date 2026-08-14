@@ -48,12 +48,33 @@ class ProjectOut(ORMModel):
     name: str
     slug: str
     description: str
+    default_branch: str = "main"
     release_token_id: int | None = None
     release_contract: str | None = None
     release_name: str | None = None
     created_at: datetime
     updated_at: datetime
     owner: UserOut
+
+
+# ---------- Branches ----------
+class BranchCreate(BaseModel):
+    name: str = Field(
+        min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_\-\/\.]+$"
+    )
+    from_branch: str | None = Field(default=None, max_length=64)
+
+
+class BranchOut(BaseModel):
+    name: str
+    is_default: bool
+    head_commit_id: int | None = None
+    head_message: str = ""
+    head_sha: str | None = None
+    head_author: str = ""
+    head_date: datetime | None = None
+    commit_count: int = 0
+    created_at: datetime
 
 
 # ---------- Web3 ----------
