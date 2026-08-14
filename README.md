@@ -87,17 +87,16 @@ cd backend
 | FL Studio | `flp_parser.py` | binary chunk walk (FLhd/FLPI/FLdt) → version, name, author, tempo |
 | Diff engine | `diff_engine.py` | structured summary diff + unified raw diff (pretty XML / text / hex) |
 
-## Roadmap
+## Roadmap — marketplace first (don't generate, buy)
 
-- [x] MVP: repos, snapshot commits, content-addressed storage
+- [x] Foundation: repos, snapshot commits, content-addressed storage
 - [x] DAW parsing for all four formats + smart metadata diff
-- [x] Web UI: projects, file tree with DAW insight, commit history, diff view
-- [ ] Branches + merges (snapshot → DAG)
-- [ ] Stem/audio preview playback in the browser
-- [ ] Real-time collaboration (CRDT cursors à la Figma for the timeline)
-- [ ] Commenting on tracks/regions (PR review for music)
+- [x] Tokenized layer: SND, Release NFTs, DAO, wallet sign-in (Base Sepolia)
+- [x] `SoundHubMarket` escrow contract (tested)
+- [ ] Deploy marketplace + list/buy flow in the UI + SND faucet
+- [ ] Verification badges (DAW-parsed), seller reputation, license enforcement
+- [ ] Branches + merges (snapshot → DAG), audio preview, real-time collab
 - [ ] DAW plugins (export/import directly from Live/FL)
-- [ ] Licensing/CC metadata, sample attribution
 - [ ] S3/Azure blob backend for production scale
 
 ## Tokenized platform (web3) 🪙
