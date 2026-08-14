@@ -1,3 +1,6 @@
+
+![SoundHub repo page](screenshots/image.jpg)
+
 # 🎛 SoundHub
 
 SoundHub is a tokenized marketplace where music producers buy and sell finished presets, loops, stems, and sound packs with on-chain ownership and licensing
