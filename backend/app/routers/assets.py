@@ -7,13 +7,18 @@ Serves the SoundHub marketplace to the in-DAW (M4L) device and the web app:
   devices), the interface the M4L device calls for suggestions.
 - `GET /api/assets/{listing_id}/download?token=...` — delivers the purchased
   asset bytes to the device using a short-lived signed token.
+- `GET /api/assets/{listing_id}/download64?token=...` — text-safe (base64
+  JSON) variant for the M4L device, which cannot write raw binary from
+  `httprequest` and cannot use `shell` inside Live.
 
 The catalog metadata + payloads live in `services/catalog.py` (seeded demo);
 production reads listings from the SoundHubMarket contract and metadata from
 the backend DB / IPFS.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import base64
+
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
 from ..config import SECRET_KEY
@@ -80,7 +85,41 @@ def issue_download_token(listing_id: int) -> dict:
     if asset is None or asset.payload is None:
         raise HTTPException(404, "Asset not found or no payload available")
     token = catalog.make_download_token(SECRET_KEY, listing_id)
-    return {"listing_id": listing_id, "token": token, "expires_in": 300}
+    return {
+        "listing_id": listing_id,
+        "token": token,
+        "expires_in": 300,
+        "name": asset.name,
+        "filename": asset.filename,
+        "format": asset.format,
+        "license": asset.license,
+        "size": len(asset.payload),
+    }
+
+
+@router.get("/{listing_id}/download64")
+def download_asset_base64(listing_id: int, token: str = Query(min_length=20, max_length=256)) -> dict:
+    """Text-safe asset delivery for the M4L device (JSON + base64 payload).
+
+    The Max for Live `httprequest` object can mangle raw binary responses,
+    and the `shell` object is blocked in Live — so the device fetches the
+    payload as base64 JSON and writes the bytes itself (Max `file` object).
+    """
+    authorized = catalog.verify_download_token(SECRET_KEY, token)
+    if authorized != listing_id:
+        raise HTTPException(401, "Invalid or expired download token")
+    asset = catalog.find_asset(listing_id)
+    if asset is None or asset.payload is None:
+        raise HTTPException(404, "Asset not found or no payload available")
+    return {
+        "listing_id": listing_id,
+        "filename": asset.filename,
+        "name": asset.name,
+        "format": asset.format,
+        "license": asset.license,
+        "size": len(asset.payload),
+        "data": base64.b64encode(asset.payload).decode("ascii"),
+    }
 
 
 @router.get("/{listing_id}/download")

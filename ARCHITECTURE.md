@@ -56,8 +56,9 @@ means M4L.
   from the Live API; send to the recommendation service.
 - **Buy** — approve SND → `market.buy(id)` → SND in escrow. Signing:
   WalletConnect (user wallet) or a backend relayer (invisible web3).
-- **Load** — fetch the purchased asset bytes, save to the User Library,
-  trigger Live browser refresh / rack import.
+- **Load** — fetch the purchased asset as base64 JSON (`/download64`),
+  decode in JS, write to `User Library/SoundHub/` with the Max `file`
+  object (allowed in Live; `shell` is not), refresh `live.browser`.
 
 ### Layer 2 — Recommendation service (backend, shipped)
 - Input: project context from the device (BPM, key, genre, devices).
@@ -92,9 +93,10 @@ means M4L.
 2. Panel reads BPM 128 → suggests techno/house assets ranked for context.
 3. User clicks **Buy & Load** on "Dark Bass Patch (Serum)", 50 SND.
 4. SND approved → `market.buy` → funds in escrow; panel shows "purchased".
-5. Asset is fetched from the backend (license-scoped download).
-6. File lands in the User Library → Live browser → user drags it into the
-   rack (full auto-import: next iteration).
+5. Asset is fetched from the backend (license-scoped download) and written
+   to `User Library/SoundHub/` via the base64 + `file`-object path.
+6. Live's browser refreshes → file appears under SoundHub → user drags it
+   into the rack (one-click device insert: next iteration).
 7. User confirms receipt (or the 2-day window passes) → seller paid.
    No spreadsheets, no DMs, no manual payouts.
 
@@ -115,10 +117,11 @@ The user sees **Buy & Load** — not `approve`, not gas, not RPC. Details:
 | 1 | M4L device: catalog + BPM context + buy intent + load stub | ✅ prototype in `m4l/` |
 | 2 | Recommendation service (DAW-engine backed) — `GET /api/assets/recommend` + catalog metadata | ✅ `backend/app/services/catalog.py` |
 | 3 | Asset delivery — `GET /api/assets/{id}/token` → `/download` (short-lived signed token) | ✅ |
-| 4 | Token gating: issue tokens only after on-chain purchase check (buyer == wallet, escrowed > 0) | ⏳ next |
-| 5 | Full Live import (browser refresh, rack insert) | ⏳ |
-| 6 | WalletConnect signing inside M4L / relayer | ⏳ |
-| 7 | FL Studio / Cubase / REAPER equivalents | ⏳ later |
+| 4 | Auto-import — `/download64` (base64 JSON) → `file` object write to User Library → `live.browser` refresh | ✅ prototype (`shell` is blocked in Live, so no curl) |
+| 5 | Token gating: issue tokens only after on-chain purchase check (buyer == wallet, escrowed > 0) | ⏳ next |
+| 6 | One-click insert into a device/Simpler via `live.object` | ⏳ |
+| 7 | WalletConnect signing inside M4L / relayer | ⏳ |
+| 8 | FL Studio / Cubase / REAPER equivalents | ⏳ later |
 
 ## Constraints
 

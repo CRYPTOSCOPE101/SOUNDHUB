@@ -23,8 +23,8 @@ var config = {
   market: "0x396d6ad9D5EA19eE56318624b05bC6EEEa2d1F5C",
   token: "0x37a6B3aD766ffb98673290A634490C8bF952DB2F",
   key: "",            // testnet private key (hex, 0x-prefixed)
-  backend: "http://127.0.0.1:8000", // optional: SoundHub backend for assets
-  tempDir: "",        // where downloaded assets are saved (default: /tmp)
+  backend: "http://127.0.0.1:8000", // SoundHub backend for assets/recommend
+  libraryDir: "",     // Ableton User Library (default: ~/Music/Ableton/User Library)
   maxItems: 50
 };
 
@@ -236,9 +236,11 @@ function suggestForBpm(bpm) {
   });
 }
 
-// Fetch an asset payload via the backend (signed short-lived token):
-//   GET /api/assets/{id}/token  -> { token }
-//   GET /api/assets/{id}/download?token=...  -> asset bytes
+// Fetch an asset via the backend and import it into the Live User Library:
+//   1. GET /api/assets/{id}/token          -> { token, filename, format, ... }
+//   2. GET /api/assets/{id}/download64     -> { data: <base64>, ... }
+//   3. decode base64 -> write bytes to <libraryDir>/SoundHub/<filename>
+//   4. refresh Live's file browser so the file shows up
 function loadAssetById(listingId, name) {
   var url = config.backend + "/api/assets/" + listingId + "/token";
   httpGet(url, function (ok, text) {
@@ -246,16 +248,78 @@ function loadAssetById(listingId, name) {
       out(OUT_STATUS, "Token request failed: " + text);
       return;
     }
-    var body;
-    try { body = JSON.parse(text); } catch (e) { body = null; }
-    if (!body || !body.token) {
+    var meta;
+    try { meta = JSON.parse(text); } catch (e) { meta = null; }
+    if (!meta || !meta.token) {
       out(OUT_STATUS, "No download token returned");
       return;
     }
-    var dl = config.backend + "/api/assets/" + listingId + "/download?token=" + body.token;
-    out(OUT_STATUS, "Downloading " + dl + "\u2026 (drag the file into a track \u2014 prototype)");
-    loadAsset(dl, name || ("asset_" + listingId));
+    var dl = config.backend + "/api/assets/" + listingId + "/download64?token=" + meta.token;
+    out(OUT_STATUS, "Importing \"" + (meta.name || ("asset #" + listingId)) + "\"\u2026");
+    httpGet(dl, function (ok2, text2) {
+      if (!ok2) {
+        out(OUT_STATUS, "Import failed: " + text2);
+        return;
+      }
+      var payload;
+      try { payload = JSON.parse(text2); } catch (e) { payload = null; }
+      if (!payload || !payload.data) {
+        out(OUT_STATUS, "Import failed: no payload");
+        return;
+      }
+      var bytes = base64ToBytes(payload.data);
+      var filename = (payload.filename || ("asset_" + listingId)).replace(/[^a-zA-Z0-9._-]/g, "_");
+      var path = (config.libraryDir || "~/Music/Ableton/User Library") + "/SoundHub/" + filename;
+      writeBytes(path, bytes);
+      refreshBrowser();
+      out(OUT_STATUS, "Saved " + path + " \u2014 open the Live browser (F5 if needed), SoundHub folder.");
+    });
   });
+}
+
+// Decode a base64 string into an array of byte values (0-255).
+function base64ToBytes(b64) {
+  var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  var lut = {};
+  for (var i = 0; i < 64; i++) lut[chars.charAt(i)] = i;
+  b64 = b64.replace(/[^A-Za-z0-9+/=]/g, "");
+  var out = [];
+  var buf = 0, bits = 0;
+  for (var j = 0; j < b64.length; j++) {
+    if (b64.charAt(j) === "=") break;
+    buf = (buf << 6) | lut[b64.charAt(j)];
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out.push((buf >> bits) & 0xff);
+    }
+  }
+  return out;
+}
+
+// Write bytes to disk via the Max `file` object (allowed in M4L; `shell` is
+// blocked inside Live). The filebox is created by the patch.
+function writeBytes(path, bytes) {
+  var fb;
+  try { fb = this.patcher.getnamed("filebox"); } catch (e) { fb = null; }
+  if (!fb) {
+    out(OUT_STATUS, "filebox not found in patch \u2014 add a `file @name filebox` object.");
+    return;
+  }
+  fb.message("open", path, "write");
+  var k;
+  for (k = 0; k < bytes.length; k++) fb.message("writebyte", bytes[k]);
+  fb.message("close");
+}
+
+// Ask Live's file browser to refresh so the new file shows up. `refresh` is
+// best-effort; fall back to telling the user to hit F5.
+function refreshBrowser() {
+  var bb;
+  try { bb = this.patcher.getnamed("browserbox"); } catch (e) { bb = null; }
+  if (bb) {
+    try { bb.message("refresh"); } catch (e) { /* browser may not support it */ }
+  }
 }
 
 // ---- buying ----------------------------------------------------------------
@@ -266,23 +330,6 @@ function loadAssetById(listingId, name) {
 // version signs the escrow tx inside M4L (EIP-1559) or via a relayer.
 
 // ---- loading assets into the Live project -----------------------------------
-
-function loadAsset(url, name) {
-  var tmp = config.tempDir || "/tmp";
-  var target = tmp + "/soundhub_" + name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  out(OUT_STATUS, "Downloading " + url + "\u2026");
-  httpGet(url, function (ok, text) {
-    if (!ok) {
-      out(OUT_STATUS, "Download failed: " + text);
-      return;
-    }
-    // Save bytes and insert into the Live set. Real implementation:
-    //   - write the response bytes to `target`
-    //   - find the device's track via live.thisdevice
-    //   - push the file into the browser via Live API (Song.capture_midi etc.)
-    out(OUT_STATUS, "Asset ready at " + target + " \u2014 drag into a track (prototype).");
-  });
-}
 
 // Shared GET helper over httprequest (text responses).
 function httpGet(url, cb) {
@@ -324,10 +371,10 @@ function readBpm() {
 }
 
 // runtime configuration messages: rpc <url>, market <addr>, token <addr>,
-// key <privkey>, backend <url>, tempDir <path>
+// key <privkey>, backend <url>, libraryDir <path>
 function rpc(v) { config.rpc = v; postln("rpc -> " + v); }
 function market(v) { config.market = v; postln("market -> " + v); }
 function token(v) { config.token = v; postln("token -> " + v); }
 function key(v) { config.key = v; postln("key set (testnet only)"); }
 function backend(v) { config.backend = v; postln("backend -> " + v); }
-function tempDir(v) { config.tempDir = v; postln("tempDir -> " + v); }
+function libraryDir(v) { config.libraryDir = v; postln("libraryDir -> " + v); }
