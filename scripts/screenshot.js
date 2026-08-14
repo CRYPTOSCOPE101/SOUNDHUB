@@ -30,7 +30,8 @@ async function login(page) {
 }
 
 async function shot(page, file) {
-  await page.screenshot({ path: path.join(OUT_DIR, file) });
+  // full-page capture at 2x device scale for crisp README images
+  await page.screenshot({ path: path.join(OUT_DIR, file), fullPage: true });
   console.log("saved screenshots/" + file);
 }
 
@@ -41,7 +42,7 @@ async function main() {
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+  await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 2 });
 
   await login(page);
 
