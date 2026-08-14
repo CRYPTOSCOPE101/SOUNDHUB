@@ -7,6 +7,8 @@ export interface Deployment {
   release: string;
   timelock: string;
   governor: string;
+  market?: string;
+  faucet?: string;
 }
 
 const DEFAULT_DEPLOYMENT: Deployment = {
@@ -59,6 +61,26 @@ export const RELEASE_ABI = [
   "function ownerOf(uint256) view returns (address)",
 ];
 
+export const MARKET_ABI = [
+  "function list(string name, string assetUri, uint256 price, uint8 license) returns (uint256)",
+  "function delist(uint256 id)",
+  "function buy(uint256 id)",
+  "function confirmReceipt(uint256 id)",
+  "function withdraw(uint256 id)",
+  "function requestRefund(uint256 id)",
+  "function resolveRefund(uint256 id, bool approve)",
+  "function nextListingId() view returns (uint256)",
+  "function disputeWindow() view returns (uint256)",
+  "function listings(uint256) view returns (uint256 id, address seller, string name, string assetUri, uint256 price, uint8 license, bool active, address buyer, uint256 escrowed, uint256 purchasedAt, bool released, bool refundRequested)",
+];
+
+export const FAUCET_ABI = [
+  "function claim()",
+  "function amountPerClaim() view returns (uint256)",
+  "function cooldown() view returns (uint256)",
+  "function lastClaimAt(address) view returns (uint256)",
+];
+
 export const GOVERNOR_ABI = [
   "function state(uint256) view returns (uint8)",
   "function proposalSnapshot(uint256) view returns (uint256)",
@@ -80,6 +102,16 @@ export async function getRelease(signer: Signer | BrowserProvider, address: stri
 export async function getGovernor(signer: Signer | BrowserProvider, address: string) {
   return new Contract(address, GOVERNOR_ABI, signer);
 }
+
+export async function getMarket(signer: Signer | BrowserProvider, address: string) {
+  return new Contract(address, MARKET_ABI, signer);
+}
+
+export async function getFaucet(signer: Signer | BrowserProvider, address: string) {
+  return new Contract(address, FAUCET_ABI, signer);
+}
+
+export const LICENSE_NAMES = ["Personal", "Commercial", "Sync", "Exclusive"];
 
 export function explorerTokenUrl(deployment: Deployment, tokenId: number): string {
   return `https://basescan.org/token/${deployment.release}?a=${tokenId}`;

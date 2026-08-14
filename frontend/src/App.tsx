@@ -4,6 +4,7 @@ import CommitPage from "./pages/CommitPage";
 import DiffPage from "./pages/DiffPage";
 import DAOPage from "./pages/DAOPage";
 import LoginPage from "./pages/LoginPage";
+import MarketplacePage from "./pages/MarketplacePage";
 import ProjectPage from "./pages/ProjectPage";
 import ProjectsPage from "./pages/ProjectsPage";
 
@@ -24,6 +25,9 @@ export default function App() {
         </div>
         {user && (
           <div className="userbox">
+            <Link to="/market" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
+              🛒 Market
+            </Link>
             <Link to="/dao" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
               🗳 DAO
             </Link>
@@ -74,6 +78,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <DAOPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/market"
+            element={
+              <RequireAuth>
+                <MarketplacePage />
               </RequireAuth>
             }
           />

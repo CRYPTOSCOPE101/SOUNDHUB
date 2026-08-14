@@ -106,13 +106,17 @@ live in `contracts/` (Hardhat + OpenZeppelin):
 
 | Contract | What it does |
 |---|---|
-| `SND.sol` | **SND** ERC-20 platform token — permit, votes for the DAO, fixed supply |
+| `SND.sol` | **SND** ERC-20 platform token — permit, votes for the DAO, fixed supply, marketplace payment rail |
 | `SoundHubRelease.sol` | **Release NFTs** (ERC-721 + ERC-2981) — music releases with royalty %, on-chain collaborator revenue split, fundable treasury (ETH/SND) with order-independent claiming |
+| `SoundHubMarket.sol` | **Escrow marketplace** — list finished sounds for SND, buy into escrow, dispute window, refunds |
+| `SoundHubFaucet.sol` | **Testnet faucet** — 100 SND per wallet per day so testers can buy |
 | `SoundHubGovernor.sol` | **DAO** — SND holders propose/vote, execution via 1-day timelock |
 | `TimelockController` | safety delay before any executed proposal |
 
 ### Features wired into the app
 - **Sign in with wallet** (EIP-191 personal_sign verified server-side, JWT issued)
+- **Marketplace** — list finished sounds for SND, buy through escrow, confirm receipt, request refunds
+- **SND faucet** — claim 100 testnet SND per day to try buying
 - **Mint a Release NFT** per project — set royalty and collaborator split
 - **Tip artists** — fund a release treasury with SND or ETH, collaborators claim on-chain
 - **DAO page** — connect wallet, see voting power, vote on proposals
