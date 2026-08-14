@@ -2,6 +2,12 @@
 
 **Version control and collaboration for music production projects.**
 
+📄 Read the [Project description](DESCRIPTION.md) — what SoundHub is, live
+features vs roadmap, and how it compares to existing tools.
+
+📄 Read the [Litepaper](LITEPAPER.md) — vision, tokenized layer, tokenomics
+and roadmap.
+
 GitHub, but for DAW projects — Ableton Live (`.als`), Cubase (`.cpr`),
 REAPER (`.rpp`) and FL Studio (`.flp`). Version your tracks, see *what
 actually changed* between versions (not just "file modified"), and
