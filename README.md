@@ -105,7 +105,7 @@ cd backend
 - [x] In-DAW prototype: SoundHub inside Ableton Live (M4L, `m4l/`) — catalog, BPM suggestions, buy & load
 - [x] Recommendation service (`/api/assets/recommend`, DAW-metadata scoring) + asset delivery (signed-token download)
 - [x] Auto-import into Live: `/download64` → User Library write → browser refresh
-- [x] GitHub-clone UI: repo tabs, branch selector, commits view, README; Ableton light/dark themes; SoundHub-repo page via GitHub API
+- [x] Repo-first UI (own design): repo tabs, branch selector, commits view, README; Ableton light/dark themes; SoundHub-repo page via GitHub API
 - [x] Branches: named pointers, per-branch history/tree/diff (merges: DAG — next)
 - [ ] Token gating on purchase, one-click device insert, key/tracks/devices context from Live API
 - [ ] Verification badges (DAW-parsed), seller reputation, license enforcement
