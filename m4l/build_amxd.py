@@ -37,6 +37,15 @@ BOXES = [
     box("newobj", "ctx", [300.0, 90.0, 180.0, 24.0],
         text="live.object @object live_set",
         numinlets=1, inlettype=[""], numoutlets=1, outlettype=[""]),
+    # file writer (auto-import): writes downloaded asset bytes to the User
+    # Library. Named so the js script can message it via getnamed().
+    box("newobj", "filebox", [300.0, 140.0, 120.0, 24.0],
+        text="file @name filebox",
+        numinlets=1, inlettype=[""], numoutlets=1, outlettype=[""]),
+    # Live file browser: refresh / navigate so imported files appear.
+    box("newobj", "browserbox", [300.0, 190.0, 150.0, 24.0],
+        text="live.browser @name browserbox",
+        numinlets=1, inlettype=[""], numoutlets=1, outlettype=[""]),
     # buttons -> prepend converts bang into an int for the js int inlet
     box("button", "btnLoad", [30.0, 50.0, 30.0, 30.0],
         numoutlets=1, outlettype=["bang"]),

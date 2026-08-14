@@ -55,9 +55,7 @@ entries (not yet on-chain) so recommendations are meaningful.
   (`/api/assets/recommend`) for ranked matches — genre + BPM fit + device
   overlap, scored from DAW-verified asset metadata (see
   `backend/app/services/catalog.py`);
-- **load** — fetches the suggested asset through the backend's short-lived
-  signed-token endpoint (`/api/assets/{id}/token` → `/download`) so the
-  loop can be tested end-to-end.
+- **load** — auto-imports the suggested asset into the Live **User Library**: fetches it through the backend's short-lived signed-token endpoint (`/api/assets/{id}/token` → `/download64`), decodes the base64 payload and writes it to `User Library/SoundHub/` with the Max `file` object, then refreshes Live's file browser (`live.browser`).
 
 ## Backend endpoints the device uses
 
@@ -65,20 +63,40 @@ entries (not yet on-chain) so recommendations are meaningful.
 |---|---|
 | `GET /api/assets` | catalog enriched with DAW metadata (public) |
 | `GET /api/assets/recommend?bpm=&key=&genre=&devices=` | context-aware ranking (public) |
-| `GET /api/assets/{id}/token` | short-lived download token (prototype: public) |
+| `GET /api/assets/{id}/token` | short-lived download token + asset metadata (prototype: public) |
 | `GET /api/assets/{id}/download?token=` | asset bytes with license headers |
+| `GET /api/assets/{id}/download64?token=` | text-safe base64 JSON variant (for M4L import) |
 
 Run the backend locally for suggestions/loads: `cd backend && .venv/bin/uvicorn
 app.main:app --port 8000`, and point the device at it (`backend` message).
 
+## Auto-import — how it works
+
+`shell` is blocked inside Live, and `httprequest` can mangle raw binary — so
+import uses a text-safe path:
+
+```
+token (JSON, with filename/format/license)
+  → /download64 (base64 JSON payload)
+  → decode base64 in JS
+  → `file` object writes bytes to User Library/SoundHub/<filename>
+  → `live.browser` refresh (fallback: F5)
+```
+
+The file lands in Live's browser under **SoundHub** and can be dropped into
+the rack. If the browser doesn't refresh automatically, press **F5**.
+
+Configure the library folder if it's not the default macOS path:
+`libraryDir /path/to/User Library`.
+
 ## What's stubbed (honest)
 
+- **One-click insert into a device** — the file is imported into the User
+  Library and the browser, but dropping it onto a specific device/simpler
+  still needs a drag (or a `live.object` insert step, next iteration).
 - **Purchase tx signing** — the actual escrow purchase (approve SND →
   `market.buy`) happens in the web app with the user's wallet. A full
   EIP-1559 signer inside M4L, or a relayer, is the next step.
-- **Asset import** — downloads to a temp path and tells you to drag it in.
-  Full import via Live's browser/rack API (`live.groove`, file browser
-  refresh) is the next iteration.
 - **Token gating** — the download token endpoint is public for the
   prototype; production checks the on-chain purchase (buyer == wallet,
   escrowed > 0) before issuing.

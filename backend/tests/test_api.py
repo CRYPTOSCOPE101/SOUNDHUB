@@ -234,6 +234,29 @@ def test_asset_download_token(client):
     assert r.status_code == 401
 
 
+def test_asset_download64_base64(client):
+    """The M4L device fetches assets as base64 JSON (text-safe)."""
+    import base64
+
+    from app import config as cfg
+    from app.services import catalog
+
+    tok = catalog.make_download_token(cfg.SECRET_KEY, listing_id=1)
+    r = client.get("/api/assets/1/download64", params={"token": tok})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["filename"] == "neon-dreams-demo.wav"
+    assert body["format"] == "als"
+    assert body["license"] == "Commercial"
+    decoded = base64.b64decode(body["data"])
+    assert decoded[:4] == b"RIFF"  # wav payload round-trips
+    assert len(decoded) == body["size"]
+
+    # bad token rejected
+    r = client.get("/api/assets/1/download64", params={"token": "x" * 40})
+    assert r.status_code == 401
+
+
 def test_ownership_isolation(client):
     token_a = _register(client)
     r = client.post(
