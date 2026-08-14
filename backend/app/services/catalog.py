@@ -202,8 +202,17 @@ def _bpm_score(asset: CatalogAsset, bpm: float | None) -> float:
 def _key_match(asset: CatalogAsset, key: str | None) -> float:
     if not key or not asset.key:
         return 0.0
-    norm = lambda s: s.strip().lower().replace("-", " ").replace(" minor", "m").replace(" major", "")
-    return 1.0 if norm(asset.key) == norm(key) else 0.0
+    return 1.0 if _norm_key(asset.key) == _norm_key(key) else 0.0
+
+
+def _norm_key(k: str) -> str:
+    return (
+        k.strip().lower()
+        .replace("-", " ")
+        .replace(" minor", "m")
+        .replace(" major", "")
+        .replace("#", "s")
+    )
 
 
 def recommend(
@@ -211,6 +220,8 @@ def recommend(
     key: str | None = None,
     genre: str | None = None,
     devices: str | None = None,
+    license: str | None = None,
+    format: str | None = None,
     limit: int = 5,
 ) -> list[dict]:
     """Rank catalog assets against producer context.
@@ -218,12 +229,28 @@ def recommend(
     Scoring: genre match (3) + BPM proximity (2) + key (1) + device overlap (1).
     The `devices` parameter is where the DAW engine feeds parsed project
     devices/plugins (from the M4L device or a parsed .als file).
+
+    Hard filters (not scored): `license` (Personal/Commercial/Sync/Exclusive,
+    comma-separated allowed) and `format` (als/cpr/rpp/flp/wav/midi/adg).
     """
     context_genres = [g.strip() for g in (genre or "").split(",") if g.strip()]
     context_devices = [d.strip().lower() for d in (devices or "").split(",") if d.strip()]
+    allowed_licenses = {
+        l.strip().lower() for l in (license or "").split(",") if l.strip()
+    }
+    allowed_formats = {
+        f.strip().lower() for f in (format or "").split(",") if f.strip()
+    }
 
     scored: list[tuple[float, CatalogAsset, list[str]]] = []
     for asset in CATALOG:
+        if allowed_licenses and asset.license.lower() not in allowed_licenses:
+            continue
+        if allowed_formats and (asset.format or "").lower() not in allowed_formats:
+            continue
+        score = 0.0
+        reasons: list[str] = []
+        gh = _genre_hits(asset.genres, context_genres)
         score = 0.0
         reasons: list[str] = []
         gh = _genre_hits(asset.genres, context_genres)
@@ -241,7 +268,9 @@ def recommend(
         if dev_hits:
             score += 1.0 * min(dev_hits, 2)
             reasons.append("device/plugin overlap")
-        if score > 0:
+        # Hard filters (license/format) make an asset eligible even without
+        # context match; otherwise only ranked (score > 0) assets are shown.
+        if allowed_licenses or allowed_formats or score > 0:
             scored.append((score, asset, reasons))
 
     scored.sort(key=lambda t: -t[0])

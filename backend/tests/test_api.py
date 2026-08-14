@@ -183,6 +183,23 @@ def test_asset_catalog_and_recommend(client):
     assert r3.status_code == 200
     assert all(a["bpm"] is None or a["bpm"][0] > 60 for a in r3.json())
 
+    # hard filters: license + format
+    r4 = client.get("/api/assets/recommend", params={"license": "sync"})
+    assert r4.status_code == 200
+    assert r4.json() and all(a["license"] == "Sync" for a in r4.json())
+    r5 = client.get(
+        "/api/assets/recommend", params={"genre": "techno", "format": "wav"}
+    )
+    assert r5.status_code == 200
+    assert r5.json() and all(a["format"] == "wav" for a in r5.json())
+    # key filter narrows to the right asset
+    r6 = client.get(
+        "/api/assets/recommend", params={"genre": "techno", "key": "D minor"}
+    )
+    assert r6.status_code == 200
+    names = [a["name"] for a in r6.json()]
+    assert "Dark Bass Pack (Techno)" in names
+
 
 def test_asset_download_token(client):
     from app import config

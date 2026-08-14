@@ -48,14 +48,22 @@ def recommend_assets(
     key: str | None = Query(default=None, max_length=32),
     genre: str | None = Query(default=None, max_length=128),
     devices: str | None = Query(default=None, max_length=512),
+    license: str | None = Query(default=None, max_length=64),
+    format: str | None = Query(default=None, max_length=64),
     limit: int = Query(default=5, ge=1, le=20),
 ) -> list[dict]:
-    """Rank catalog assets for the producer's current context."""
+    """Rank catalog assets for the producer's current context.
+
+    `license` (Personal/Commercial/Sync/Exclusive) and `format`
+    (als/wav/midi/…) act as hard filters; bpm/key/genre/devices score.
+    """
     return catalog.recommend(
         bpm=bpm,
         key=key,
         genre=genre,
         devices=devices,
+        license=license,
+        format=format,
         limit=limit,
     )
 
