@@ -49,7 +49,7 @@ export default function GitHubRepoPage() {
         </div>
         <p className="repo-desc">
           The SoundHub codebase itself — this page mirrors its git branches
-          and commits from the GitHub API.
+          and commits live from the public GitHub API.
         </p>
         <div className="row" style={{ marginTop: 8, gap: 8 }}>
           <span className="gh-stat">⎇ <b>{branches.length}</b> branches</span>
@@ -76,7 +76,7 @@ export default function GitHubRepoPage() {
               ))}
             </select>
             <a className="btn ghost sm" href={`${REPO_URL}/branches`} target="_blank" rel="noreferrer">
-              All branches on GitHub ↗
+              All branches ↗
             </a>
           </div>
 
