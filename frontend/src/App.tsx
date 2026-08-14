@@ -54,7 +54,7 @@ export default function App() {
               🗳 DAO
             </Link>
             <Link to="/github" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
-              ◈ GitHub
+              ◈ Repo
             </Link>
             <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
               {theme === "light" ? "🌙" : "☀️"}
