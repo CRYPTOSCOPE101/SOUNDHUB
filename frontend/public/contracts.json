@@ -1,0 +1,10 @@
+{
+  "network": "baseSepolia",
+  "chainId": 84532,
+  "deployer": "0x2c1052FaD6a691524075c319e0788935a83Ce6B9",
+  "snd": "0x37a6B3aD766ffb98673290A634490C8bF952DB2F",
+  "release": "0xb3716751572db83d22aeED95Be7da125A4d22446",
+  "timelock": "0x98F6a809ffa83cbe5f9bAFa7Cf762f2f24Cfa548",
+  "governor": "0x2db3F8BA478C445399bB8fbA921fC5e11Af202da",
+  "deployedAt": "2026-08-14T09:38:15.559Z"
+}

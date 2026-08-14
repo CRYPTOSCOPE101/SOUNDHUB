@@ -1,0 +1,135 @@
+# 🎛 SoundHub
+
+**Version control and collaboration for music production projects.**
+
+GitHub, but for DAW projects — Ableton Live (`.als`), Cubase (`.cpr`),
+REAPER (`.rpp`) and FL Studio (`.flp`). Version your tracks, see *what
+actually changed* between versions (not just "file modified"), and
+collaborate without zip-files floating around a Discord server.
+
+## Why this is different from git/GitHub
+
+DAW project files are opaque blobs to normal version control. GitHub
+shows you "this 40 MB binary changed" and nothing else.
+
+SoundHub parses the project files and understands them:
+
+| | GitHub on `.als` | SoundHub on `.als` |
+|---|---|---|
+| Diff | "binary file changed" | **BPM 128 → 132** |
+| | | **+ track `Pad` (midi)** |
+| | | **+ plugin `Vital`** |
+| | | **+ sample `VocalChop_01.wav`** |
+| Metadata | nothing | tracks, devices, plugins, samples, signature |
+
+It also stores files **content-addressed** (deduplicated by SHA-256), so a
+full-snapshot commit model costs almost nothing when little changed.
+
+## Stack
+
+- **Backend:** Python 3.12 · FastAPI · SQLAlchemy · SQLite · PyJWT
+- **Frontend:** React 18 · TypeScript · Vite
+- **Storage:** content-addressed blobs on disk (`backend/data/blobs/`),
+  no external services required
+
+## Quick start
+
+```bash
+# 1. Backend
+cd backend
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m scripts.seed_demo     # demo user: demo / demo123
+.venv/bin/uvicorn app.main:app --port 8000
+
+# 2. Frontend (new terminal)
+cd frontend
+npm install
+npm run dev          # http://localhost:5173
+
+# 3. Open http://localhost:5173 and sign in with demo / demo123
+```
+
+## Tests
+
+```bash
+cd backend
+.venv/bin/python -m pytest tests/ -q
+```
+
+## API overview
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/register` | create account |
+| POST | `/api/auth/login` | get JWT |
+| GET | `/api/projects` | list repos |
+| POST | `/api/projects` | create repo |
+| GET | `/api/projects/{id}/tree` | file tree of HEAD (with DAW analysis) |
+| POST | `/api/projects/{id}/commits` | upload files → new commit |
+| GET | `/api/projects/{id}/commits` | history |
+| GET | `/api/projects/{id}/files/{path}` | download a file |
+| GET | `/api/projects/{id}/diff?path=…&from=…&to=…` | smart diff |
+
+## DAW parsing engine (`backend/app/services/daw/`)
+
+| Format | File | Approach |
+|---|---|---|
+| Ableton Live | `als_parser.py` | gunzip → XML → tempo, signature, tracks, devices, plugins, samples |
+| Cubase | `cpr_parser.py` | XML scan → tempo, tracks, VST plugins |
+| REAPER | `rpp_parser.py` | text parse → tempo, signature, tracks, FX |
+| FL Studio | `flp_parser.py` | binary chunk walk (FLhd/FLPI/FLdt) → version, name, author, tempo |
+| Diff engine | `diff_engine.py` | structured summary diff + unified raw diff (pretty XML / text / hex) |
+
+## Roadmap
+
+- [x] MVP: repos, snapshot commits, content-addressed storage
+- [x] DAW parsing for all four formats + smart metadata diff
+- [x] Web UI: projects, file tree with DAW insight, commit history, diff view
+- [ ] Branches + merges (snapshot → DAG)
+- [ ] Stem/audio preview playback in the browser
+- [ ] Real-time collaboration (CRDT cursors à la Figma for the timeline)
+- [ ] Commenting on tracks/regions (PR review for music)
+- [ ] DAW plugins (export/import directly from Live/FL)
+- [ ] Licensing/CC metadata, sample attribution
+- [ ] S3/Azure blob backend for production scale
+
+## Tokenized platform (web3) 🪙
+
+SoundHub is a tokenized platform on **Base** (EVM). Four smart contracts
+live in `contracts/` (Hardhat + OpenZeppelin):
+
+| Contract | What it does |
+|---|---|
+| `SND.sol` | **SND** ERC-20 platform token — permit, votes for the DAO, fixed supply |
+| `SoundHubRelease.sol` | **Release NFTs** (ERC-721 + ERC-2981) — music releases with royalty %, on-chain collaborator revenue split, fundable treasury (ETH/SND) with order-independent claiming |
+| `SoundHubGovernor.sol` | **DAO** — SND holders propose/vote, execution via 1-day timelock |
+| `TimelockController` | safety delay before any executed proposal |
+
+### Features wired into the app
+- **Sign in with wallet** (EIP-191 personal_sign verified server-side, JWT issued)
+- **Mint a Release NFT** per project — set royalty and collaborator split
+- **Tip artists** — fund a release treasury with SND or ETH, collaborators claim on-chain
+- **DAO page** — connect wallet, see voting power, vote on proposals
+
+### Deploy
+
+```bash
+cd contracts
+npm install
+cp .env.example .env            # set DEPLOYER_PRIVATE_KEY
+npm run deploy:base-sepolia     # or: deploy:base for mainnet
+```
+
+The deploy script writes addresses to `deployments/{network}.json` and copies
+them to `frontend/public/contracts.json` so the UI connects automatically.
+Contracts are verified against real transactions in the test suite
+(`npx hardhat test`, 6 tests covering token, royalties, splits and the full
+propose → vote → queue → execute DAO flow).
+
+## Security note
+
+- MVP uses a dev JWT secret — set `SOUNDHUB_SECRET_KEY` and tighten CORS
+  (`allow_origins`) before any real deployment.
+- Smart contracts are unaudited — test on testnet first.
+- SND supply is fixed (1,000,000) — no mint function.
