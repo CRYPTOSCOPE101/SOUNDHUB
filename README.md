@@ -103,7 +103,8 @@ cd backend
 - [x] `SoundHubMarket` escrow contract (tested, deployed on Base Sepolia)
 - [x] Marketplace UI: list/buy/confirm/refund + SND faucet (100 SND/day)
 - [x] In-DAW prototype: SoundHub inside Ableton Live (M4L, `m4l/`) — catalog, BPM suggestions, buy & load
-- [ ] Recommendation service (DAW-engine-backed), asset delivery, full Live import
+- [x] Recommendation service (`/api/assets/recommend`, DAW-metadata scoring) + asset delivery (signed-token download)
+- [ ] Token gating on purchase, full Live import, key/tracks/devices context from Live API
 - [ ] Verification badges (DAW-parsed), seller reputation, license enforcement
 - [ ] Branches + merges (snapshot → DAG), audio preview, real-time collab
 - [ ] WalletConnect signing in M4L / relayer; FL Studio, Cubase, REAPER equivalents

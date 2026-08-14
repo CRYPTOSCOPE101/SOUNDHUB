@@ -52,7 +52,7 @@ BOXES = [
         text="prepend 2", numinlets=1, inlettype=[""], numoutlets=1, outlettype=[""]),
     box("comment", "l1", [30.0, 20.0, 60.0, 16.0], text="refresh", **FONT),
     box("comment", "l2", [170.0, 20.0, 70.0, 16.0], text="suggest", **FONT),
-    box("comment", "l3", [310.0, 20.0, 50.0, 16.0], text="buy", **FONT),
+    box("comment", "l3", [310.0, 20.0, 50.0, 16.0], text="load", **FONT),
     box("comment", "l4", [30.0, 140.0, 420.0, 16.0],
         text="SoundHub — don't generate, buy (Base Sepolia testnet)", **FONT),
     box("text", "dispCatalog", [30.0, 160.0, 460.0, 140.0], text="catalog", **FONT),

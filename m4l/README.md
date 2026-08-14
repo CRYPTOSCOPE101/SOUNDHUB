@@ -44,29 +44,47 @@ key    <your-testnet-private-key>   # testnet only — never a mainnet key
 ```
 
 Current on-chain demo listing: **"Neon Dreams — Serum Preset Pack", 50 SND,
-Commercial license** (listing #1).
+Commercial license** (listing #1). The catalog also carries metadata-only
+entries (not yet on-chain) so recommendations are meaningful.
 
 ## Using it
 
 - **refresh** — pulls the catalog from the market contract and shows it in
   the panel (name, price, license, seller);
-- **suggest** — reads the Live set BPM and posts a genre tag to match
-  assets (e.g. 128–132 BPM → `techno`; production version adds key, tracks,
-  devices via the DAW engine);
-- **buy** — sends the SND approve + market `buy` transaction; on testnet
-  the same wallet can finish the flow in the web app, then **Load** brings
-  the file into the project.
+- **suggest** — reads the Live set BPM and asks the SoundHub backend
+  (`/api/assets/recommend`) for ranked matches — genre + BPM fit + device
+  overlap, scored from DAW-verified asset metadata (see
+  `backend/app/services/catalog.py`);
+- **load** — fetches the suggested asset through the backend's short-lived
+  signed-token endpoint (`/api/assets/{id}/token` → `/download`) so the
+  loop can be tested end-to-end.
+
+## Backend endpoints the device uses
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/assets` | catalog enriched with DAW metadata (public) |
+| `GET /api/assets/recommend?bpm=&key=&genre=&devices=` | context-aware ranking (public) |
+| `GET /api/assets/{id}/token` | short-lived download token (prototype: public) |
+| `GET /api/assets/{id}/download?token=` | asset bytes with license headers |
+
+Run the backend locally for suggestions/loads: `cd backend && .venv/bin/uvicorn
+app.main:app --port 8000`, and point the device at it (`backend` message).
 
 ## What's stubbed (honest)
 
-- **Purchase tx signing** — the device shows intent and defers the signed
-  tx to the web app (same wallet). A full EIP-1559 signer inside M4L is the
-  next step (or a backend relayer so the user never touches keys).
+- **Purchase tx signing** — the actual escrow purchase (approve SND →
+  `market.buy`) happens in the web app with the user's wallet. A full
+  EIP-1559 signer inside M4L, or a relayer, is the next step.
 - **Asset import** — downloads to a temp path and tells you to drag it in.
   Full import via Live's browser/rack API (`live.groove`, file browser
   refresh) is the next iteration.
-- **Recommendation engine** — BPM→genre mapping is a stub; the real one
-  reuses the DAW engine (`.als` parse: BPM, key, tracks, devices, samples).
+- **Token gating** — the download token endpoint is public for the
+  prototype; production checks the on-chain purchase (buyer == wallet,
+  escrowed > 0) before issuing.
+- **Recommendation features** — the engine scores BPM/genre/devices today;
+  key is parsed but the M4L device sends BPM only for now (key/tracks/devices
+  from Live API come next).
 
 ## Security
 
