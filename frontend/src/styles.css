@@ -4,47 +4,48 @@
    Dark theme mirrors GitHub Dark with the same yellow accents.
    ========================================================================== */
 
-/* Ableton grayscale palette — different shades of gray for every surface;
-   the signature yellow is reserved for accents (primary buttons, logo). */
+/* Ableton palette extracted from the reference screenshot
+   (Снимок экрана 2026-08-14 145938.png): cool blue-grays for every
+   surface, dark slate (#1F2430) for text, yellow kept as sparse accent. */
 
 :root,
 :root[data-theme="light"] {
-  --bg: #f2f2f2;          /* page */
-  --bg2: #ffffff;         /* panels, header */
-  --bg3: #e8e8e8;         /* hover, inputs */
-  --bg4: #d9d9d9;         /* pressed / strong hover */
-  --border: #cfcfcf;
-  --text: #171717;
-  --muted: #6f6f6f;
-  --accent: #ffd900;      /* Ableton yellow — accents only */
-  --accent-hover: #f2cf00;
-  --accent-text: #171717; /* near-black on yellow */
-  --link: #3f3f3f;        /* monochrome links */
-  --green: #2e7d32;
-  --red: #c62828;
+  --bg: #a2a7af;          /* page — dominant gray from the screenshot */
+  --bg2: #c2c6cc;         /* panels, header */
+  --bg3: #b4b9c0;         /* hover, inputs */
+  --bg4: #8c919b;         /* pressed / strong hover */
+  --border: #7c818d;
+  --text: #1f2430;        /* dark slate text */
+  --muted: #454b54;
+  --accent: #ffd900;      /* Ableton yellow — sparse accent */
+  --accent-hover: #f0cf00;
+  --accent-text: #171717;
+  --link: #262c38;
+  --green: #3e7a46;
+  --red: #b3382f;
   --yellow: #ffd900;
-  --code-bg: #f5f5f5;
-  --shadow: 0 1px 3px rgba(23, 23, 23, 0.08);
+  --code-bg: #b9bec5;
+  --shadow: 0 1px 3px rgba(31, 36, 48, 0.25);
   --tab-active-border: #ffd900;
 }
 
 :root[data-theme="dark"] {
-  --bg: #111111;
-  --bg2: #1a1a1a;
-  --bg3: #242424;
-  --bg4: #2e2e2e;
-  --border: #333333;
-  --text: #eaeaea;
-  --muted: #9b9b9b;
+  --bg: #17191d;
+  --bg2: #1f2430;         /* the screenshot's dark slate */
+  --bg3: #2a303a;
+  --bg4: #343b47;
+  --border: #3a414c;
+  --text: #c5c9ce;
+  --muted: #8b929c;
   --accent: #ffd900;
   --accent-hover: #ffe033;
-  --accent-text: #111111;
-  --link: #d6d6d6;        /* light monochrome links */
-  --green: #6ccb6c;
-  --red: #ef6a5a;
+  --accent-text: #17191d;
+  --link: #d5d9de;
+  --green: #7bc97f;
+  --red: #e57468;
   --yellow: #ffd900;
-  --code-bg: #141414;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  --code-bg: #14161a;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
   --tab-active-border: #ffd900;
 }
 
