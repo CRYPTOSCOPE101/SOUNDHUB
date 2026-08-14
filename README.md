@@ -11,6 +11,10 @@ features vs roadmap, and how it compares to existing tools.
 📄 Read the [Litepaper](LITEPAPER.md) — vision, tokenized layer, tokenomics
 and roadmap.
 
+🎛 **SoundHub inside Ableton Live** — Max for Live prototype that embeds the
+marketplace in the DAW: catalog, BPM-aware suggestions, buy & load. See
+[`m4l/`](m4l/) and the [integration architecture](ARCHITECTURE.md).
+
 GitHub, but for DAW projects — Ableton Live (`.als`), Cubase (`.cpr`),
 REAPER (`.rpp`) and FL Studio (`.flp`). Version your tracks, see *what
 actually changed* between versions (not just "file modified"), and
