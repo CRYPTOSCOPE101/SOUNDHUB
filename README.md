@@ -7,6 +7,9 @@ loops, stems and packs, paid for with SND — from the SoundHub panel in
 Ableton Live (Max for Live prototype in `m4l/`) or the web app.
 
 ![SoundHub main page](screenshots/main-light.png)
+![SoundHub main page — dark theme](screenshots/main-dark.png)
+![SoundHub repo page](screenshots/repo-page.png)
+![SoundHub branch selector](screenshots/repo-page-branches.png)
 
 📄 Read the [Project description](DESCRIPTION.md) — what SoundHub is, live
 features vs roadmap, and how it compares to existing tools.
