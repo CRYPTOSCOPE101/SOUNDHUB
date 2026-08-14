@@ -48,6 +48,25 @@ sold like loose files in random chats — and creators get paid late or never.
 4. **A producer buys it** — SND goes into **escrow**, the buyer gets the asset + license.
 5. **Payment settles** — buyer confirms, or the dispute window passes, and the creator is paid automatically. No spreadsheets, no late manual payouts.
 
+## Inside Ableton Live — the fastest way to buy
+
+A marketplace is only as good as its placement. SoundHub ships a **native
+panel for Ableton Live** (Max for Live device, prototype live in `m4l/`):
+
+- Open Live → the SoundHub panel shows the catalog (read straight from the
+  chain), your purchases, and new drops — no tab switch.
+- It reads the **current project BPM** and suggests relevant assets
+  (bass presets for 128 BPM techno, not a flat list). Next iteration adds
+  key, tracks and devices via the DAW engine.
+- **Buy & Load** — pay with SND (escrow), the asset lands in your project.
+  Web3 stays invisible: no approve, no gas, no RPC — just *buy*.
+- Same engine, three jobs: verify assets for sale, power in-DAW
+  recommendations, and smart-diff project versions.
+
+**SoundHub inside Ableton = buying finished sound at the moment of intent.**
+Without it SoundHub is a good niche marketplace; with it, it's part of the
+producer's workflow. FL Studio, Cubase and REAPER follow the same pattern.
+
 ## Why tokens
 
 Not for hype — because the problems are **access, splits, licensing,
@@ -77,9 +96,10 @@ speculation.
 | Phase | Scope |
 |---|---|
 | **1 · Buy flow** ✅ | `SoundHubMarket` live on Base Sepolia → list/buy/confirm/refund in the UI → SND faucet for testers |
-| **2 · Trust layer** | Asset verification badge from the DAW engine, seller reputation, license enforcement, packs as composable assets (bundles, drops, forks) |
-| **3 · Collaboration** | Branches & merges, remix forks, audio preview, comments on tracks |
-| **4 · Mainnet** | Base mainnet deployment, SND distribution vote, DAO treasury |
+| **2 · In-DAW** ✅/⏳ | **SoundHub inside Ableton Live** — M4L prototype shipped (catalog, BPM suggestions, buy & load); next: recommendation service, asset delivery, full import |
+| **3 · Trust layer** | Asset verification badge from the DAW engine, seller reputation, license enforcement, packs as composable assets (bundles, drops, forks) |
+| **4 · Collaboration** | Branches & merges, remix forks, audio preview, comments on tracks |
+| **5 · Mainnet** | Base mainnet deployment, SND distribution vote, DAO treasury |
 
 ## SoundHub vs. alternatives
 

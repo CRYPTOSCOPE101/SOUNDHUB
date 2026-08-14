@@ -1,9 +1,10 @@
 # 🎛 SoundHub
+
 SoundHub is a tokenized marketplace where music producers buy and sell finished presets, loops, stems, and sound packs with on-chain ownership and licensing
 
-
-**Don't generate. Buy. — a tokenized marketplace for finished, verified
-sounds.** Presets, loops, stems and packs, paid for with SND.
+**Don't generate. Buy. — the marketplace lives inside your DAW.** Presets,
+loops, stems and packs, paid for with SND — from the SoundHub panel in
+Ableton Live (Max for Live prototype in `m4l/`) or the web app.
 
 📄 Read the [Project description](DESCRIPTION.md) — what SoundHub is, live
 features vs roadmap, and how it compares to existing tools.
@@ -97,9 +98,11 @@ cd backend
 - [x] Tokenized layer: SND, Release NFTs, DAO, wallet sign-in (Base Sepolia)
 - [x] `SoundHubMarket` escrow contract (tested, deployed on Base Sepolia)
 - [x] Marketplace UI: list/buy/confirm/refund + SND faucet (100 SND/day)
+- [x] In-DAW prototype: SoundHub inside Ableton Live (M4L, `m4l/`) — catalog, BPM suggestions, buy & load
+- [ ] Recommendation service (DAW-engine-backed), asset delivery, full Live import
 - [ ] Verification badges (DAW-parsed), seller reputation, license enforcement
 - [ ] Branches + merges (snapshot → DAG), audio preview, real-time collab
-- [ ] DAW plugins (export/import directly from Live/FL)
+- [ ] WalletConnect signing in M4L / relayer; FL Studio, Cubase, REAPER equivalents
 - [ ] S3/Azure blob backend for production scale
 
 ## Tokenized platform (web3) 🪙

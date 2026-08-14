@@ -6,6 +6,11 @@
 > sample packs and patches with SND — instead of spending hours generating and
 > tweaking sounds themselves. The platform parses DAW files to verify what's
 > inside, escrows every purchase, and lets the DAO govern fees and curation.
+>
+> **And it lives where the music is made**: a SoundHub panel inside **Ableton
+> Live** (Max for Live prototype shipped) turns buying into a 1–2 click
+> action at the moment of intent — the marketplace meets the producer in the
+> DAW, not on a website.
 
 ---
 
@@ -30,12 +35,13 @@ sounds — presets, kits, patches, packs, stems — become a token-powered
 marketplace on **Base** (EVM). The DAW engine verifies what's inside, escrow
 makes buying safe, and SND is the payment rail.
 
-Two layers, one product:
+Three layers, one product:
 
 | Layer | What it does |
 |---|---|
 | **Studio layer** (off-chain) | DAW parsing & verification, smart diffs, repos, versioning |
 | **Tokenized layer** (on-chain) | SND payments, escrow marketplace, Release NFTs, DAO governance |
+| **Distribution layer** (in-DAW) | SoundHub inside Ableton Live: catalog, BPM-aware suggestions, buy & load |
 
 ## 3. How it works — Studio layer
 
@@ -143,7 +149,33 @@ allocation for the community to ratify:
 > ⚠️ **Nothing above is finalized.** The deployed testnet token has no
 > pre-committed distribution; tokenomics are a DAO decision.
 
-## 6. Revenue model
+## 6. Distribution — SoundHub inside Ableton Live
+
+A marketplace is only as good as its placement. The strongest distribution
+channel for SoundHub is the DAW itself:
+
+- **Point of maximum intent.** The producer is already inside Ableton,
+  already hearing what's missing. Buying a finished preset there is a
+  1–2 click action — no tab switch, no context break, no "I'll do it later".
+- **Native panel, not a rewrite.** A **Max for Live device** (JS inside Live)
+  reads the catalog straight from the chain via public RPC, reads the Live
+  set BPM for context-aware suggestions, and loads purchased assets into the
+  project. Prototype shipped in `m4l/` (see `ARCHITECTURE.md`).
+- **Context-aware, not just a storefront.** BPM → genre matching today;
+  key, tracks and devices (via the DAW engine) tomorrow — "bass presets for
+  128 BPM techno" instead of a flat list.
+- **Invisible web3.** The user sees *Buy & Load*, never `approve`/gas/RPC.
+  WalletConnect pairing or a backend relayer keeps the blockchain under the
+  hood.
+- **One engine, three markets.** The same DAW parsers that verify assets for
+  sale power the in-DAW recommendations and the smart diffs — the
+  distribution layer is built on the studio layer.
+
+Why this wins: without the integration SoundHub is a good niche marketplace;
+with it, it is part of the producer's workflow — the difference between a
+website and a tool.
+
+## 7. Revenue model
 
 - **Marketplace fee** — small % on each escrow purchase (configurable via DAO):
   funds development, curation, grants, ecosystem rewards.
@@ -155,31 +187,39 @@ allocation for the community to ratify:
   secondary sales.
 - **Tips** — fans tip producers in SND or ETH, fully on-chain.
 
-## 7. Roadmap
+## 8. Roadmap
 
 - ✅ **Foundation** — repos, snapshot commits, content-addressed storage, web UI
 - ✅ **DAW engine** — parsers for `.als`/`.cpr`/`.rpp`/`.flp` + smart diffs
 - ✅ **Tokenized layer** — SND, Release NFTs, DAO, wallet sign-in (deployed on
   **Base Sepolia**)
-- ⏳ **Marketplace live** — deploy `SoundHubMarket`, list/buy flow in the UI,
-  SND faucet for testers
+- ✅ **Marketplace live** — `SoundHubMarket` + faucet deployed, list/buy/confirm
+  in the UI, demo listing on-chain
+- ✅ **In-DAW prototype** — SoundHub inside Ableton Live (Max for Live):
+  catalog from RPC, BPM-aware suggestions, buy & load (see `m4l/`)
+- ⏳ **Recommendation service** — DAW-engine-backed `/api/recommend` (BPM, key,
+  tracks, devices → ranked assets)
+- ⏳ **Asset delivery** — license-scoped download endpoint for the device,
+  full Live browser/rack import
 - ⏳ **Trust layer** — verification badges from the DAW engine, seller
   reputation, license enforcement
 - ⏳ Branches & merges (snapshot → DAG), audio preview, real-time collaboration
-- ⏳ DAW plugins (import/export directly from Live / FL)
+- ⏳ WalletConnect signing inside M4L / relayer; FL Studio, Cubase, REAPER
+  equivalents
 - ⏳ **Base mainnet deployment + token distribution vote**
 
-## 8. Contract addresses (Base Sepolia)
+## 9. Contract addresses (Base Sepolia)
 
 | Contract | Address |
 |---|---|
 | SND (ERC-20) | `0x37a6B3aD766ffb98673290A634490C8bF952DB2F` |
 | SoundHubRelease (NFT) | `0xb3716751572db83d22aeED95Be7da125A4d22446` |
-| SoundHubMarket (escrow) | to deploy |
+| SoundHubMarket (escrow) | `0x396d6ad9D5EA19eE56318624b05bC6EEEa2d1F5C` |
+| SoundHubFaucet (testnet) | `0x479fe2D308D118ef1723b5a34C8f8f37678cbba9` |
 | TimelockController | `0x98F6a809ffa83cbe5f9bAFa7Cf762f2f24Cfa548` |
 | SoundHubGovernor (DAO) | `0x2db3F8BA478C445399bB8fbA921fC5e11Af202da` |
 
-## 9. Risks & disclaimer
+## 10. Risks & disclaimer
 
 - **Unaudited contracts.** The smart contracts pass an extensive test suite
   (token, royalties, splits, full DAO lifecycle) but have **not** been through
