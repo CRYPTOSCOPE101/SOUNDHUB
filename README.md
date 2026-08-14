@@ -2,7 +2,8 @@
 SoundHub is a tokenized marketplace where music producers buy and sell finished presets, loops, stems, and sound packs with on-chain ownership and licensing
 
 
-**Version control and collaboration for music production projects.**
+**Don't generate. Buy. — a tokenized marketplace for finished, verified
+sounds.** Presets, loops, stems and packs, paid for with SND.
 
 📄 Read the [Project description](DESCRIPTION.md) — what SoundHub is, live
 features vs roadmap, and how it compares to existing tools.
@@ -94,8 +95,8 @@ cd backend
 - [x] Foundation: repos, snapshot commits, content-addressed storage
 - [x] DAW parsing for all four formats + smart metadata diff
 - [x] Tokenized layer: SND, Release NFTs, DAO, wallet sign-in (Base Sepolia)
-- [x] `SoundHubMarket` escrow contract (tested)
-- [ ] Deploy marketplace + list/buy flow in the UI + SND faucet
+- [x] `SoundHubMarket` escrow contract (tested, deployed on Base Sepolia)
+- [x] Marketplace UI: list/buy/confirm/refund + SND faucet (100 SND/day)
 - [ ] Verification badges (DAW-parsed), seller reputation, license enforcement
 - [ ] Branches + merges (snapshot → DAG), audio preview, real-time collab
 - [ ] DAW plugins (export/import directly from Live/FL)
@@ -135,8 +136,8 @@ npm run deploy:base-sepolia     # or: deploy:base for mainnet
 The deploy script writes addresses to `deployments/{network}.json` and copies
 them to `frontend/public/contracts.json` so the UI connects automatically.
 Contracts are verified against real transactions in the test suite
-(`npx hardhat test`, 6 tests covering token, royalties, splits and the full
-propose → vote → queue → execute DAO flow).
+(`npx hardhat test`, 12 tests covering token, royalties, splits, escrow
+marketplace, faucet and the full propose → vote → queue → execute DAO flow).
 
 ## Security note
 
