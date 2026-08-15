@@ -6,6 +6,9 @@ import type {
   GhBranch,
   GhCommit,
   Project,
+  ReviewComment,
+  ReviewSession,
+  ReviewVersion,
   TokenResponse,
   Tree,
 } from "./types";
@@ -134,6 +137,51 @@ export const api = {
     if (branch) q.set("branch", branch);
     return `/api/projects/${id}/files/${encodePath(path)}${q.size ? `?${q}` : ""}`;
   },
+  // Review sessions — the Frame.io-style loop for music
+  listSessions: () => request<ReviewSession[]>("/api/sessions"),
+  createSession: (name: string, projectId?: number) =>
+    request<ReviewSession>("/api/sessions", {
+      method: "POST",
+      body: JSON.stringify({ name, project_id: projectId ?? null }),
+    }),
+  getSession: (id: number) => request<ReviewSession>(`/api/sessions/${id}`),
+  deleteSession: (id: number) =>
+    request<void>(`/api/sessions/${id}`, { method: "DELETE" }),
+  uploadVersion: (id: number, file: File, message = "") =>
+    request<ReviewVersion>(`/api/sessions/${id}/versions`, {
+      method: "POST",
+      body: (() => {
+        const fd = new FormData();
+        fd.append("message", message);
+        fd.append("file", file);
+        return fd;
+      })(),
+    }),
+  versionAudioUrl: (id: number, versionId: number) =>
+    `/api/sessions/${id}/versions/${versionId}/audio`,
+  addComment: (id: number, versionId: number, timeS: number, body: string, parentId?: number) =>
+    request<ReviewComment>(`/api/sessions/${id}/versions/${versionId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ time_s: timeS, body, parent_id: parentId ?? null }),
+    }),
+  resolveComment: (id: number, versionId: number, commentId: number, resolved: boolean) =>
+    request<ReviewComment>(
+      `/api/sessions/${id}/versions/${versionId}/comments/${commentId}?resolved=${resolved}`,
+      { method: "PATCH" }
+    ),
+  setVersionStatus: (id: number, versionId: number, status: string) =>
+    request<ReviewVersion>(`/api/sessions/${id}/versions/${versionId}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
+    }),
+  // public share endpoints (no auth)
+  publicSession: (token: string) =>
+    request<ReviewSession>(`/api/sessions/public/${token}`),
+  publicAddComment: (token: string, versionId: number, timeS: number, body: string, authorName: string) =>
+    request<ReviewComment>(`/api/sessions/public/${token}/versions/${versionId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ time_s: timeS, body, author_name: authorName }),
+    }),
   // GitHub API (public, unauthenticated) — the SoundHub code repo itself
   ghBranches: () =>
     fetch("https://api.github.com/repos/CRYPTOSCOPE101/SOUNDHUB/branches").then((r) =>

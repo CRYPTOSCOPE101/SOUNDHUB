@@ -2559,6 +2559,263 @@ pre.diff-raw code {
   color: var(--text);
 }
 
+/* ---------- working review sessions (/sessions) ---------- */
+
+.session-create {
+  display: flex;
+  gap: 10px;
+  max-width: 520px;
+  margin-bottom: 18px;
+}
+
+.session-name-input {
+  flex: 1;
+}
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.session-row:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.session-row-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.session-row-icon {
+  font-size: 20px;
+}
+
+.session-row-name {
+  font-weight: 700;
+  font-size: 14.5px;
+}
+
+.session-row-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.session-back-link {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 16px 0 0;
+}
+
+.session-back-link:hover {
+  color: var(--text);
+}
+
+/* real (API-backed) review session */
+.rs-real {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.rs-audio {
+  width: 100%;
+  display: block;
+  background: #0d0f12;
+  padding: 6px 10px;
+  box-sizing: border-box;
+}
+
+.rs-empty {
+  color: #8b929c;
+  font-size: 13px;
+  padding: 14px 0;
+}
+
+.rs-comment-form {
+  margin-top: 12px;
+}
+
+.rs-comment-form-row {
+  display: flex;
+  gap: 8px;
+}
+
+.rs-time-input {
+  width: 84px;
+  background: #1f2430 !important;
+  border: 1px solid #3a414c !important;
+  color: #e8e8f0 !important;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  font-family: "JetBrains Mono", Consolas, monospace;
+}
+
+.rs-comment-input {
+  flex: 1;
+  background: #1f2430 !important;
+  border: 1px solid #3a414c !important;
+  color: #e8e8f0 !important;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+.rs-comment-input:focus,
+.rs-time-input:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+}
+
+.rs-btn.sm {
+  padding: 7px 14px;
+  font-size: 12px;
+}
+
+.rs-upload {
+  display: inline-block;
+  margin: 6px 0 2px;
+  color: #a7abb5;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px dashed #3a414c;
+  border-radius: 8px;
+  padding: 9px 12px;
+  text-align: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.rs-upload:hover {
+  border-color: var(--accent);
+  color: #e8e8f0;
+}
+
+.rs-upload input {
+  display: none;
+}
+
+.rs-share {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rs-share code {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 11.5px;
+  color: #8b929c;
+  word-break: break-all;
+}
+
+.rs-wave span.bar-live {
+  background: linear-gradient(180deg, #ffd900, #2a4a70);
+}
+
+/* ---------- public review page (/r/:token) ---------- */
+
+.public-review {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 24px 48px;
+}
+
+.public-review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.public-review-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.public-review-sep {
+  color: var(--muted);
+}
+
+.public-review-for {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.public-review-intro {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 18px;
+}
+
+.public-review-note {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 14px;
+}
+
+.public-review-comments {
+  margin-top: 18px;
+  background: #101216;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  color: #e8e8f0;
+}
+
+.public-review-form {
+  margin-top: 14px;
+  border-top: 1px solid #262b33;
+  padding-top: 14px;
+}
+
+.public-review-form-head {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #8b929c;
+  margin-bottom: 10px;
+}
+
+.public-review .rs-comment p {
+  color: #e8e8f0;
+}
+
 /* ---------- scroll reveal ---------- */
 .reveal {
   opacity: 0;

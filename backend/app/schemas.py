@@ -129,6 +129,75 @@ class CommitDetailOut(CommitOut):
     files: list[FileOut]
 
 
+# ---------- Review sessions ----------
+class ReviewSessionCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    project_id: int | None = None
+
+
+class ReviewCommentOut(BaseModel):
+    id: int
+    version_id: int
+    time_s: float
+    body: str
+    resolved: bool
+    author_name: str = ""
+    parent_id: int | None = None
+    created_at: datetime
+
+
+class ReviewCommentCreate(BaseModel):
+    time_s: float = Field(default=0, ge=0)
+    body: str = Field(min_length=1, max_length=4000)
+    parent_id: int | None = None
+
+
+class GuestReviewCommentCreate(ReviewCommentCreate):
+    author_name: str = Field(default="", max_length=128)
+
+
+class ReviewVersionOut(BaseModel):
+    id: int
+    session_id: int
+    number: int
+    label: str
+    message: str
+    status: str
+    filename: str
+    size: int
+    duration_s: float
+    audio_format: str
+    created_at: datetime
+    waveform: list[float] = []
+    waveform_synthetic: bool = False
+    comments: list[ReviewCommentOut] = []
+
+
+class ReviewVersionCreate(BaseModel):
+    message: str = Field(default="", max_length=2000)
+
+
+class ReviewSessionOut(BaseModel):
+    id: int
+    project_id: int | None = None
+    name: str
+    status: str
+    share_token: str
+    created_at: datetime
+    updated_at: datetime
+    owner_username: str = ""
+    version_count: int = 0
+    latest_status: str = ""
+
+
+class ReviewSessionDetailOut(ReviewSessionOut):
+    versions: list[ReviewVersionOut] = []
+
+
+class ReviewStatusUpdate(BaseModel):
+    status: str = Field(pattern=r"^(in_review|needs_changes|approved)$")
+
+
 # ---------- Diff ----------
 class DiffChange(BaseModel):
     kind: str  # "bpm" | "tempo" | "track_added" | "track_removed" | "device_added" | "device_removed" | "info"

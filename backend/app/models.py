@@ -102,3 +102,66 @@ class FileSnapshot(Base):
     commit: Mapped["Commit"] = relationship(back_populates="files")
 
     __table_args__ = (UniqueConstraint("commit_id", "path", name="uq_commit_path"),)
+
+
+class ReviewSession(Base):
+    """A review workspace for a track: versions to share, comments, approvals."""
+
+    __tablename__ = "review_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
+    name: Mapped[str] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(32), default="in_review")
+    share_token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    owner: Mapped["User"] = relationship()
+    versions: Mapped[list["ReviewVersion"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+
+
+class ReviewVersion(Base):
+    __tablename__ = "review_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    number: Mapped[int] = mapped_column(Integer, default=1)  # 1-based, human label v{n}
+    label: Mapped[str] = mapped_column(String(64))  # e.g. "v13"
+    message: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(32), default="in_review")
+    filename: Mapped[str] = mapped_column(String(256))
+    blob_sha: Mapped[str] = mapped_column(String(64), index=True)
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    duration_s: Mapped[float] = mapped_column(default=0.0)
+    audio_format: Mapped[str] = mapped_column(String(16), default="wav")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("session_id", "number", name="uq_review_version_number"),)
+
+    session: Mapped["ReviewSession"] = relationship(back_populates="versions")
+    comments: Mapped[list["ReviewComment"]] = relationship(
+        back_populates="version", cascade="all, delete-orphan"
+    )
+
+
+class ReviewComment(Base):
+    __tablename__ = "review_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"), index=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    author_name: Mapped[str | None] = mapped_column(String(128), nullable=True)  # guest reviewers
+    time_s: Mapped[float] = mapped_column(default=0.0)  # seconds into the track
+    body: Mapped[str] = mapped_column(Text)
+    resolved: Mapped[bool] = mapped_column(default=False)
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("review_comments.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    version: Mapped["ReviewVersion"] = relationship(back_populates="comments")
+    author: Mapped["User"] = relationship()
