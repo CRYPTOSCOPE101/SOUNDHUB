@@ -472,3 +472,104 @@ def test_feedback_owner_submits_via_share_link(client):
     assert r.status_code == 200
     assert r.json()["round_number"] == 2
     assert r.json()["rounds"][0]["request_count"] == 1
+
+
+def test_release_package_lock_and_delivery(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "approved master")
+
+    # not approved → package cannot be created
+    r = client.post(
+        "/api/release-packages",
+        json={"session_id": s["id"], "approved_version_id": v["id"], "name": "Final"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+
+    # approve, then create
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    r = client.post(
+        "/api/release-packages",
+        json={"session_id": s["id"], "approved_version_id": v["id"], "name": "Final delivery"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 201
+    pid = r.json()["id"]
+
+    # master deliverable from the approved version
+    r = client.post(
+        f"/api/release-packages/{pid}/deliverables/from-version",
+        json={"type": "master", "from_version_id": v["id"], "is_required": True},
+        headers=_auth(token),
+    )
+    assert r.status_code == 201
+    assert r.json()["sha256"]
+    assert r.json()["sample_rate"] == 8000
+    assert r.json()["bit_depth"] == 16
+
+    # upload artwork
+    r = client.post(
+        f"/api/release-packages/{pid}/deliverables/upload",
+        headers=_auth(token),
+        data={"type": "artwork", "is_required": "true"},
+        files=[("file", ("cover.png", b"\x89PNG\r\n\x1a\nnot-really", "image/png"))],
+    )
+    assert r.status_code == 201
+
+    # lock → manifest hash + delivery token
+    r = client.post(
+        f"/api/release-packages/{pid}/lock",
+        json={"approval_scope": "master", "note": "final"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    pkg = r.json()
+    assert pkg["status"] == "ready"
+    assert pkg["manifest_hash"]
+    assert pkg["delivery_token"]
+
+    # lock is immutable
+    r = client.post(
+        f"/api/release-packages/{pid}/lock",
+        json={"approval_scope": "master"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+
+    # manifest round-trips
+    r = client.get(f"/api/release-packages/{pid}/manifest", headers=_auth(token))
+    assert r.status_code == 200
+    assert r.json()["manifest_hash"] == pkg["manifest_hash"]
+    assert len(r.json()["manifest_json"]["files"]) == 2
+
+    # public delivery page (no auth)
+    tok = pkg["delivery_token"]
+    r = client.get(f"/api/release-packages/public/{tok}")
+    assert r.status_code == 200
+    assert r.json()["approved_label"] == "v1"
+    assert len(r.json()["deliverables"]) == 2
+
+    # download the master from the delivery link
+    did = pkg["deliverables"][0]["id"]
+    r = client.get(f"/api/release-packages/public/{tok}/files/{did}")
+    assert r.status_code == 200
+    assert r.content == make_wav(1.0)
+
+    # invoice gate: balance_due blocks download with 402
+    client.patch(f"/api/release-packages/{pid}/invoice", json={"invoice_status": "balance_due"}, headers=_auth(token))
+    r = client.get(f"/api/release-packages/public/{tok}/files/{did}")
+    assert r.status_code == 402
+    client.patch(f"/api/release-packages/{pid}/invoice", json={"invoice_status": "paid"}, headers=_auth(token))
+    assert client.get(f"/api/release-packages/public/{tok}/files/{did}").status_code == 200
+
+    # audit trail
+    r = client.get("/api/release-packages", headers=_auth(token))
+    events = {e["event"] for e in r.json()[0]["events"]}
+    assert "package.created" in events
+    assert "package.locked" in events
+    assert "delivery.link_opened" in events

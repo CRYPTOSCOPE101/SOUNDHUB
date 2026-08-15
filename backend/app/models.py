@@ -133,6 +133,9 @@ class ReviewSession(Base):
     rounds: Mapped[list["ReviewRound"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
+    release_packages: Mapped[list["ReleasePackage"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
 
     # Share-link settings (professional review links)
     share_password: Mapped[str | None] = mapped_column(String(256), nullable=True)
@@ -258,3 +261,74 @@ class ShareAccessEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     session: Mapped["ReviewSession"] = relationship(back_populates="access_events")
+
+
+class ReleasePackage(Base):
+    """Final delivery: the immutable release package bound to an approved version.
+
+    Locking a package computes SHA-256 checksums for every deliverable, writes a
+    manifest, and freezes the files — the approved master can never be silently
+    swapped for a different bounce.
+    """
+
+    __tablename__ = "release_packages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    approved_version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"))
+    name: Mapped[str] = mapped_column(String(160), default="Final delivery")
+    status: Mapped[str] = mapped_column(String(32), default="draft")  # draft | ready | delivered | archived
+    invoice_status: Mapped[str] = mapped_column(String(32), default="none")  # none | deposit_due | balance_due | paid | waived
+    immutable_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    manifest_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    delivery_token: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    locked_by: Mapped[str] = mapped_column(String(128), default="")
+
+    session: Mapped["ReviewSession"] = relationship()
+    approved_version: Mapped["ReviewVersion"] = relationship()
+    deliverables: Mapped[list["Deliverable"]] = relationship(
+        back_populates="package", cascade="all, delete-orphan"
+    )
+    events: Mapped[list["DeliveryEvent"]] = relationship(
+        back_populates="package", cascade="all, delete-orphan"
+    )
+
+
+class Deliverable(Base):
+    """One file in a release package (master / instrumental / acapella / artwork…)."""
+
+    __tablename__ = "release_deliverables"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    package_id: Mapped[int] = mapped_column(ForeignKey("release_packages.id"), index=True)
+    type: Mapped[str] = mapped_column(String(32))  # master | instrumental | acapella | clean_edit | stems | artwork
+    filename: Mapped[str] = mapped_column(String(256))
+    blob_sha: Mapped[str] = mapped_column(String(64), index=True)
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    format: Mapped[str] = mapped_column(String(16), default="wav")
+    sample_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    bit_depth: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    integrated_lufs: Mapped[float | None] = mapped_column(nullable=True)
+    true_peak: Mapped[float | None] = mapped_column(nullable=True)
+    is_required: Mapped[bool] = mapped_column(default=True)
+    source_version_id: Mapped[int | None] = mapped_column(ForeignKey("review_versions.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    package: Mapped["ReleasePackage"] = relationship(back_populates="deliverables")
+
+
+class DeliveryEvent(Base):
+    """Audit trail + the seed of the decision ledger."""
+
+    __tablename__ = "delivery_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    package_id: Mapped[int] = mapped_column(ForeignKey("release_packages.id"), index=True)
+    event: Mapped[str] = mapped_column(String(48))  # package.created | deliverable.added | package.locked | delivery.link_opened | delivery.downloaded | invoice.paid
+    actor: Mapped[str] = mapped_column(String(128), default="")
+    detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    package: Mapped["ReleasePackage"] = relationship(back_populates="events")
