@@ -37,7 +37,7 @@ from ..schemas import (
     ReleasePackageOut,
 )
 from ..security import get_current_user
-from ..services import storage, waveform
+from ..services import ledger, storage, waveform
 
 router = APIRouter(prefix="/api/release-packages", tags=["release packages"])
 
@@ -177,6 +177,16 @@ def create_package(
     db.add(package)
     db.flush()
     _event(db, package, "package.created", user.username, f"approved {version.label}")
+    ledger.append(
+        db,
+        "package.created",
+        session_id=session.id,
+        package_id=package.id,
+        actor=user.username,
+        entity_type="package",
+        entity_id=package.id,
+        payload={"approved_version": version.label, "name": package.name},
+    )
     db.commit()
     return _package_out(db, package)
 
@@ -225,6 +235,16 @@ def upload_deliverable(
     db.add(d)
     db.flush()
     _event(db, package, "deliverable.added", user.username, f"{type} · {filename}")
+    ledger.append(
+        db,
+        "deliverable.added",
+        session_id=package.session_id,
+        package_id=package.id,
+        actor=user.username,
+        entity_type="deliverable",
+        entity_id=d.id,
+        payload={"type": type, "filename": filename, "sha256": d.sha256},
+    )
     db.commit()
     return _deliverable_out(d)
 
@@ -268,6 +288,16 @@ def add_deliverable_from_version(
     db.add(d)
     db.flush()
     _event(db, package, "deliverable.added", user.username, f"{payload.type} · from {source.label}")
+    ledger.append(
+        db,
+        "deliverable.added",
+        session_id=package.session_id,
+        package_id=package.id,
+        actor=user.username,
+        entity_type="deliverable",
+        entity_id=d.id,
+        payload={"type": payload.type, "filename": d.filename, "sha256": d.sha256, "source": source.label},
+    )
     db.commit()
     return _deliverable_out(d)
 
@@ -318,6 +348,16 @@ def lock_package(
     package.locked_by = user.username
     package.delivery_token = secrets.token_urlsafe(16)
     _event(db, package, "package.locked", user.username, f"SHA-256 {manifest_hash[:12]}…")
+    ledger.append(
+        db,
+        "package.locked",
+        session_id=package.session_id,
+        package_id=package.id,
+        actor=user.username,
+        entity_type="package",
+        entity_id=package.id,
+        payload={"approved_version": package.approved_version.label, "manifest_sha256": manifest_hash, "approval_scope": payload.approval_scope},
+    )
     db.commit()
     return _package_out(db, package)
 
@@ -368,6 +408,16 @@ def update_invoice(
     package.invoice_status = payload.invoice_status
     if payload.invoice_status == "paid":
         _event(db, package, "invoice.paid", user.username, "payment confirmed — delivery unlocked")
+        ledger.append(
+            db,
+            "invoice.paid",
+            session_id=package.session_id,
+            package_id=package.id,
+            actor=user.username,
+            entity_type="package",
+            entity_id=package.id,
+            payload={"package": package.name, "method": "manual"},
+        )
     db.commit()
     return _package_out(db, package)
 
@@ -415,6 +465,16 @@ def public_delivery_page(
         select(Deliverable).where(Deliverable.package_id == package.id)
     ).all()
     _event(db, package, "delivery.link_opened", "anonymous", "")
+    ledger.append(
+        db,
+        "delivery.link_opened",
+        session_id=package.session_id,
+        package_id=package.id,
+        actor="anonymous",
+        entity_type="package",
+        entity_id=package.id,
+        payload={},
+    )
     db.commit()
     return DeliveryPageOut(
         id=package.id,
