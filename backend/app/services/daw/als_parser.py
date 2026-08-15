@@ -141,5 +141,19 @@ def parse_als(data: bytes) -> DAWInfo:
                 if name:
                     info.samples.append(f"{directory}/{name}" if directory else name)
 
+    # Presets — the saved settings of an instrument/device live in preset
+    # files (.adv/.adg/.xpl) referenced from the set. We list them so a
+    # pushed project keeps the instrument state findable (the full plugin
+    # state itself stays inside the project files that get uploaded).
+    presets: list[str] = []
+    for preset_ref in live_set.iter():
+        if _local(preset_ref.tag) == "PresetRef":
+            rel = _first_descendant(preset_ref, "RelativePathElement")
+            if rel is not None and _val(rel, "Name"):
+                directory = _val(rel, "Dir") or ""
+                presets.append(f"{directory}/{_val(rel, 'Name')}" if directory else _val(rel, "Name"))
+    if presets:
+        info.extra["presets"] = sorted(set(presets))
+
     info.extra["track_count"] = len(info.tracks)
     return info
