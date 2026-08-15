@@ -188,8 +188,9 @@ export default function LandingPage() {
             <span className="landing-title-accent">Buy.</span>
           </h1>
           <p className="landing-subtitle">
-            Presets, loops, stems and sound packs — DAW-verified, escrowed, and paid for
-            with SND. The marketplace lives inside your DAW, not in DMs and zip files.
+            You're in your DAW, the track is missing a bass — that's the moment.
+            SoundHub lives right there: verified presets, escrowed purchases, paid in SND.
+            No tab switch, no DMs, no zip files.
           </p>
           <div className="landing-cta">
             <a href="#waitlist" className="landing-btn-primary">
@@ -284,6 +285,48 @@ export default function LandingPage() {
 
       {/* ---------- alternating showcases ---------- */}
       <section className="landing-section landing-showcases" id="product">
+        {/* The moment of intent — the core positioning, first */}
+        <Reveal>
+          <div className="landing-showcase">
+            <div className="landing-panel">
+              <div className="landing-panel-head">
+                <span className="landing-panel-dot" />
+                <span className="landing-panel-title">SoundHub — Ableton Live</span>
+                <span className="landing-panel-bpm">128 BPM</span>
+              </div>
+              <div className="landing-panel-buttons">
+                <button className="landing-panel-btn" type="button">refresh</button>
+                <button className="landing-panel-btn" type="button">suggest</button>
+                <button className="landing-panel-btn active" type="button">buy &amp; load</button>
+              </div>
+              <div className="landing-panel-note">matched to your 128 BPM techno set</div>
+              <div className="landing-panel-card">
+                <div className="landing-panel-card-name">Dark Bass Patch (Serum)</div>
+                <div className="landing-panel-card-meta">techno · 128 BPM · 24 Serum presets · verified</div>
+                <div className="landing-panel-card-row">
+                  <span className="landing-panel-card-price">50 SND</span>
+                  <span className="landing-panel-card-license">Commercial</span>
+                </div>
+              </div>
+              <div className="landing-panel-foot">escrow · dispute window 2d · auto-payout to creator</div>
+            </div>
+            <div className="landing-showcase-copy">
+              <p className="landing-eyebrow">The moment of intent</p>
+              <h2>Buy where you're already making music</h2>
+              <p className="landing-showcase-text">
+                The panel reads your project — BPM, and soon key, tracks and devices —
+                and puts the right finished sounds in front of you. One click, escrowed,
+                landed in your library. The marketplace meets the producer in the DAW,
+                not on a website.
+              </p>
+              <ul className="landing-showcase-bullets">
+                <li>catalog read straight from the chain — no signup to browse</li>
+                <li>BPM-aware suggestions matched to your set</li>
+                <li>Buy &amp; Load: 1–2 clicks, web3 invisible</li>
+              </ul>
+            </div>
+          </div>
+        </Reveal>
         {SHOWCASES.map((s, i) => (
           <Reveal key={s.title}>
             <div className={`landing-showcase ${i % 2 === 1 ? "reverse" : ""}`}>
