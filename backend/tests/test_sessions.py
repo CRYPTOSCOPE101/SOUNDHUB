@@ -573,3 +573,67 @@ def test_release_package_lock_and_delivery(client):
     assert "package.created" in events
     assert "package.locked" in events
     assert "delivery.link_opened" in events
+
+
+def test_decision_ledger_hash_chain(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v1 = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    share = s["share_token"]
+
+    # a mix of events: guest draft, submit round, request verify, approval
+    client.post(
+        f"/api/sessions/public/{share}/versions/{v1['id']}/comments",
+        json={"time_s": 0.2, "body": "Bass masks vocal", "author_name": "Aisha"},
+    )
+    client.post(f"/api/sessions/{s['id']}/submit-feedback", json={"note": "consolidated"}, headers=_auth(token))
+    v2 = _upload(client, token, s["id"], make_wav(1.0), "v2 fixed")
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v2['id']}/approvals",
+        json={"scope": "master", "approved": True, "note": "", "approver_name": "Aisha"},
+        headers=_auth(token),
+    )
+
+    r = client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token))
+    assert r.status_code == 200
+    events = r.json()["events"]
+    assert len(events) >= 4
+    assert r.json()["head_hash"]
+
+    # each event is chained: hash = sha256(prev_hash + canonical payload)
+    import hashlib
+    import json as _json
+
+    prev = None
+    for e in events:
+        canonical = _json.dumps(e["payload"], sort_keys=True, separators=(",", ":")).encode()
+        expected = hashlib.sha256((prev or "").encode() + canonical).hexdigest()
+        assert e["event_hash"] == expected
+        assert e["prev_event_hash"] == prev
+        prev = e["event_hash"]
+
+    # events carry human data for the UI
+    kinds = {e["event"] for e in events}
+    assert "feedback.draft_created" in kinds
+    assert "round.submitted" in kinds
+    assert "version.created" in kinds
+    assert "approval.created" in kinds
+
+    # verify endpoint confirms integrity
+    r = client.get(f"/api/sessions/{s['id']}/ledger/verify", headers=_auth(token))
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    assert r.json()["total"] == len(events)
+    assert r.json()["head_hash"] == r.json()["head_hash"]
+
+    # tampering with an event's payload breaks the chain
+    from app.models import LedgerEvent
+    from app.database import SessionLocal
+
+    with SessionLocal() as db:
+        row = db.get(LedgerEvent, events[0]["id"])
+        row.payload = {"body": "rewritten!"}
+        db.commit()
+    r = client.get(f"/api/sessions/{s['id']}/ledger/verify", headers=_auth(token))
+    assert r.json()["ok"] is False
+    assert len(r.json()["problems"]) >= 1

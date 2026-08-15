@@ -5,6 +5,8 @@ import type {
   Deliverable,
   DeliveryPage,
   Diff,
+  LedgerResponse,
+  LedgerVerify,
   GhBranch,
   GhCommit,
   Project,
@@ -229,6 +231,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ status }),
     }),
+  getLedger: (id: number) =>
+    request<LedgerResponse>(`/api/sessions/${id}/ledger`),
+  verifyLedger: (id: number) =>
+    request<LedgerVerify>(`/api/sessions/${id}/ledger/verify`),
   publicSubmitFeedback: (token: string, note: string, actor: string) =>
     request<ReviewSession>(
       `/api/sessions/public/${token}/submit-feedback?actor=${encodeURIComponent(actor)}`,

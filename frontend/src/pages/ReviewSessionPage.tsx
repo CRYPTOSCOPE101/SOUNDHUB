@@ -6,6 +6,8 @@ import {
   humanSize,
   shortDate,
   DELIVERABLE_TYPES,
+  type LedgerEntry,
+  type LedgerVerify,
   type ReleasePackage,
   type ReviewApproval,
   type ReviewComment,
@@ -21,6 +23,120 @@ const STATUS_TEXT: Record<string, string> = {
   delivered: "delivered",
   archived: "archived",
 };
+
+function ledgerText(e: LedgerEntry): string {
+  const p = e.payload;
+  switch (e.event) {
+    case "version.created":
+      return `uploaded ${p.label} — ${p.fixed_requests} request${Number(p.fixed_requests) === 1 ? "" : "s"} linked as fixed`;
+    case "round.submitted":
+      return `submitted Round ${p.round} — ${p.requests} request${Number(p.requests) === 1 ? "" : "s"} consolidated${p.note ? ` · “${p.note}”` : ""}`;
+    case "feedback.draft_created":
+      return `left a draft note at ${fmtClock(Number(p.time_s))} — “${p.body}”`;
+    case "request.created":
+      return `opened request at ${fmtClock(Number(p.time_s))} — “${p.body}”`;
+    case "request.acknowledged":
+      return `acknowledged request “${p.body}”`;
+    case "request.in_progress":
+      return `started working on “${p.body}”`;
+    case "request.fixed":
+      return `marked “${p.body}” as fixed${p.fixed_in ? ` in v${String(p.fixed_in).slice(-2)}` : ""}`;
+    case "request.verified":
+      return `verified “${p.body}”`;
+    case "request.approved":
+      return `approved request “${p.body}”`;
+    case "approval.created":
+      return `${p.approved ? "approved" : "requested changes on"} ${p.version} · scope ${p.scope}${p.note ? ` — “${p.note}”` : ""}`;
+    case "package.created":
+      return `created release package (approved ${p.approved_version})`;
+    case "deliverable.added":
+      return `added deliverable ${p.type} · ${p.filename}${p.sha256 ? ` · SHA-256 ${String(p.sha256).slice(0, 8)}…` : ""}`;
+    case "package.locked":
+      return `🔒 locked release package — manifest SHA-256 ${String(p.manifest_sha256).slice(0, 8)}… (scope ${p.approval_scope})`;
+    case "delivery.link_opened":
+      return `opened the delivery link`;
+    case "delivery.downloaded":
+      return `downloaded from delivery`;
+    case "invoice.paid":
+      return `marked invoice as paid (${p.method}) — delivery unlocked`;
+    default:
+      return e.event.replace(/\./g, " ");
+  }
+}
+
+function ledgerIcon(e: LedgerEntry): string {
+  if (e.event.startsWith("package.") || e.event.startsWith("deliverable.") || e.event.startsWith("delivery.") || e.event.startsWith("invoice.")) return "📦";
+  if (e.event.startsWith("request.")) return "🔧";
+  if (e.event.startsWith("approval")) return "✅";
+  if (e.event.startsWith("round")) return "🗂";
+  if (e.event.startsWith("version")) return "⬆";
+  return "✎";
+}
+
+function DecisionLog({ sessionId }: { sessionId: number }) {
+  const [events, setEvents] = useState<LedgerEntry[] | null>(null);
+  const [verify, setVerify] = useState<LedgerVerify | null>(null);
+  const [proof, setProof] = useState<number | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setEvents((await api.getLedger(sessionId)).events);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to load decision log");
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const check = async () => {
+    setVerify(await api.verifyLedger(sessionId));
+  };
+
+  if (!events) return <div className="rs-empty">Loading decision log…</div>;
+  if (events.length === 0) return <div className="rs-empty">No decisions recorded yet.</div>;
+
+  return (
+    <div className="rs-ledger">
+      <div className="rs-ledger-head">
+        <span className="rs-versions-head">Decision log</span>
+        <button type="button" className="rs-btn ghost sm" onClick={() => void check()}>
+          {verify ? (verify.ok ? "✓ History verified" : "⚠ Tamper detected!") : "Verify history"}
+        </button>
+      </div>
+      {verify && !verify.ok && (
+        <div className="rs-ledger-warn">
+          Integrity check failed — {verify.problems.length} event{verify.problems.length === 1 ? "" : "s"} in this
+          history do not match their hash chain.
+        </div>
+      )}
+      <div className="rs-ledger-list">
+        {events.map((e) => (
+          <div key={e.id} className="rs-ledger-row">
+            <span className="rs-ledger-icon">{ledgerIcon(e)}</span>
+            <div className="rs-ledger-main">
+              <div className="rs-ledger-text">
+                <strong>{e.actor || "anonymous"}</strong> {ledgerText(e)}
+              </div>
+              <div className="rs-ledger-meta">
+                {shortDate(e.occurred_at)} · {e.event}
+              </div>
+            </div>
+            <button type="button" className="rs-btn ghost sm" onClick={() => setProof(proof === e.id ? null : e.id)}>
+              {proof === e.id ? "Hide proof" : "View proof"}
+            </button>
+          </div>
+        ))}
+      </div>
+      {proof != null && (
+        <pre className="rs-ledger-proof">{JSON.stringify(events.find((e) => e.id === proof), null, 2)}</pre>
+      )}
+      {err && <div className="error">{err}</div>}
+    </div>
+  );
+}
 
 function ReleasePackagePanel({
   sessionId,
@@ -916,6 +1032,8 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                     ))}
                   </div>
                 )}
+
+                <DecisionLog sessionId={session.id} />
               </div>
             </div>
           </div>

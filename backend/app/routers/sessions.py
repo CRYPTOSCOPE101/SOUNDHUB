@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from ..config import MAX_UPLOAD_SIZE
 from ..database import get_db
 from ..models import (
+    LedgerEvent,
     ReviewApproval,
     ReviewComment,
     ReviewRound,
@@ -45,7 +46,7 @@ from ..schemas import (
     ReviewVersionOut,
 )
 from ..security import get_current_user
-from ..services import storage, waveform
+from ..services import ledger, storage, waveform
 
 router = APIRouter(prefix="/api/sessions", tags=["review sessions"])
 
@@ -299,6 +300,15 @@ def guest_comment(
     )
     db.add(comment)
     _log_access(db, session, payload.author_name, "commented", f"{version.label} @ {payload.time_s:.1f}s")
+    ledger.append(
+        db,
+        "feedback.draft_created",
+        session_id=session.id,
+        actor=payload.author_name.strip()[:128] or "Reviewer",
+        entity_type="request",
+        entity_id=comment.id,
+        payload={"version": version.label, "time_s": payload.time_s, "body": payload.body.strip()[:200]},
+    )
     session.updated_at = utcnow()
     db.commit()
     db.refresh(comment)
@@ -338,6 +348,15 @@ def guest_approve(
     version.status = "approved" if payload.approved else "needs_changes"
     session.status = version.status
     session.updated_at = utcnow()
+    ledger.append(
+        db,
+        "approval.created",
+        session_id=session.id,
+        actor=approval.approver_name,
+        entity_type="approval",
+        entity_id=approval.id,
+        payload={"version": version.label, "scope": payload.scope, "approved": payload.approved, "note": payload.note.strip()[:200]},
+    )
     db.commit()
     db.refresh(approval)
     return ReviewApprovalOut.model_validate(approval, from_attributes=True)
@@ -375,6 +394,49 @@ def create_session(
     db.commit()
     db.refresh(session)
     return _session_out(db, session)
+
+
+@router.get("/{session_id}/ledger")
+def get_ledger(
+    session_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Full decision log for a session, with proof (hashes + payloads)."""
+    get_session_or_404(db, user, session_id)
+    rows = db.scalars(
+        select(LedgerEvent)
+        .where(LedgerEvent.session_id == session_id)
+        .order_by(LedgerEvent.id)
+    ).all()
+    return {
+        "events": [
+            {
+                "id": e.id,
+                "event": e.event,
+                "actor": e.actor,
+                "entity_type": e.entity_type,
+                "entity_id": e.entity_id,
+                "payload": e.payload,
+                "occurred_at": e.occurred_at.isoformat(),
+                "prev_event_hash": e.prev_event_hash,
+                "event_hash": e.event_hash,
+            }
+            for e in rows
+        ],
+        "head_hash": rows[-1].event_hash if rows else None,
+    }
+
+
+@router.get("/{session_id}/ledger/verify")
+def verify_ledger(
+    session_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Walk the hash chain and report whether any event was tampered with."""
+    get_session_or_404(db, user, session_id)
+    return ledger.verify_history(db)
 
 
 @router.get("/{session_id}", response_model=ReviewSessionDetailOut)
@@ -515,6 +577,15 @@ def upload_version(
         c.fixed_in = version.id
     session.rounds_open = True  # new version shipped → new round open for feedback
     session.updated_at = utcnow()  # touch
+    ledger.append(
+        db,
+        "version.created",
+        session_id=session.id,
+        actor=user.username,
+        entity_type="version",
+        entity_id=version.id,
+        payload={"label": version.label, "round": version.round_number, "fixed_requests": len(open_reqs), "filename": version.filename},
+    )
     db.commit()
     db.refresh(version)
     return _version_out(db, version)
@@ -561,6 +632,15 @@ def add_comment(
         parent_id=payload.parent_id,
     )
     db.add(comment)
+    ledger.append(
+        db,
+        "feedback.draft_created" if payload.status == "draft" else "request.created",
+        session_id=session_id,
+        actor=user.username,
+        entity_type="request",
+        entity_id=comment.id,
+        payload={"version": version.label, "time_s": payload.time_s, "body": payload.body.strip()[:200]},
+    )
     db.commit()
     db.refresh(comment)
     return _comment_out(comment)
@@ -644,6 +724,15 @@ def submit_feedback(
     session.round_number += 1
     session.rounds_open = False  # round closed until the engineer ships the next version
     session.updated_at = utcnow()
+    ledger.append(
+        db,
+        "round.submitted",
+        session_id=session.id,
+        actor=user.username,
+        entity_type="round",
+        entity_id=round_.id,
+        payload={"round": round_.number, "requests": len(drafts), "note": payload.note.strip()[:200]},
+    )
     db.commit()
     return _session_detail(db, session)
 
@@ -690,6 +779,15 @@ def public_submit_feedback(
     session.round_number += 1
     session.rounds_open = False  # round closed until the engineer ships the next version
     _log_access(db, session, actor, "submitted_feedback", f"{len(drafts)} requests")
+    ledger.append(
+        db,
+        "round.submitted",
+        session_id=session.id,
+        actor=actor,
+        entity_type="round",
+        entity_id=round_.id,
+        payload={"round": round_.number, "requests": len(drafts), "note": payload.note.strip()[:200]},
+    )
     session.updated_at = utcnow()
     db.commit()
     return _session_detail(db, session)
@@ -721,6 +819,15 @@ def update_request_status(
     if payload.status == "approved":
         comment.resolved = True
         comment.verified_at = utcnow()
+    ledger.append(
+        db,
+        f"request.{payload.status}",
+        session_id=session_id,
+        actor=user.username,
+        entity_type="request",
+        entity_id=comment.id,
+        payload={"version": version.label, "body": comment.body[:200], "fixed_in": comment.fixed_in},
+    )
     db.commit()
     db.refresh(comment)
     return _comment_out(comment)
@@ -757,6 +864,15 @@ def add_approval(
     version.status = "approved" if payload.approved else "needs_changes"
     session.status = version.status
     session.updated_at = utcnow()
+    ledger.append(
+        db,
+        "approval.created",
+        session_id=session.id,
+        actor=approval.approver_name,
+        entity_type="approval",
+        entity_id=approval.id,
+        payload={"version": version.label, "scope": payload.scope, "approved": payload.approved, "note": payload.note.strip()[:200]},
+    )
     db.commit()
     db.refresh(approval)
     return ReviewApprovalOut.model_validate(approval, from_attributes=True)

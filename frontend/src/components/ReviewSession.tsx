@@ -7,6 +7,7 @@ type Comment = {
   role: string;
   text: string;
   resolved: boolean;
+  status: string; // request lifecycle: Open / Fixed in v13 / Verified…
 };
 
 type Status = "in_review" | "needs_changes" | "approved";
@@ -25,6 +26,7 @@ const INITIAL_COMMENTS: Comment[] = [
     role: "A&R",
     text: "Kick and bass clash here. Keep the energy, but let the vocal breathe.",
     resolved: false,
+    status: "open",
   },
   {
     id: 2,
@@ -33,6 +35,25 @@ const INITIAL_COMMENTS: Comment[] = [
     role: "Mix engineer",
     text: "Hats sit nicely after the drop — no change needed here.",
     resolved: true,
+    status: "fixed",
+  },
+  {
+    id: 3,
+    time: "03:05",
+    author: "Aisha",
+    role: "A&R",
+    text: "Outro needs air after the last drop.",
+    resolved: false,
+    status: "open",
+  },
+  {
+    id: 4,
+    time: "00:48",
+    author: "Kai",
+    role: "Artist",
+    text: "Bass patch sounds right now — verified against the reference.",
+    resolved: true,
+    status: "verified",
   },
 ];
 
@@ -58,8 +79,6 @@ export default function ReviewSession({ compact = false }: { compact?: boolean }
   const [comments, setComments] = useState<Comment[]>(INITIAL_COMMENTS);
   const [playing, setPlaying] = useState(false);
   const wave = useWaveform(compact ? 48 : 72);
-
-  const resolvedCount = comments.filter((c) => c.resolved).length;
 
   const toggleResolved = (id: number) =>
     setComments((cs) => cs.map((c) => (c.id === id ? { ...c, resolved: !c.resolved } : c)));
@@ -130,9 +149,11 @@ export default function ReviewSession({ compact = false }: { compact?: boolean }
         {/* comments */}
         <div className="rs-comments">
           <div className="rs-comments-head">
-            <span>Comments</span>
+            <span>Requests</span>
             <span className="rs-count">
-              {resolvedCount} resolved · {comments.length - resolvedCount} open
+              {comments.filter((c) => c.status === "open").length} open ·{" "}
+              {comments.filter((c) => c.status === "fixed").length} fixed in v13 ·{" "}
+              {comments.filter((c) => c.status === "verified").length} verified
             </span>
           </div>
           {comments.map((c) => (
@@ -142,6 +163,9 @@ export default function ReviewSession({ compact = false }: { compact?: boolean }
                 <div className="rs-comment-author">
                   <span className="rs-avatar">{c.author[0]}</span>
                   <strong>{c.author}</strong> <em>{c.role}</em>
+                  <span className={`rs-req-status st-${c.status}`}>
+                    {c.status === "fixed" ? "fixed in v13" : c.status}
+                  </span>
                 </div>
                 <p>{c.text}</p>
                 <div className="rs-comment-actions">

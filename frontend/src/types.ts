@@ -260,6 +260,30 @@ export interface DeliveryPage {
 
 export const DELIVERABLE_TYPES = ["master", "instrumental", "acapella", "clean_edit", "stems", "artwork", "other"] as const;
 
+export interface LedgerEntry {
+  id: number;
+  event: string;
+  actor: string;
+  entity_type: string;
+  entity_id: number | null;
+  payload: Record<string, unknown>;
+  occurred_at: string;
+  prev_event_hash: string | null;
+  event_hash: string;
+}
+
+export interface LedgerResponse {
+  events: LedgerEntry[];
+  head_hash: string | null;
+}
+
+export interface LedgerVerify {
+  ok: boolean;
+  total: number;
+  head_hash: string | null;
+  problems: Array<{ id: number; event: string; expected: string; stored: string }>;
+}
+
 export function fmtTime(s: number): string {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);

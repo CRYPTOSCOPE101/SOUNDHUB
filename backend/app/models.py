@@ -1,7 +1,7 @@
 """ORM models for SoundHub."""
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -261,6 +261,32 @@ class ShareAccessEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     session: Mapped["ReviewSession"] = relationship(back_populates="access_events")
+
+
+class LedgerEvent(Base):
+    """One immutable decision-log entry, chained by hash.
+
+    event_hash = SHA256(prev_event_hash || canonical_payload) makes the
+    history tamper-evident: rewriting an old event invalidates every
+    subsequent hash. On-chain anchoring (release lock, daily Merkle root)
+    stays an optional proof layer, not a UX requirement.
+    """
+
+    __tablename__ = "ledger_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event: Mapped[str] = mapped_column(String(48), index=True)  # e.g. request.verified
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("review_sessions.id"), index=True, nullable=True)
+    package_id: Mapped[int | None] = mapped_column(ForeignKey("release_packages.id"), nullable=True)
+    actor: Mapped[str] = mapped_column(String(128), default="")  # email or username
+    entity_type: Mapped[str] = mapped_column(String(32), default="")  # request | version | approval | package | round
+    entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    prev_event_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    event_hash: Mapped[str] = mapped_column(String(64), index=True)
+
+    session: Mapped["ReviewSession"] = relationship()
 
 
 class ReleasePackage(Base):
