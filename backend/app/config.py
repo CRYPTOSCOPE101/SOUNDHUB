@@ -28,6 +28,14 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_CURRENCY = os.environ.get("STRIPE_CURRENCY", "usd")
 STRIPE_API_BASE = os.environ.get("STRIPE_API_BASE", "https://api.stripe.com")
 
+# Reminders. SMTP_HOST unset → log-only transport (no real email sent).
+FRONTEND_URL = os.environ.get("SOUNDHUB_FRONTEND_URL", "http://localhost:5173")
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SMTP_FROM = os.environ.get("SMTP_FROM", "SoundHub <no-reply@soundhub.local>")
+
 
 def ensure_dirs() -> None:
     for d in (DATA_DIR, BLOB_DIR, TMP_DIR):

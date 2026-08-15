@@ -16,6 +16,7 @@ from .routers import (
     projects,
     references,
     release_packages,
+    reminders,
     sessions,
 )
 
@@ -45,6 +46,12 @@ app.include_router(release_packages.router)
 app.include_router(comparisons.router)
 app.include_router(portfolio.router)
 app.include_router(references.router)
+app.include_router(reminders.router)
+
+# The landing page CTA "Open a sample review" points here directly — a fixed,
+# human-readable token so the demo review is always reachable at /r/demo-review-token
+# (no account, no /login redirect, no fetch-then-redirect on the landing page).
+DEMO_REVIEW_TOKEN = "demo-review-token"
 
 
 def _seed_sample_review() -> None:
@@ -54,7 +61,6 @@ def _seed_sample_review() -> None:
     """
     import io
     import math
-    import secrets
     import struct
     import wave
 
@@ -70,10 +76,7 @@ def _seed_sample_review() -> None:
             db.add(demo)
             db.flush()
         existing = db.scalar(
-            select(ReviewSession).where(
-                ReviewSession.owner_id == demo.id,
-                ReviewSession.name == "Neon Warehouse — sample review",
-            )
+            select(ReviewSession).where(ReviewSession.share_token == DEMO_REVIEW_TOKEN)
         )
         if existing is not None:
             return
@@ -102,7 +105,7 @@ def _seed_sample_review() -> None:
         session = ReviewSession(
             owner_id=demo.id,
             name="Neon Warehouse — sample review",
-            share_token=secrets.token_urlsafe(16),
+            share_token=DEMO_REVIEW_TOKEN,
             status="in_review",
             share_permission="download",
             service_type="mix_master",
@@ -113,6 +116,8 @@ def _seed_sample_review() -> None:
             reference_links="https://soundcloud.com/example/neon-warehouse-ref",
             included_rounds=1,
             round_number=1,
+            # so the reminder engine has a real recipient for the demo session
+            client_email="aisha@example.com",
         )
         db.add(session)
         db.flush()
@@ -189,6 +194,17 @@ app.include_router(demo)
 def _startup() -> None:
     init_db()
     _seed_sample_review()
+    # queue + deliver reminders for the seeded demo session (review.opened,
+    # invoice due, …) so the notification log is non-empty on first boot
+    try:
+        from .database import SessionLocal
+        from .services import reminders as reminders_svc
+
+        with SessionLocal() as db:
+            reminders_svc.run_all(db)
+            db.commit()
+    except Exception:
+        pass  # reminders are best-effort at startup
 
 
 @app.get("/api/health")

@@ -78,6 +78,10 @@ def _migrate() -> None:
                 ("recall_fee_cents", "INTEGER"),
                 ("revision_fee_cents", "INTEGER"),
                 ("change_rounds_granted", "INTEGER DEFAULT 0"),
+                ("reminders_enabled", "BOOLEAN DEFAULT 1"),
+                ("reminder_categories", "TEXT DEFAULT ''"),
+                ("reminders_client_opt_out", "BOOLEAN DEFAULT 0"),
+                ("client_email", "VARCHAR(256) DEFAULT ''"),
             ):
                 if col not in review_cols:
                     conn.execute(text(f"ALTER TABLE review_sessions ADD COLUMN {col} {ddl}"))
@@ -129,6 +133,7 @@ def _migrate() -> None:
                 ("last_verified_opened_at", "DATETIME"),
                 ("force_locked_reason", "TEXT DEFAULT ''"),
                 ("force_locked_by", "VARCHAR(128) DEFAULT ''"),
+                ("invoice_due_at", "DATETIME"),
             ):
                 if col not in pkg_cols:
                     conn.execute(text(f"ALTER TABLE release_packages ADD COLUMN {col} {ddl}"))

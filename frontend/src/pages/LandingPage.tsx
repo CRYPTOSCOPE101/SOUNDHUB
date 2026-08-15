@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api";
 import ReviewSession from "../components/ReviewSession";
+
+// A fixed, live public demo session (seeded at startup) — both "Open a sample
+// review" CTAs point here so the promise "No account for reviewers" holds.
+const SAMPLE_REVIEW_URL = "/r/demo-review-token";
 
 const NAV_LINKS = [
   { href: "#workflow", label: "Workflow" },
@@ -103,12 +106,14 @@ const ROADMAP = [
       "Release-package templates + QC preflight before lock",
       "Change orders: quote late changes after approval (courtesy / paid round / new pass)",
       "Archive & session-file handoff with retention policy",
+      "Voice notes & mobile-first guest review",
+      "Email reminders & deadlines",
     ],
     state: "live",
   },
   {
     phase: "Next",
-    items: ["Voice notes & mobile-first guest review", "Email reminders & deadlines", "Roles & approval chains for labels", "USDC checkout", "Max for Live: review comments in the DAW"],
+    items: ["Roles & approval chains for labels", "USDC checkout", "Max for Live: review comments in the DAW"],
     state: "next",
   },
   { phase: "Later", items: ["REAPER integration", "Mainnet + security audit", "Seller reputation & packs", "DAO governance"], state: "later" },
@@ -185,17 +190,6 @@ export default function LandingPage() {
   const [email, setEmail] = useState("");
   const [waitlist, setWaitlist] = useState<string | null>(null);
   const [showWorkflow, setShowWorkflow] = useState(false);
-  const [sampleUrl, setSampleUrl] = useState<string | null>(null);
-
-  // "Open a sample review" — a real seeded public review, no login needed
-  useEffect(() => {
-    api
-      .demoReview()
-      .then((d) => {
-        if (d.url) setSampleUrl(d.url);
-      })
-      .catch(() => undefined);
-  }, []);
 
   const joinWaitlist = (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,9 +214,8 @@ export default function LandingPage() {
           ))}
         </div>
         <div className="landing-nav-cta">
-          <Link to="/kettle">🫖 Kettle</Link>
           <Link to="/login">Sign in</Link>
-          <Link to={sampleUrl ?? "/login"} className="landing-nav-get">Open a sample review</Link>
+          <Link to={SAMPLE_REVIEW_URL} className="landing-nav-get">Open a sample review</Link>
         </div>
       </nav>
 
@@ -246,7 +239,7 @@ export default function LandingPage() {
             <button type="button" className="landing-btn-primary" onClick={() => setShowWorkflow(true)}>
               ▶ Watch the workflow
             </button>
-            <Link to={sampleUrl ?? "/session"} className="landing-btn-ghost">
+            <Link to={SAMPLE_REVIEW_URL} className="landing-btn-ghost">
               Open a sample review
             </Link>
           </div>
@@ -447,7 +440,7 @@ export default function LandingPage() {
           </form>
           {waitlist && <div className="landing-waitlist-msg">{waitlist}</div>}
           <div className="landing-cta-final-alts">
-            <Link to={sampleUrl ?? "/session"}>or open a sample review now →</Link>
+            <Link to={SAMPLE_REVIEW_URL}>or open a sample review now →</Link>
           </div>
         </Reveal>
       </section>

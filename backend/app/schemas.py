@@ -242,6 +242,42 @@ class ShareSettingsUpdate(BaseModel):
     retention_until: datetime | None = None
     recall_fee_cents: int | None = Field(default=None, ge=0, le=100_000_000)
     revision_fee_cents: int | None = Field(default=None, ge=0, le=100_000_000)
+    # reminder automation
+    reminders_enabled: bool | None = None
+    reminder_categories: str | None = Field(default=None, max_length=500)
+    client_email: str | None = Field(default=None, max_length=256)
+
+
+class ReminderSettingsUpdate(BaseModel):
+    """Engineer picks what to automate and where client mail goes."""
+
+    reminders_enabled: bool | None = None
+    reminder_categories: str | None = Field(default=None, max_length=500)  # comma list; empty = all
+    client_email: str | None = Field(default=None, max_length=256)
+
+
+class NotificationOut(BaseModel):
+    id: int
+    session_id: int
+    kind: str
+    channel: str = "email"
+    recipient: str = ""
+    subject: str = ""
+    body: str = ""
+    cta_url: str = ""
+    cta_label: str = ""
+    status: str = "queued"
+    error: str = ""
+    sent_at: datetime | None = None
+    created_at: datetime
+
+
+class RemindersEvalOut(BaseModel):
+    evaluated: int = 0
+    created: int = 0
+    sent: int = 0
+    failed: int = 0
+    dismissed: int = 0
 
 
 class ReviewApprovalCreate(BaseModel):
@@ -315,6 +351,11 @@ class ReviewSessionDetailOut(ReviewSessionOut):
     recall_fee_cents: int | None = None
     revision_fee_cents: int | None = None
     change_rounds_granted: int = 0
+    # reminder automation
+    reminders_enabled: bool = True
+    reminder_categories: str = ""
+    reminders_client_opt_out: bool = False
+    client_email: str = ""
     # client brief — expectations fixed before the first bounce
     service_type: str = "mix"
     genre: str = ""
@@ -567,6 +608,7 @@ class ReleasePackageOut(BaseModel):
     archive_expires_at: datetime | None = None
     archive_status: str = "available_now"
     last_verified_opened_at: datetime | None = None
+    invoice_due_at: datetime | None = None
     force_locked_reason: str = ""
     force_locked_by: str = ""
     deliverables: list[DeliverableOut] = []
@@ -640,6 +682,7 @@ class DeliveryPageOut(BaseModel):
     archive_status: str = "available_now"
     archive_expires_at: datetime | None = None
     last_verified_opened_at: datetime | None = None
+    invoice_due_at: datetime | None = None
     retention_until: datetime | None = None
     share_token: str = ""
     deliverables: list[DeliverableOut] = []
@@ -649,6 +692,7 @@ class DeliveryInvoiceUpdate(BaseModel):
     invoice_status: str = Field(pattern=r"^(none|deposit_due|balance_due|paid|waived)$")
     amount_due_cents: int | None = Field(default=None, ge=0, le=100_000_000)  # 1M USD max
     currency: str = Field(default="usd", max_length=8)
+    invoice_due_at: datetime | None = None
 
 
 class CheckoutOut(BaseModel):

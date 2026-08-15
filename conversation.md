@@ -324,6 +324,28 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
 
 ---
 
+## Фаза 12 — Email reminders & deadlines + UX-фиксы (CTA/roadmap/nav)
+
+**UX-фиксы (перед reminders, из фидбека):**
+- **Фиксированный demo-токен** `demo-review-token`: сид переиспользует его, оба CTA «Open a sample review» (topnav и hero) ведут прямо на `/r/demo-review-token` — без fetch-редиректа и без `/login`. Эндпоинт `/api/demo/review` сохранён (smoke/e2e используют).
+- **Roadmap:** «Voice notes & mobile-first guest review» и «Email reminders & deadlines» перенесены из Next в **Now** (страница больше не занижает готовый продукт).
+- **Kettle убран из верхнего меню** (topbar App.tsx и sticky-nav лендинга), остался в footer; `/kettle` роут сохранён.
+
+**Email reminders — модуль:**
+- Модель `Notification` с уникальным `dedup_key` (`session:kind:date:scope`) — «не больше одного письма одного типа за 24ч» гарантируется БД, cron можно гонять сколько угодно.
+- События: `review.opened` (v1), `approval.requested` (ревизия round≥2), `approval.reminder` (ждёт решения 7+ дней), `feedback.deadline_48h/24h/overdue` (по `feedback_due_at`/deadline), `draft_notes.idle` (3+ дня), `invoice.due_7d/1d/overdue` (по `invoice_due_at`, дефолт immutable_at+14д), `change_order.quote_expiring` (≤48ч), `archive.expiring_30d/7d`, `delivery.link_expiring` (share_expires_at ≤7д).
+- Правила: engineer включает/выключает и выбирает **категории** (review/feedback/invoice/change_order/archive/delivery); клиент может **opt-out** некритичных (payment/delivery остаются); напоминания не идут по отключённым сессиям и без `client_email`.
+- Транспорт: SMTP если `SMTP_HOST` задан, иначе **log-only** (честный MVP, письма не «выдумываются»); статусы `queued → sent|failed|dismissed`.
+- Ledger: `notification.sent / notification.failed / notification.dismissed` (+ `reminders.settings_updated`) — человекочитаемые строки в Decision Log.
+- Эндпоинты: `POST /api/reminders/evaluate` (cron/smoke, evaluate+send), `GET|PATCH /api/sessions/{id}/reminders`, `POST /api/sessions/public/{token}/reminders/opt-out`. Триггеры: upload version, invoice PATCH, quote → авт. evaluate.
+- Стартовый прогон: demo-сид получает `client_email` и на первом буте уже отправляет `review.opened` (видно в логе уведомлений).
+
+**UI:** панель «Email reminders» у инженера (тумблер, client email, чипы категорий, «Evaluate & send now», лог отправок со статусами); у клиента в Details — статус напоминаний и кнопка «Opt out of non-critical reminders».
+
+**Тесты:** 72 backend (12 новых: события, дедуп, категории, suppression без email/выключено, quote expiring, opt-out dismisses non-critical, ledger sent/dismissed, opt-out блокирует будущие) + frontend build + `make smoke`.
+
+---
+
 ## Запуск
 
 ```bash
@@ -339,7 +361,7 @@ make e2e           # только e2e journey
 ```
 
 Переменные окружения (backend): `SOUNDHUB_DATABASE_URL`, `SOUNDHUB_SECRET_KEY`,
-`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CURRENCY`.
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CURRENCY`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SOUNDHUB_FRONTEND_URL`.
 
 ---
 
@@ -358,4 +380,4 @@ cd frontend && npm run build
 ```
 
 Переменные окружения (backend): `SOUNDHUB_DATABASE_URL`, `SOUNDHUB_SECRET_KEY`,
-`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CURRENCY`.
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CURRENCY`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SOUNDHUB_FRONTEND_URL`.
