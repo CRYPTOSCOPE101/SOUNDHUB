@@ -3278,6 +3278,57 @@ pre.diff-raw code {
   margin-left: 2px;
 }
 
+/* ---------- stems ---------- */
+
+.rs-stems {
+  border-top: 1px solid #262b33;
+  padding: 14px 18px;
+}
+
+.rs-stem-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 8px 0;
+}
+
+.rs-stem-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.rs-stem-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.rs-stem-dot.st-drums { background: #e57468; }
+.rs-stem-dot.st-bass { background: #3d7ec9; }
+.rs-stem-dot.st-vocal { background: #3ddc84; }
+.rs-stem-dot.st-synths { background: #c58bff; }
+.rs-stem-dot.st-other { background: #8b929c; }
+
+.rs-stem-name {
+  color: #d7dbe2;
+  font-weight: 600;
+}
+
+.rs-stem-meta {
+  color: #8b929c;
+  font-size: 10.5px;
+}
+
+.rs-stem-upload {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 /* ---------- loudness-matched A/B panel ---------- */
 
 .ab-panel {
@@ -3412,6 +3463,46 @@ pre.diff-raw code {
 .ab-time.right {
   left: auto;
   right: 6px;
+}
+
+.ab-modes {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px 0;
+  flex-wrap: wrap;
+}
+
+.ab-mode {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #8b929c;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #2c3340;
+  border-radius: 20px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ab-mode:hover {
+  color: #d7dbe2;
+}
+
+.ab-mode.active {
+  color: #fff;
+  border-color: #3d7ec9;
+  background: rgba(61, 126, 201, 0.15);
+}
+
+.ab-mode:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ab-mode-chip {
+  margin-left: 6px;
+  color: #6ba3d8;
+  text-transform: capitalize;
 }
 
 .ab-controls {

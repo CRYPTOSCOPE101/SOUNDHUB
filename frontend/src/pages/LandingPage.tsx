@@ -48,7 +48,7 @@ const MARKET_BENEFITS = [
 ];
 
 const INTEGRATIONS = [
-  { name: "Ableton Live", status: "panel live", detail: "Max for Live — review comments, catalog & buy & load in the DAW", when: "now" },
+  { name: "Ableton Live", status: "prototype", detail: "Max for Live — review comments, catalog & buy & load in the DAW", when: "coming next" },
   { name: "FL Studio", status: "prototype", detail: "MIDI scripting device + file bridge", when: "beta 2026" },
   { name: "Cubase", status: "prototype", detail: "MIDI Remote script + web panel", when: "beta 2026" },
   { name: "REAPER", status: "planned", detail: "ReaScript — file & HTTP access", when: "Q4 2026" },
@@ -91,14 +91,14 @@ const ROADMAP = [
       "Review sessions: versions & approvals",
       "Revision rounds: consolidated feedback",
       "Release package: lock approved master + delivery link",
-      "Loudness-matched A/B compare",
+      "Loudness-matched A/B compare (full mix & stems)",
       "Stripe paid delivery: card / Apple Pay / Google Pay",
       "Private share links & access audit",
       "Private beta on Base Sepolia",
     ],
     state: "live",
   },
-  { phase: "Next", items: ["Stems & loop regions", "Ableton integration for comments", "USDC checkout"], state: "next" },
+  { phase: "Next", items: ["Loop regions on stems", "Ableton integration for comments", "USDC checkout"], state: "next" },
   { phase: "Later", items: ["REAPER integration", "Mainnet + security audit", "Seller reputation & packs", "DAO governance"], state: "later" },
 ];
 

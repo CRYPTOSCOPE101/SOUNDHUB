@@ -76,6 +76,12 @@ def _migrate() -> None:
             ):
                 if col not in cm_cols:
                     conn.execute(text(f"ALTER TABLE review_comments ADD COLUMN {col} {ddl}"))
+        if inspector.has_table("version_comparisons"):
+            cmp_cols = {c["name"] for c in inspector.get_columns("version_comparisons")}
+            if "stem_logical_name" not in cmp_cols:
+                conn.execute(
+                    text("ALTER TABLE version_comparisons ADD COLUMN stem_logical_name VARCHAR(32)")
+                )
         if inspector.has_table("release_packages"):
             pkg_cols = {c["name"] for c in inspector.get_columns("release_packages")}
             for col, ddl in (

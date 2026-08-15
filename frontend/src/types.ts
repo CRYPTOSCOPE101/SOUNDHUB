@@ -306,6 +306,19 @@ export interface AudioAnalysis {
   analysed_at: string | null;
 }
 
+export interface StemAsset {
+  id: number;
+  version_id: number;
+  logical_name: string;
+  display_name: string;
+  size: number;
+  audio_format: string;
+  start_offset_ms: number;
+  created_at: string;
+}
+
+export const STEM_LOGICAL_NAMES = ["drums", "bass", "vocal", "synths", "other"] as const;
+
 export interface VersionComparison {
   id: number;
   session_id: number;
@@ -322,6 +335,7 @@ export interface VersionComparison {
   level_match: string;
   label: string;
   mode: string;
+  stem_logical_name: string | null;
   created_at: string;
 }
 

@@ -5,19 +5,26 @@ graph (Web Audio on the client). Source files, metadata and the locked release
 package are never modified.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from pathlib import PurePosixPath
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..config import MAX_UPLOAD_SIZE
 from ..database import get_db
-from ..models import AudioAnalysis, ReviewVersion, VersionComparison, User
+from ..models import AudioAnalysis, ReviewVersion, StemAsset, VersionComparison, User
 from ..schemas import (
     AudioAnalysisOut,
     ComparisonCreate,
     ComparisonOut,
+    StemCreate,
+    StemOut,
 )
 from ..security import get_current_user
 from ..services import ledger, loudness, storage
+
+ALLOWED_STEM_AUDIO = {"wav", "mp3", "flac", "aif", "aiff", "m4a", "ogg"}
 
 router = APIRouter(prefix="/api", tags=["comparisons"])
 
@@ -80,7 +87,46 @@ def create_comparison(
     level_match = "none"
     start_ms = payload.start_ms
     end_ms = payload.end_ms or start_ms + 20000
-    if payload.level_match and payload.level_match != "none":
+    stem_name = payload.stem_logical_name
+    base_stem = compare_stem = None
+    stem_url = ""
+
+    if payload.mode == "stem":
+        if not stem_name:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "stem_logical_name is required when mode=stem",
+            )
+        # match by logical name — both stems must exist in BOTH versions
+        base_stem = db.scalar(
+            select(StemAsset).where(StemAsset.version_id == base.id, StemAsset.logical_name == stem_name)
+        )
+        compare_stem = db.scalar(
+            select(StemAsset).where(StemAsset.version_id == compare.id, StemAsset.logical_name == stem_name)
+        )
+        if base_stem is None or compare_stem is None:
+            missing = base.label if base_stem is None else compare.label
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Stem '{stem_name}' is unavailable in {missing} — compare the full mix instead",
+            )
+        if base_stem.audio_format == "wav" and compare_stem.audio_format == "wav":
+            # region LUFS relative to the stem's own timeline (start_offset_ms)
+            b_offset = base_stem.start_offset_ms
+            c_offset = compare_stem.start_offset_ms
+            try:
+                b_data = storage.read_blob(base_stem.blob_sha)
+                c_data = storage.read_blob(compare_stem.blob_sha)
+                base_lufs = loudness.short_term_lufs(b_data, max(0, start_ms - b_offset), end_ms - b_offset)
+                compare_lufs = loudness.short_term_lufs(c_data, max(0, start_ms - c_offset), end_ms - c_offset)
+                if base_lufs is not None and compare_lufs is not None:
+                    short = {base.label: base_lufs, compare.label: compare_lufs}
+                    level_match = "short_term_lufs"
+            except Exception:
+                level_match = "none"
+        stem_url = f"/api/versions/{base.id}/stems/{base_stem.id}/audio"
+
+    if payload.mode != "stem" and payload.level_match and payload.level_match != "none":
         try:
             b_data = storage.read_blob(base.blob_sha)
             c_data = storage.read_blob(compare.blob_sha)
@@ -114,6 +160,7 @@ def create_comparison(
         level_match=level_match,
         short_term_lufs=short,
         mode=payload.mode,
+        stem_logical_name=stem_name if payload.mode == "stem" else None,
     )
     db.add(comp)
     db.flush()
@@ -129,6 +176,8 @@ def create_comparison(
             "compare": compare.label,
             "request_id": payload.request_id,
             "level_match": level_match,
+            "mode": payload.mode,
+            "stem": stem_name,
             "gains": {"base": base_gain, "compare": compare_gain},
         },
     )
@@ -170,5 +219,106 @@ def _comparison_out(c: VersionComparison) -> ComparisonOut:
         level_match=c.level_match,
         label=label,
         mode=c.mode,
+        stem_logical_name=c.stem_logical_name,
         created_at=c.created_at,
+    )
+
+
+# ---------- stems ----------
+
+
+def _stem_out(s: StemAsset) -> StemOut:
+    return StemOut(
+        id=s.id,
+        version_id=s.version_id,
+        logical_name=s.logical_name,
+        display_name=s.display_name,
+        size=s.size,
+        audio_format=s.audio_format,
+        start_offset_ms=s.start_offset_ms,
+        created_at=s.created_at,
+    )
+
+
+@router.post("/versions/{version_id}/stems", response_model=StemOut, status_code=status.HTTP_201_CREATED)
+def upload_stem(
+    version_id: int,
+    logical_name: str = Form(...),
+    display_name: str = Form(""),
+    start_offset_ms: int = Form(0),
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Attach a stem (submix render) to a version, matched by logical name."""
+    if logical_name not in {"drums", "bass", "vocal", "synths", "other"}:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid logical_name")
+    v = _get_version(db, user, version_id)
+    filename = PurePosixPath((file.filename or "stem.wav").replace("\\", "/")).name
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ALLOWED_STEM_AUDIO:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Unsupported audio format '{ext}'. Allowed: {', '.join(sorted(ALLOWED_STEM_AUDIO))}",
+        )
+    try:
+        data = storage.put_upload_file(file, MAX_UPLOAD_SIZE)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, str(exc))
+    blob_sha = storage.put_blob(data)
+    stem = StemAsset(
+        version_id=v.id,
+        logical_name=logical_name,
+        display_name=display_name.strip() or logical_name,
+        blob_sha=blob_sha,
+        size=len(data),
+        audio_format=ext,
+        start_offset_ms=max(0, start_offset_ms),
+    )
+    db.add(stem)
+    db.flush()
+    ledger.append(
+        db,
+        "stem.uploaded",
+        session_id=v.session_id,
+        actor=user.username,
+        entity_type="stem",
+        entity_id=stem.id,
+        payload={"version": v.label, "logical_name": logical_name, "filename": filename},
+    )
+    db.commit()
+    return _stem_out(stem)
+
+
+@router.get("/versions/{version_id}/stems", response_model=list[StemOut])
+def list_stems(
+    version_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    v = _get_version(db, user, version_id)
+    stems = db.scalars(
+        select(StemAsset).where(StemAsset.version_id == v.id).order_by(StemAsset.logical_name)
+    ).all()
+    return [_stem_out(s) for s in stems]
+
+
+@router.get("/versions/{version_id}/stems/{stem_id}/audio")
+def stem_audio(
+    version_id: int,
+    stem_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    v = _get_version(db, user, version_id)
+    stem = db.get(StemAsset, stem_id)
+    if stem is None or stem.version_id != v.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Stem not found")
+    data = storage.read_blob(stem.blob_sha)
+    from fastapi.responses import Response
+
+    return Response(
+        content=data,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'inline; filename="{stem.display_name or stem.logical_name}"'},
     )

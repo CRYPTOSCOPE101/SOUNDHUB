@@ -288,6 +288,30 @@ class AudioAnalysisOut(BaseModel):
     analysed_at: datetime | None = None
 
 
+STEM_LOGICAL_NAMES = ["drums", "bass", "vocal", "synths", "other"]
+
+
+class StemCreate(BaseModel):
+    logical_name: str = Field(pattern=r"^(drums|bass|vocal|synths|other)$")
+    display_name: str = Field(default="", max_length=128)
+    start_offset_ms: int = Field(default=0, ge=0)
+
+
+class StemOut(BaseModel):
+    id: int
+    version_id: int
+    logical_name: str
+    display_name: str = ""
+    size: int = 0
+    audio_format: str = "wav"
+    start_offset_ms: int = 0
+    created_at: datetime
+
+
+class StemAudioUrlOut(BaseModel):
+    url: str = ""
+
+
 class ComparisonCreate(BaseModel):
     base_version_id: int
     compare_version_id: int
@@ -295,6 +319,7 @@ class ComparisonCreate(BaseModel):
     start_ms: int = Field(default=0, ge=0)
     end_ms: int | None = Field(default=None, ge=0)
     mode: str = Field(default="full_mix", pattern=r"^(full_mix|stem)$")
+    stem_logical_name: str | None = Field(default=None, pattern=r"^(drums|bass|vocal|synths|other)$")
     level_match: str = Field(default="short_term_lufs", pattern=r"^(none|integrated_lufs|short_term_lufs)$")
 
 
@@ -314,6 +339,7 @@ class ComparisonOut(BaseModel):
     level_match: str = "none"
     label: str = ""
     mode: str = "full_mix"
+    stem_logical_name: str | None = None
     created_at: datetime
 
 

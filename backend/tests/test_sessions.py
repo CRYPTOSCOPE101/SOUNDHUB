@@ -766,3 +766,136 @@ def test_comparison_requires_same_session_and_pending_analysis_fallback(client):
         headers=_auth(token),
     )
     assert r.status_code == 201
+
+
+def test_stem_upload_list_and_stem_comparison(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v1 = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    v2 = _upload(client, token, s["id"], make_wav(1.0), "v2")
+
+    # no stems yet
+    r = client.get(f"/api/versions/{v1['id']}/stems", headers=_auth(token))
+    assert r.status_code == 200
+    assert r.json() == []
+
+    # upload bass stem to both versions (different amplitudes → level mismatch)
+    def loud_stem(amp):
+        buf = io.BytesIO()
+        n = 8000
+        with wave.open(buf, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(8000)
+            w.writeframes(b"".join(struct.pack("<h", int(8000 * amp)) for _ in range(n)))
+        return buf.getvalue()
+
+    r = client.post(
+        f"/api/versions/{v1['id']}/stems",
+        headers=_auth(token),
+        data={"logical_name": "bass", "display_name": "Bass v1", "start_offset_ms": "0"},
+        files=[("file", ("NeonBass_final_03.wav", loud_stem(0.3), "audio/wav"))],
+    )
+    assert r.status_code == 201
+    r = client.post(
+        f"/api/versions/{v2['id']}/stems",
+        headers=_auth(token),
+        data={"logical_name": "bass", "display_name": "Bass v2", "start_offset_ms": "0"},
+        files=[("file", ("bass_v13.wav", loud_stem(0.7), "audio/wav"))],
+    )
+    assert r.status_code == 201
+
+    # matched by logical name, not filename
+    stems_v1 = client.get(f"/api/versions/{v1['id']}/stems", headers=_auth(token)).json()
+    assert stems_v1[0]["logical_name"] == "bass"
+    assert stems_v1[0]["display_name"] == "Bass v1"
+
+    # stem comparison: gains from the stem, not the full mix
+    r = client.post(
+        "/api/comparisons",
+        json={
+            "base_version_id": v1["id"],
+            "compare_version_id": v2["id"],
+            "mode": "stem",
+            "stem_logical_name": "bass",
+            "start_ms": 0,
+            "end_ms": 800,
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 201
+    comp = r.json()
+    assert comp["mode"] == "stem"
+    assert comp["stem_logical_name"] == "bass"
+    assert comp["level_match"] == "short_term_lufs"
+    assert comp["compare_gain_db"] < 0  # v2 bass louder → attenuated
+
+    # ledger records mode + logical_name
+    r = client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token))
+    ev = [e for e in r.json()["events"] if e["event"] == "comparison.created"][-1]
+    assert ev["payload"]["mode"] == "stem"
+    assert ev["payload"]["stem"] == "bass"
+
+    # stem audio endpoint serves the blob inline
+    r = client.get(f"/api/versions/{v1['id']}/stems/{stems_v1[0]['id']}/audio", headers=_auth(token))
+    assert r.status_code == 200
+    assert r.content[:4] == b"RIFF"
+
+
+def test_stem_missing_in_one_version_returns_clear_error(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v1 = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    v2 = _upload(client, token, s["id"], make_wav(1.0), "v2")
+    # bass only in v2
+    client.post(
+        f"/api/versions/{v2['id']}/stems",
+        headers=_auth(token),
+        data={"logical_name": "bass", "start_offset_ms": "0"},
+        files=[("file", ("bass.wav", make_wav(1.0), "audio/wav"))],
+    )
+    r = client.post(
+        "/api/comparisons",
+        json={
+            "base_version_id": v1["id"],
+            "compare_version_id": v2["id"],
+            "mode": "stem",
+            "stem_logical_name": "bass",
+            "start_ms": 0,
+            "end_ms": 800,
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+    assert "unavailable in v1" in r.json()["detail"]
+
+    # stem mode without stem_logical_name → 400
+    r = client.post(
+        "/api/comparisons",
+        json={
+            "base_version_id": v1["id"],
+            "compare_version_id": v2["id"],
+            "mode": "stem",
+            "start_ms": 0,
+            "end_ms": 800,
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+
+    # stems from different sessions are never comparable (version guard)
+    other = _create_session(client, token)
+    v3 = _upload(client, token, other["id"], make_wav(1.0), "other")
+    r = client.post(
+        "/api/comparisons",
+        json={
+            "base_version_id": v1["id"],
+            "compare_version_id": v3["id"],
+            "mode": "stem",
+            "stem_logical_name": "bass",
+            "start_ms": 0,
+            "end_ms": 800,
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 400

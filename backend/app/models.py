@@ -176,6 +176,9 @@ class ReviewVersion(Base):
         cascade="all, delete-orphan",
         foreign_keys="ReviewComment.version_id",
     )
+    stems: Mapped[list["StemAsset"]] = relationship(
+        back_populates="version", cascade="all, delete-orphan"
+    )
 
 
 class ReviewComment(Base):
@@ -263,6 +266,30 @@ class ShareAccessEvent(Base):
     session: Mapped["ReviewSession"] = relationship(back_populates="access_events")
 
 
+class StemAsset(Base):
+    """One stem within a version: a submix render (drums / bass / vocal / synths…).
+
+    Stems are matched between versions by `logical_name`, never by filename, so
+    `NeonBass_final_03.wav` and `Bass_v13.wav` both compare as `bass`. The blob
+    is content-addressed (same immutable storage as versions), so a locked
+    release package can never be silently altered by a stem replacement.
+    """
+
+    __tablename__ = "stem_assets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"), index=True)
+    logical_name: Mapped[str] = mapped_column(String(32))  # drums | bass | vocal | synths | other
+    display_name: Mapped[str] = mapped_column(String(128))
+    blob_sha: Mapped[str] = mapped_column(String(64), index=True)
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    audio_format: Mapped[str] = mapped_column(String(16), default="wav")
+    start_offset_ms: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    version: Mapped["ReviewVersion"] = relationship(back_populates="stems")
+
+
 class AudioAnalysis(Base):
     """Loudness analysis for one audio version (computed after upload).
 
@@ -307,6 +334,7 @@ class VersionComparison(Base):
     level_match: Mapped[str] = mapped_column(String(32), default="none")  # none | integrated_lufs | short_term_lufs
     short_term_lufs: Mapped[dict] = mapped_column(JSON, default=dict)
     mode: Mapped[str] = mapped_column(String(32), default="full_mix")
+    stem_logical_name: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     session: Mapped["ReviewSession"] = relationship()
