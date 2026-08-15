@@ -1671,7 +1671,7 @@ def test_release_templates_and_preflight(client):
     assert "preflight" in r.json()["detail"].lower()
     r = client.post(
         f"/api/release-packages/{pkg['id']}/lock",
-        json={"approval_scope": "master", "force": True},
+        json={"approval_scope": "master", "force": True, "force_reason": "label wants stems later; shipping master now"},
         headers=_auth(token),
     )
     assert r.status_code == 200
@@ -1762,7 +1762,7 @@ def test_archive_handoff_and_retention(client):
     )
     locked = client.post(
         f"/api/release-packages/{pkg['id']}/lock",
-        json={"approval_scope": "master", "force": True},
+        json={"approval_scope": "master", "force": True, "force_reason": "label wants stems later; shipping master now"},
         headers=_auth(token),
     ).json()
 
@@ -1785,3 +1785,295 @@ def test_archive_handoff_and_retention(client):
     assert body["share_token"] == s["share_token"]
     assert body["archive_status"] == "archived"
     assert body["template"] == "archive_handoff"
+
+
+def test_forced_lock_requires_reason_and_records_evidence(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    pkg = client.post(
+        "/api/release-packages",
+        json={"session_id": s["id"], "approved_version_id": v["id"], "template": "label_sync"},
+        headers=_auth(token),
+    ).json()
+    client.post(
+        f"/api/release-packages/{pkg['id']}/deliverables/from-version",
+        json={"type": "master", "from_version_id": v["id"]},
+        headers=_auth(token),
+    )
+
+    # force without a reason → rejected
+    r = client.post(
+        f"/api/release-packages/{pkg['id']}/lock",
+        json={"approval_scope": "master", "force": True},
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+    assert "reason" in r.json()["detail"].lower()
+
+    # force with a reason → locked, evidence stored
+    r = client.post(
+        f"/api/release-packages/{pkg['id']}/lock",
+        json={"approval_scope": "master", "force": True, "force_reason": "label moved the deadline; stems ship next week"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    pkg = r.json()
+    assert pkg["force_locked_reason"].startswith("label moved")
+    assert pkg["force_locked_by"] == "producer"
+
+    # manifest carries qc_status, unresolved warnings and the confirm-er
+    m = client.get(f"/api/release-packages/{pkg['id']}/manifest", headers=_auth(token)).json()
+    assert m["manifest_json"]["qc_status"] == "forced"
+    assert "confirmed_by" in m["manifest_json"]
+    assert isinstance(m["manifest_json"]["unresolved_warnings"], list)
+
+    # ledger has a dedicated lock_forced event
+    events = {e["event"] for e in client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token)).json()["events"]}
+    assert "package.lock_forced" in events
+    ev = [e for e in client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token)).json()["events"] if e["event"] == "package.lock_forced"][0]
+    assert "label moved" in ev["payload"]["reason"]
+    assert ev["payload"]["confirmed_by"] == "producer"
+
+
+def test_change_order_quote_expiry_and_frozen_acceptance(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    share = s["share_token"]
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"revision_fee_cents": 4500},
+        headers=_auth(token),
+    )
+    co = client.post(
+        f"/api/sessions/public/{share}/change-orders",
+        json={"reason": "mix_revision", "description": "rebalance"},
+        params={"actor": "client@x.com"},
+    ).json()
+
+    # quote → version 1 + 7-day expiry window
+    r = client.patch(
+        f"/api/sessions/{s['id']}/change-orders/{co['id']}",
+        json={"decision": "paid_round"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    co = r.json()
+    assert co["quote_version"] == 1
+    assert co["quote_expires_at"]
+    assert co["price_cents"] == 4500
+
+    # re-quote while pending → version 2 (never silently edits the old quote)
+    r = client.patch(
+        f"/api/sessions/{s['id']}/change-orders/{co['id']}",
+        json={"decision": "new_mastering_pass", "price_cents": 9999},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    co = r.json()
+    assert co["quote_version"] == 2
+    assert co["price_cents"] == 9999
+    events = {e["event"] for e in client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token)).json()["events"]}
+    assert "change_order.requoted" in events
+
+    # accept → quote frozen: PATCH is rejected afterwards
+    r = client.post(
+        f"/api/sessions/public/{share}/change-orders/{co['id']}/accept",
+        params={"actor": "client@x.com"},
+    )
+    assert r.status_code == 200
+    r = client.patch(
+        f"/api/sessions/{s['id']}/change-orders/{co['id']}",
+        json={"decision": "courtesy"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+    assert "final" in r.json()["detail"].lower()
+
+    # expired quote: force the expiry into the past, then accept → 400 + expired
+    s2 = _create_session(client, token)
+    v2 = _upload(client, token, s2["id"], make_wav(1.0), "v1")
+    client.post(
+        f"/api/sessions/{s2['id']}/versions/{v2['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    co2 = client.post(
+        f"/api/sessions/public/{s2['share_token']}/change-orders",
+        json={"reason": "format_change", "description": "mp3s please"},
+        params={"actor": "client@x.com"},
+    ).json()
+    client.patch(
+        f"/api/sessions/{s2['id']}/change-orders/{co2['id']}",
+        json={"decision": "paid_round", "price_cents": 2500},
+        headers=_auth(token),
+    )
+    from datetime import datetime, timedelta, timezone
+
+    from app.database import SessionLocal
+    from app.models import ChangeOrder
+
+    with SessionLocal() as db:
+        row = db.get(ChangeOrder, co2["id"])
+        row.quote_expires_at = datetime.now(timezone.utc) - timedelta(days=1)
+        db.commit()
+    r = client.post(
+        f"/api/sessions/public/{s2['share_token']}/change-orders/{co2['id']}/accept",
+        params={"actor": "client@x.com"},
+    )
+    assert r.status_code == 400
+    assert "expired" in r.json()["detail"].lower()
+    # the order is now marked expired and the engineer can re-quote it
+    r = client.patch(
+        f"/api/sessions/{s2['id']}/change-orders/{co2['id']}",
+        json={"decision": "paid_round", "price_cents": 2000},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "quoted"
+    assert r.json()["quote_version"] == 2
+
+
+def test_voice_notes_owner_and_guest(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    share = s["share_token"]
+
+    # guest voice note via the share link (multipart, no account)
+    r = client.post(
+        f"/api/sessions/public/{share}/versions/{v['id']}/comments/voice",
+        data={"time_s": "0.5", "body": "bass is muddy here", "author_name": "Aisha (A&R)", "voice_duration_s": "3.2"},
+        files=[("voice", ("note.webm", b"\x1aE\xdf\xa3webm-demo-bytes", "audio/webm"))],
+    )
+    assert r.status_code == 201
+    c = r.json()
+    assert c["voice_format"] == "webm"
+    assert c["voice_duration_s"] == pytest.approx(3.2)
+    assert c["body"] == "bass is muddy here"
+    assert c["transcript"] == ""
+
+    # the voice audio is streamable by the owner and by guests
+    r = client.get(f"/api/sessions/{s['id']}/versions/{v['id']}/comments/{c['id']}/voice", headers=_auth(token))
+    assert r.status_code == 200
+    assert r.content == b"\x1aE\xdf\xa3webm-demo-bytes"
+    r = client.get(f"/api/sessions/public/{share}/versions/{v['id']}/comments/{c['id']}/voice")
+    assert r.status_code == 200
+
+    # owner voice note too
+    r = client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/comments/voice",
+        headers=_auth(token),
+        data={"time_s": "0.9", "body": "on it", "voice_duration_s": "1.1"},
+        files=[("voice", ("me.ogg", b"OggS-demo", "audio/ogg"))],
+    )
+    assert r.status_code == 201
+    assert r.json()["voice_format"] == "ogg"
+
+    # ledger flags voice notes
+    events = client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token)).json()["events"]
+    voice_ev = [e for e in events if e["event"] == "feedback.draft_created" and e["payload"].get("voice")]
+    assert len(voice_ev) == 2
+
+    # closed rounds reject voice notes like text notes
+    client.post(f"/api/sessions/{s['id']}/submit-feedback", json={"note": "round 1"}, headers=_auth(token))
+    r = client.post(
+        f"/api/sessions/public/{share}/versions/{v['id']}/comments/voice",
+        data={"time_s": "0.1", "body": "", "author_name": "late"},
+        files=[("voice", ("n.webm", b"x", "audio/webm"))],
+    )
+    assert r.status_code == 403
+
+
+def test_archive_last_verified_opened(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    pkg = client.post(
+        "/api/release-packages",
+        json={"session_id": s["id"], "approved_version_id": v["id"], "template": "archive_handoff"},
+        headers=_auth(token),
+    ).json()
+    r = client.patch(
+        f"/api/release-packages/{pkg['id']}/handoff",
+        json={
+            "plugin_manifest": "Ableton 12.1 · Serum 1.36 (missing: Ozone 11 → stock EQ)",
+            "session_manifest": {"sample_rate": 48000, "tempo": 128},
+            "last_verified_opened_at": "2026-08-01T10:00:00Z",
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    assert r.json()["last_verified_opened_at"].startswith("2026-08-01")
+
+    client.post(
+        f"/api/release-packages/{pkg['id']}/deliverables/from-version",
+        json={"type": "master", "from_version_id": v["id"]},
+        headers=_auth(token),
+    )
+    locked = client.post(
+        f"/api/release-packages/{pkg['id']}/lock",
+        json={"approval_scope": "master", "force": True, "force_reason": "testing archive handoff"},
+        headers=_auth(token),
+    ).json()
+    body = client.get(f"/api/release-packages/public/{locked['delivery_token']}").json()
+    assert body["last_verified_opened_at"].startswith("2026-08-01")
+
+
+def test_public_version_compare_guest(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    quiet = make_wav(1.0)
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(8000)
+        w.writeframes(b"".join(struct.pack("<h", int(8000 * 0.9)) for _ in range(8000)))
+    loud = buf.getvalue()
+    v1 = _upload(client, token, s["id"], quiet, "v1 quiet")
+    v2 = _upload(client, token, s["id"], loud, "v2 louder")
+    share = s["share_token"]
+
+    # guest compares two versions at the same level (louder one attenuated)
+    r = client.post(
+        f"/api/sessions/public/{share}/compare",
+        json={"base_version_id": v1["id"], "compare_version_id": v2["id"], "start_ms": 0, "end_ms": 800},
+    )
+    assert r.status_code == 201
+    comp = r.json()
+    assert comp["level_match"] == "short_term_lufs"
+    assert comp["compare_gain_db"] < 0
+    assert comp["base_label"] == "v1"
+
+    # versions from another session are invisible to the guest
+    other = _create_session(client, token)
+    vo = _upload(client, token, other["id"], quiet, "v1")
+    r = client.post(
+        f"/api/sessions/public/{share}/compare",
+        json={"base_version_id": v1["id"], "compare_version_id": vo["id"], "start_ms": 0},
+    )
+    assert r.status_code == 404
+
+    # stems are engineer-only on the public link
+    r = client.post(
+        f"/api/sessions/public/{share}/compare",
+        json={"base_version_id": v1["id"], "compare_version_id": v2["id"], "start_ms": 0, "mode": "stem", "stem_logical_name": "bass"},
+    )
+    assert r.status_code == 400

@@ -93,9 +93,21 @@ def _migrate() -> None:
                 ("status", "VARCHAR(32) DEFAULT 'open'"),
                 ("fixed_in", "INTEGER"),
                 ("verified_at", "DATETIME"),
+                ("voice_blob_sha", "VARCHAR(64)"),
+                ("voice_format", "VARCHAR(16) DEFAULT ''"),
+                ("voice_duration_s", "FLOAT DEFAULT 0"),
+                ("transcript", "TEXT DEFAULT ''"),
             ):
                 if col not in cm_cols:
                     conn.execute(text(f"ALTER TABLE review_comments ADD COLUMN {col} {ddl}"))
+        if inspector.has_table("change_orders"):
+            co_cols = {c["name"] for c in inspector.get_columns("change_orders")}
+            for col, ddl in (
+                ("quote_expires_at", "DATETIME"),
+                ("quote_version", "INTEGER DEFAULT 0"),
+            ):
+                if col not in co_cols:
+                    conn.execute(text(f"ALTER TABLE change_orders ADD COLUMN {col} {ddl}"))
         if inspector.has_table("version_comparisons"):
             cmp_cols = {c["name"] for c in inspector.get_columns("version_comparisons")}
             if "stem_logical_name" not in cmp_cols:
@@ -114,6 +126,9 @@ def _migrate() -> None:
                 ("consolidate_audio", "BOOLEAN DEFAULT 0"),
                 ("archive_expires_at", "DATETIME"),
                 ("archive_status", "VARCHAR(32) DEFAULT 'available_now'"),
+                ("last_verified_opened_at", "DATETIME"),
+                ("force_locked_reason", "TEXT DEFAULT ''"),
+                ("force_locked_by", "VARCHAR(128) DEFAULT ''"),
             ):
                 if col not in pkg_cols:
                     conn.execute(text(f"ALTER TABLE release_packages ADD COLUMN {col} {ddl}"))

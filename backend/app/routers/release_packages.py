@@ -181,6 +181,9 @@ def _package_out(db: Session, p: ReleasePackage) -> ReleasePackageOut:
         consolidate_audio=p.consolidate_audio or False,
         archive_expires_at=p.archive_expires_at,
         archive_status=p.archive_status or "available_now",
+        last_verified_opened_at=p.last_verified_opened_at,
+        force_locked_reason=p.force_locked_reason or "",
+        force_locked_by=p.force_locked_by or "",
         deliverables=[_deliverable_out(d) for d in delivs],
         events=[
             {"event": e.event, "actor": e.actor, "detail": e.detail, "created_at": e.created_at.isoformat()}
@@ -461,11 +464,17 @@ def lock_package(
             status.HTTP_400_BAD_REQUEST,
             "Preflight found blocking issues — fix them, or lock anyway with force",
         )
+    if payload.force and not payload.force_reason.strip():
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Provide a reason (force_reason) for the forced lock — it is recorded in the manifest and the ledger",
+        )
     delivs = db.scalars(
         select(Deliverable).where(Deliverable.package_id == package.id)
     ).all()
     if not delivs:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Add at least one deliverable before locking")
+    warnings = [c.detail for c in preflight.checks if c.status == "warn"]
     manifest = {
         "package": package.name,
         "approved_version": package.approved_version.label,
@@ -473,6 +482,10 @@ def lock_package(
         "locked_by": user.username,
         "locked_at": utcnow().isoformat(),
         "note": payload.note.strip(),
+        "qc_status": "forced" if payload.force else "passed",
+        "unresolved_warnings": warnings,
+        "confirmed_by": user.username,
+        "force_reason": payload.force_reason.strip() if payload.force else "",
         "files": [
             {
                 "type": d.type,
@@ -492,6 +505,9 @@ def lock_package(
     package.manifest_hash = manifest_hash
     package.locked_by = user.username
     package.delivery_token = secrets.token_urlsafe(16)
+    if payload.force:
+        package.force_locked_reason = payload.force_reason.strip()
+        package.force_locked_by = user.username
     _event(db, package, "package.locked", user.username, f"SHA-256 {manifest_hash[:12]}…")
     ledger.append(
         db,
@@ -501,8 +517,29 @@ def lock_package(
         actor=user.username,
         entity_type="package",
         entity_id=package.id,
-        payload={"approved_version": package.approved_version.label, "manifest_sha256": manifest_hash, "approval_scope": payload.approval_scope},
+        payload={
+            "approved_version": package.approved_version.label,
+            "manifest_sha256": manifest_hash,
+            "approval_scope": payload.approval_scope,
+            "qc_status": "forced" if payload.force else "passed",
+        },
     )
+    if payload.force:
+        ledger.append(
+            db,
+            "package.lock_forced",
+            session_id=package.session_id,
+            package_id=package.id,
+            actor=user.username,
+            entity_type="package",
+            entity_id=package.id,
+            payload={
+                "package": package.name,
+                "reason": payload.force_reason.strip()[:300],
+                "warnings": warnings[:10],
+                "confirmed_by": user.username,
+            },
+        )
     db.commit()
     return _package_out(db, package)
 
@@ -542,6 +579,8 @@ def update_handoff(
         package.consolidate_audio = payload.consolidate_audio
     if payload.archive_expires_at is not None:
         package.archive_expires_at = payload.archive_expires_at
+    if payload.last_verified_opened_at is not None:
+        package.last_verified_opened_at = payload.last_verified_opened_at
     _event(db, package, "package.handoff_updated", user.username, "session/plugin manifest")
     ledger.append(
         db,
@@ -616,6 +655,10 @@ def get_manifest(
         "approved_version": package.approved_version.label,
         "locked_by": package.locked_by,
         "locked_at": package.immutable_at.isoformat() if package.immutable_at else "",
+        "qc_status": "forced" if package.force_locked_by else "passed",
+        "unresolved_warnings": [],
+        "confirmed_by": package.force_locked_by or package.locked_by,
+        "force_reason": package.force_locked_reason or "",
         "files": [
             {"type": d.type, "filename": d.filename, "sha256": d.sha256, "size": d.size}
             for d in delivs
@@ -736,6 +779,7 @@ def public_delivery_page(
         template=package.template or "custom",
         archive_status=package.archive_status or "available_now",
         archive_expires_at=package.archive_expires_at,
+        last_verified_opened_at=package.last_verified_opened_at,
         retention_until=package.session.retention_until,
         share_token=package.session.share_token,
         deliverables=[_deliverable_out(d) for d in delivs],

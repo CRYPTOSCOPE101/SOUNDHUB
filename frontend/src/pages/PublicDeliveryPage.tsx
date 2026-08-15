@@ -218,6 +218,22 @@ export default function PublicDeliveryPage() {
           This package is immutable: each file is pinned to the approved version by its SHA-256 checksum.{" "}
           {page.approved_filename} cannot be silently swapped.
         </p>
+
+        {(page.template === "archive_handoff" || page.template === "stem_handoff" || page.last_verified_opened_at) && (
+          <div className="public-delivery-archive">
+            <strong>🗄 Archive & session files</strong>
+            <p>
+              Session files are archived <em>as delivered</em>; exact playback may require the original DAW, plugins,
+              licenses, and operating environment. We never promise full session restoration without an agreed
+              retention policy.
+            </p>
+            <ul className="public-details-list">
+              {page.last_verified_opened_at && <li>Last verified opened: {new Date(page.last_verified_opened_at).toLocaleDateString()}</li>}
+              {page.retention_until && <li>Archive retained until {new Date(page.retention_until).toLocaleDateString()}</li>}
+              {page.archive_expires_at && <li>Archive expires {new Date(page.archive_expires_at).toLocaleDateString()}</li>}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

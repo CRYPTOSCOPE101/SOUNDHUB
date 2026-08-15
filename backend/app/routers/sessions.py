@@ -95,6 +95,9 @@ def _comment_out(c: ReviewComment) -> ReviewCommentOut:
         status=c.status,
         fixed_in=c.fixed_in,
         verified_at=c.verified_at,
+        voice_format=c.voice_format or "",
+        voice_duration_s=c.voice_duration_s or 0.0,
+        transcript=c.transcript or "",
     )
 
 
@@ -385,6 +388,59 @@ def public_download_audio(
     )
 
 
+def _create_comment(
+    db: Session,
+    version: ReviewVersion,
+    body: str,
+    author_name: str,
+    time_s: float,
+    parent_id: int | None,
+    actor: str,
+    voice: UploadFile | None = None,
+    voice_duration_s: float = 0.0,
+) -> ReviewComment:
+    """Shared comment creation for text + voice notes (owner and guest paths)."""
+    comment = ReviewComment(
+        version_id=version.id,
+        author_name=author_name.strip()[:128] or "Reviewer",
+        time_s=time_s,
+        body=body.strip(),
+        parent_id=parent_id,
+        status="draft",  # reviewers leave private draft notes; the feedback owner consolidates
+    )
+    if voice is not None and (voice.filename or "").strip():
+        try:
+            vdata = storage.put_upload_file(voice, MAX_UPLOAD_SIZE)
+        except ValueError as exc:
+            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, str(exc))
+        vname = (voice.filename or "voice.webm").rsplit(".", 1)
+        vfmt = vname[-1].lower() if len(vname) == 2 else "webm"
+        if vfmt not in ("webm", "ogg", "oga", "mp3", "wav", "m4a", "mp4"):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unsupported voice format '{vfmt}'")
+        comment.voice_blob_sha = storage.put_blob(vdata)
+        comment.voice_format = "ogg" if vfmt == "oga" else vfmt
+        comment.voice_duration_s = voice_duration_s
+        comment.body = body.strip() or "🎙 Voice note"
+    db.add(comment)
+    db.flush()
+    _log_access(db, version.session, actor or author_name.strip()[:128] or "Reviewer", "commented", f"{version.label} @ {time_s:.1f}s")
+    ledger.append(
+        db,
+        "feedback.draft_created",
+        session_id=version.session_id,
+        actor=actor or author_name.strip()[:128] or "Reviewer",
+        entity_type="request",
+        entity_id=comment.id,
+        payload={
+            "version": version.label,
+            "time_s": time_s,
+            "body": comment.body[:200],
+            "voice": bool(comment.voice_blob_sha),
+        },
+    )
+    return comment
+
+
 @router.post("/public/{share_token}/versions/{version_id}/comments", response_model=ReviewCommentOut, status_code=status.HTTP_201_CREATED)
 def guest_comment(
     share_token: str,
@@ -405,30 +461,70 @@ def guest_comment(
         parent = db.get(ReviewComment, payload.parent_id)
         if parent is None or parent.version_id != version.id:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Parent comment not found in this version")
-    comment = ReviewComment(
-        version_id=version.id,
-        author_name=payload.author_name.strip()[:128] or "Reviewer",
-        time_s=payload.time_s,
-        body=payload.body.strip(),
-        parent_id=payload.parent_id,
-        # reviewers leave private draft notes; the feedback owner consolidates them
-        status=payload.status if payload.status == "draft" else "draft",
-    )
-    db.add(comment)
-    _log_access(db, session, payload.author_name, "commented", f"{version.label} @ {payload.time_s:.1f}s")
-    ledger.append(
-        db,
-        "feedback.draft_created",
-        session_id=session.id,
-        actor=payload.author_name.strip()[:128] or "Reviewer",
-        entity_type="request",
-        entity_id=comment.id,
-        payload={"version": version.label, "time_s": payload.time_s, "body": payload.body.strip()[:200]},
+    comment = _create_comment(
+        db, version, payload.body, payload.author_name, payload.time_s, payload.parent_id, payload.author_name
     )
     session.updated_at = utcnow()
     db.commit()
     db.refresh(comment)
     return _comment_out(comment)
+
+
+@router.post(
+    "/public/{share_token}/versions/{version_id}/comments/voice",
+    response_model=ReviewCommentOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def guest_voice_comment(
+    share_token: str,
+    version_id: int,
+    time_s: float = Form(0),
+    body: str = Form(""),
+    author_name: str = Form(""),
+    voice_duration_s: float = Form(0),
+    voice: UploadFile = File(...),
+    password: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Guest voice note at a timestamp — no account needed."""
+    session = get_public_session(db, share_token)
+    _require_share_permission(session, "comment", author_name, password)
+    if not session.rounds_open:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "This revision round is closed — new notes go into the next round once feedback is submitted",
+        )
+    version = get_version_or_404(db, session.id, version_id)
+    comment = _create_comment(db, version, body, author_name, time_s, None, author_name, voice=voice, voice_duration_s=voice_duration_s)
+    session.updated_at = utcnow()
+    db.commit()
+    db.refresh(comment)
+    return _comment_out(comment)
+
+
+@router.get("/public/{share_token}/versions/{version_id}/comments/{comment_id}/voice")
+def public_voice_audio(
+    share_token: str,
+    version_id: int,
+    comment_id: int,
+    password: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Stream a guest voice note (comment permission required)."""
+    session = get_public_session(db, share_token)
+    _require_share_permission(session, "comment", "", password)
+    version = get_version_or_404(db, session.id, version_id)
+    comment = db.get(ReviewComment, comment_id)
+    if comment is None or comment.version_id != version.id or not comment.voice_blob_sha:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Voice note not found")
+    data = storage.read_blob(comment.voice_blob_sha)
+    from fastapi.responses import Response
+
+    return Response(
+        content=data,
+        media_type=f"audio/{comment.voice_format or 'webm'}",
+        headers={"Content-Disposition": f'inline; filename="voice.{comment.voice_format or "webm"}"'},
+    )
 
 
 @router.post(
@@ -876,6 +972,53 @@ def add_comment(
     db.commit()
     db.refresh(comment)
     return _comment_out(comment)
+
+
+@router.post(
+    "/{session_id}/versions/{version_id}/comments/voice",
+    response_model=ReviewCommentOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def owner_voice_comment(
+    session_id: int,
+    version_id: int,
+    time_s: float = Form(0),
+    body: str = Form(""),
+    voice_duration_s: float = Form(0),
+    voice: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Engineer-side voice note at a timestamp."""
+    get_session_or_404(db, user, session_id)
+    version = get_version_or_404(db, session_id, version_id)
+    comment = _create_comment(db, version, body, user.username, time_s, None, user.username, voice=voice, voice_duration_s=voice_duration_s)
+    db.commit()
+    db.refresh(comment)
+    return _comment_out(comment)
+
+
+@router.get("/{session_id}/versions/{version_id}/comments/{comment_id}/voice")
+def owner_voice_audio(
+    session_id: int,
+    version_id: int,
+    comment_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    get_session_or_404(db, user, session_id)
+    version = get_version_or_404(db, session_id, version_id)
+    comment = db.get(ReviewComment, comment_id)
+    if comment is None or comment.version_id != version.id or not comment.voice_blob_sha:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Voice note not found")
+    data = storage.read_blob(comment.voice_blob_sha)
+    from fastapi.responses import Response
+
+    return Response(
+        content=data,
+        media_type=f"audio/{comment.voice_format or 'webm'}",
+        headers={"Content-Disposition": f'inline; filename="voice.{comment.voice_format or "webm"}"'},
+    )
 
 
 @router.patch("/{session_id}/versions/{version_id}/comments/{comment_id}", response_model=ReviewCommentOut)

@@ -147,6 +147,10 @@ class ReviewCommentOut(BaseModel):
     status: str = "open"
     fixed_in: int | None = None
     verified_at: datetime | None = None
+    # voice notes
+    voice_format: str = ""
+    voice_duration_s: float = 0.0
+    transcript: str = ""
 
 
 class ReviewCommentCreate(BaseModel):
@@ -468,13 +472,15 @@ class ChangeOrderOut(BaseModel):
     created_by: str = ""
     reason: str
     description: str = ""
-    status: str = "requested"
+    status: str = "requested"  # requested | quoted | accepted | declined | paid | expired
     decision: str | None = None
     price_cents: int | None = None
     currency: str = "usd"
     deadline_at: datetime | None = None
     target_round: int = 1
     round_granted: bool = False
+    quote_version: int = 0
+    quote_expires_at: datetime | None = None
     quoted_at: datetime | None = None
     accepted_at: datetime | None = None
     paid_at: datetime | None = None
@@ -560,6 +566,9 @@ class ReleasePackageOut(BaseModel):
     consolidate_audio: bool = False
     archive_expires_at: datetime | None = None
     archive_status: str = "available_now"
+    last_verified_opened_at: datetime | None = None
+    force_locked_reason: str = ""
+    force_locked_by: str = ""
     deliverables: list[DeliverableOut] = []
     events: list[dict] = []
 
@@ -576,6 +585,7 @@ class ReleaseLockIn(BaseModel):
     approval_scope: str = Field(default="master", pattern=r"^(arrangement|mix|master|release)$")
     note: str = Field(default="", max_length=1000)
     force: bool = False  # skip blocking preflight issues ("lock anyway")
+    force_reason: str = Field(default="", max_length=1000)  # required when force=True
 
 
 class PreflightCheckOut(BaseModel):
@@ -595,6 +605,7 @@ class HandoffUpdate(BaseModel):
     session_manifest: dict | None = None
     consolidate_audio: bool | None = None
     archive_expires_at: datetime | None = None
+    last_verified_opened_at: datetime | None = None
 
 
 class ArchiveUpdate(BaseModel):
@@ -628,6 +639,7 @@ class DeliveryPageOut(BaseModel):
     template: str = "custom"
     archive_status: str = "available_now"
     archive_expires_at: datetime | None = None
+    last_verified_opened_at: datetime | None = None
     retention_until: datetime | None = None
     share_token: str = ""
     deliverables: list[DeliverableOut] = []

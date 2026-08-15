@@ -230,6 +230,11 @@ class ReviewComment(Base):
     resolved: Mapped[bool] = mapped_column(default=False)
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("review_comments.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # voice notes — original audio stays available; transcription is best-effort
+    voice_blob_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    voice_format: Mapped[str] = mapped_column(String(16), default="")  # webm | ogg | mp3 | wav…
+    voice_duration_s: Mapped[float] = mapped_column(default=0.0)
+    transcript: Mapped[str] = mapped_column(Text, default="")  # "" = transcription pending/unavailable
 
     version: Mapped["ReviewVersion"] = relationship(
         back_populates="comments", foreign_keys=[version_id]
@@ -296,6 +301,8 @@ class ChangeOrder(Base):
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     declined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    quote_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    quote_version: Mapped[int] = mapped_column(Integer, default=0)  # re-quotes bump this; accepted quotes are frozen
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     session: Mapped["ReviewSession"] = relationship(back_populates="change_orders")
@@ -538,6 +545,12 @@ class ReleasePackage(Base):
     consolidate_audio: Mapped[bool] = mapped_column(default=False)  # all audio aligned to one start point
     archive_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     archive_status: Mapped[str] = mapped_column(String(32), default="available_now")  # available_now | needs_preparation | archived | permanently_deleted
+    last_verified_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Forced-lock evidence: a lock that skips blocking preflight checks keeps
+    # its reason + confirm-er in the manifest and ledger ("immutable proof"
+    # stays trustworthy even when the engineer overrides QC).
+    force_locked_reason: Mapped[str] = mapped_column(Text, default="")
+    force_locked_by: Mapped[str] = mapped_column(String(128), default="")
 
     session: Mapped["ReviewSession"] = relationship()
     approved_version: Mapped["ReviewVersion"] = relationship()

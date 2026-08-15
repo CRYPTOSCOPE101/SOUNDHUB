@@ -21,10 +21,13 @@ export default function ABCompare({
   sessionId,
   comparison,
   onClose,
+  audioUrls,
 }: {
   sessionId: number;
   comparison: VersionComparison;
   onClose: () => void;
+  /** Pre-resolved public URLs (guest share link) — skips the owner fetch. */
+  audioUrls?: { base: string; compare: string };
 }) {
   const [comp, setComp] = useState<VersionComparison>(comparison);
   const [buffers, setBuffers] = useState<{ base: AudioBuffer | null; compare: AudioBuffer | null }>({
@@ -96,6 +99,9 @@ export default function ABCompare({
           if (!bStem || !cStem) throw new Error(`Stem “${comp.stem_logical_name}” is unavailable in one of the versions`);
           baseUrl = await fetchAudioBlob(api.stemAudioUrl(comp.base_version_id, bStem.id));
           compareUrl = await fetchAudioBlob(api.stemAudioUrl(comp.compare_version_id, cStem.id));
+        } else if (audioUrls) {
+          baseUrl = audioUrls.base;
+          compareUrl = audioUrls.compare;
         } else {
           baseUrl = await fetchAudioBlob(api.versionAudioUrl(sessionId, comp.base_version_id));
           compareUrl = await fetchAudioBlob(api.versionAudioUrl(sessionId, comp.compare_version_id));
