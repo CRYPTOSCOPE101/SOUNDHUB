@@ -198,6 +198,49 @@ class ReviewStatusUpdate(BaseModel):
     status: str = Field(pattern=r"^(in_review|needs_changes|approved)$")
 
 
+class ShareSettingsUpdate(BaseModel):
+    share_password: str | None = Field(default=None, max_length=128)
+    share_expires_at: datetime | None = None
+    share_permission: str = Field(default="comment", pattern=r"^(comment|view|download)$")
+    share_allowlist: str = Field(default="", max_length=2000)
+
+
+class ReviewApprovalCreate(BaseModel):
+    scope: str = Field(default="mix", pattern=r"^(mix|master|arrangement|release)$")
+    approved: bool = True
+    note: str = Field(default="", max_length=2000)
+    approver_name: str = Field(default="", max_length=128)
+
+
+class ReviewApprovalOut(BaseModel):
+    id: int
+    session_id: int
+    version_id: int
+    scope: str
+    approved: bool
+    note: str
+    approver_name: str
+    created_at: datetime
+
+
+class ShareAccessEventOut(BaseModel):
+    id: int
+    actor: str
+    action: str
+    detail: str
+    created_at: datetime
+
+
+class ReviewSessionDetailOut(ReviewSessionOut):
+    versions: list[ReviewVersionOut] = []
+    approvals: list[ReviewApprovalOut] = []
+    access_events: list[ShareAccessEventOut] = []
+    share_expires_at: datetime | None = None
+    share_permission: str = "comment"
+    share_has_password: bool = False
+    share_allowlist: str = ""
+
+
 # ---------- Diff ----------
 class DiffChange(BaseModel):
     kind: str  # "bpm" | "tempo" | "track_added" | "track_removed" | "device_added" | "device_removed" | "info"

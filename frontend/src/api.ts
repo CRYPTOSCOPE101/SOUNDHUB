@@ -6,6 +6,7 @@ import type {
   GhBranch,
   GhCommit,
   Project,
+  ReviewApproval,
   ReviewComment,
   ReviewSession,
   ReviewVersion,
@@ -14,6 +15,9 @@ import type {
 } from "./types";
 
 const TOKEN_KEY = "soundhub_token";
+
+// The backend runs separately from the vite dev server / static host.
+const API_ORIGIN = import.meta.env.VITE_API_URL ?? "";
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -174,14 +178,68 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ status }),
     }),
+  addApproval: (
+    id: number,
+    versionId: number,
+    scope: string,
+    approved: boolean,
+    note: string,
+    approverName: string
+  ) =>
+    request<ReviewApproval>(`/api/sessions/${id}/versions/${versionId}/approvals`, {
+      method: "POST",
+      body: JSON.stringify({
+        scope,
+        approved,
+        note,
+        approver_name: approverName,
+      }),
+    }),
+  updateShareSettings: (
+    id: number,
+    opts: {
+      share_password?: string | null;
+      share_expires_at?: string | null;
+      share_permission?: string;
+      share_allowlist?: string;
+    }
+  ) =>
+    request<ReviewSession>(`/api/sessions/${id}/share`, {
+      method: "PATCH",
+      body: JSON.stringify(opts),
+    }),
+  carryUnresolved: (id: number, versionId: number) =>
+    request<ReviewVersion>(`/api/sessions/${id}/versions/${versionId}/carry`, {
+      method: "POST",
+    }),
   // public share endpoints (no auth)
-  publicSession: (token: string) =>
-    request<ReviewSession>(`/api/sessions/public/${token}`),
+  publicSession: (token: string, opts: { actor?: string; password?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (opts.actor) q.set("actor", opts.actor);
+    if (opts.password) q.set("password", opts.password);
+    const qs = q.toString();
+    return request<ReviewSession>(`/api/sessions/public/${token}${qs ? `?${qs}` : ""}`);
+  },
   publicAddComment: (token: string, versionId: number, timeS: number, body: string, authorName: string) =>
     request<ReviewComment>(`/api/sessions/public/${token}/versions/${versionId}/comments`, {
       method: "POST",
       body: JSON.stringify({ time_s: timeS, body, author_name: authorName }),
     }),
+  publicAddApproval: (
+    token: string,
+    versionId: number,
+    scope: string,
+    approved: boolean,
+    note: string,
+    approverName: string
+  ) =>
+    request<ReviewApproval>(`/api/sessions/public/${token}/versions/${versionId}/approvals`, {
+      method: "POST",
+      body: JSON.stringify({ scope, approved, note, approver_name: approverName }),
+    }),
+  publicAudioUrl: (token: string, versionId: number) =>
+    `/api/sessions/public/${token}/versions/${versionId}/audio`,
+  audioUrl: (path: string) => `${API_ORIGIN}${path}`,
   // GitHub API (public, unauthenticated) — the SoundHub code repo itself
   ghBranches: () =>
     fetch("https://api.github.com/repos/CRYPTOSCOPE101/SOUNDHUB/branches").then((r) =>
