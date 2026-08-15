@@ -230,3 +230,139 @@ def test_reject_non_audio_upload(client):
         files=[("file", ("evil.exe", b"MZ...", "application/octet-stream"))],
     )
     assert r.status_code == 400
+
+
+def test_approval_artifact(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0))
+
+    # needs changes requires a note
+    r = client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/approvals",
+        json={"scope": "mix", "approved": False, "note": "", "approver_name": "Aisha"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+
+    r = client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/approvals",
+        json={"scope": "mix", "approved": False, "note": "Bass masks the vocal", "approver_name": "Aisha"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 201
+    assert r.json()["scope"] == "mix"
+    assert r.json()["approved"] is False
+
+    r = client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/approvals",
+        json={"scope": "master", "approved": True, "note": "", "approver_name": "Label"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 201
+
+    # session detail carries approvals
+    r = client.get(f"/api/sessions/{s['id']}", headers=_auth(token))
+    detail = r.json()
+    assert len(detail["approvals"]) == 2
+    assert detail["versions"][0]["status"] == "approved"
+
+    # guest can approve via share link
+    share = s["share_token"]
+    r = client.post(
+        f"/api/sessions/public/{share}/versions/{v['id']}/approvals",
+        json={"scope": "arrangement", "approved": True, "note": "", "approver_name": "Artist"},
+    )
+    assert r.status_code == 201
+
+
+def test_carry_unresolved_comments(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v1 = _upload(client, token, s["id"], make_wav(1.0), "v1")
+
+    c1 = client.post(
+        f"/api/sessions/{s['id']}/versions/{v1['id']}/comments",
+        json={"time_s": 0.3, "body": "Still open note"},
+        headers=_auth(token),
+    ).json()
+    c2 = client.post(
+        f"/api/sessions/{s['id']}/versions/{v1['id']}/comments",
+        json={"time_s": 0.7, "body": "Resolved note"},
+        headers=_auth(token),
+    ).json()
+    client.patch(
+        f"/api/sessions/{s['id']}/versions/{v1['id']}/comments/{c2['id']}",
+        params={"resolved": "true"},
+        headers=_auth(token),
+    )
+
+    v2 = _upload(client, token, s["id"], make_wav(1.0), "v2")
+    r = client.post(
+        f"/api/sessions/{s['id']}/versions/{v1['id']}/carry",
+        headers=_auth(token),
+    )
+    assert r.status_code == 201
+    carried = r.json()["comments"]
+    assert len(carried) == 1  # only the unresolved one
+    assert "carried" in carried[0]["author_name"]
+    assert carried[0]["body"] == "Still open note"
+
+    # carrying onto itself is rejected
+    r = client.post(
+        f"/api/sessions/{s['id']}/versions/{v2['id']}/carry",
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+
+
+def test_share_settings_password_and_permissions(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0))
+    share = s["share_token"]
+
+    # set permission to view-only + allowlist
+    r = client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"share_permission": "view", "share_allowlist": "aisha@label.com"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    assert r.json()["share_permission"] == "view"
+
+    # view works, commenting blocked by permission
+    assert client.get(f"/api/sessions/public/{share}", params={"actor": "aisha@label.com"}).status_code == 200
+    assert client.get(f"/api/sessions/public/{share}", params={"actor": "stranger@x.com"}).status_code == 403
+    r = client.post(
+        f"/api/sessions/public/{share}/versions/{v['id']}/comments",
+        json={"time_s": 0.5, "body": "nope", "author_name": "aisha@label.com"},
+    )
+    assert r.status_code == 403
+
+    # download blocked at view level
+    assert client.get(f"/api/sessions/public/{share}/versions/{v['id']}/audio", params={"actor": "aisha@label.com"}).status_code == 403
+
+    # raise permission to download → allowed + audited
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"share_permission": "download", "share_allowlist": "aisha@label.com"},
+        headers=_auth(token),
+    )
+    assert client.get(f"/api/sessions/public/{share}/versions/{v['id']}/audio", params={"actor": "aisha@label.com"}).status_code == 200
+
+    # password protects the link
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"share_permission": "comment", "share_allowlist": "", "share_password": "hunter2"},
+        headers=_auth(token),
+    )
+    assert client.get(f"/api/sessions/public/{share}").status_code == 401
+    assert client.get(f"/api/sessions/public/{share}", params={"password": "wrong"}).status_code == 401
+    assert client.get(f"/api/sessions/public/{share}", params={"password": "hunter2"}).status_code == 200
+
+    # audit events recorded
+    r = client.get(f"/api/sessions/{s['id']}", headers=_auth(token))
+    actions = {e["action"] for e in r.json()["access_events"]}
+    assert "opened" in actions
+    assert "downloaded" in actions

@@ -140,6 +140,25 @@ export interface ReviewVersion {
   comments: ReviewComment[];
 }
 
+export interface ReviewApproval {
+  id: number;
+  session_id: number;
+  version_id: number;
+  scope: string;
+  approved: boolean;
+  note: string;
+  approver_name: string;
+  created_at: string;
+}
+
+export interface ShareAccessEvent {
+  id: number;
+  actor: string;
+  action: string;
+  detail: string;
+  created_at: string;
+}
+
 export interface ReviewSession {
   id: number;
   project_id: number | null;
@@ -152,7 +171,16 @@ export interface ReviewSession {
   version_count: number;
   latest_status: string;
   versions?: ReviewVersion[];
+  approvals?: ReviewApproval[];
+  access_events?: ShareAccessEvent[];
+  share_expires_at?: string | null;
+  share_permission?: string;
+  share_has_password?: boolean;
+  share_allowlist?: string;
 }
+
+export const APPROVAL_SCOPES = ["mix", "master", "arrangement", "release"] as const;
+export type ApprovalScope = (typeof APPROVAL_SCOPES)[number];
 
 export function fmtTime(s: number): string {
   const m = Math.floor(s / 60);

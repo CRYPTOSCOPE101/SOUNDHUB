@@ -7,6 +7,7 @@ In review → Needs changes → Approved.
 """
 
 import secrets
+from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -15,15 +16,27 @@ from sqlalchemy.orm import Session
 
 from ..config import MAX_UPLOAD_SIZE
 from ..database import get_db
-from ..models import ReviewComment, ReviewSession, ReviewVersion, User, utcnow
+from ..models import (
+    ReviewApproval,
+    ReviewComment,
+    ReviewSession,
+    ReviewVersion,
+    ShareAccessEvent,
+    User,
+    utcnow,
+)
 from ..schemas import (
     GuestReviewCommentCreate,
+    ReviewApprovalCreate,
+    ReviewApprovalOut,
     ReviewCommentCreate,
     ReviewCommentOut,
     ReviewSessionCreate,
     ReviewSessionDetailOut,
     ReviewSessionOut,
     ReviewStatusUpdate,
+    ShareAccessEventOut,
+    ShareSettingsUpdate,
     ReviewVersionCreate,
     ReviewVersionOut,
 )
@@ -120,6 +133,71 @@ def _session_out(db: Session, s: ReviewSession) -> ReviewSessionOut:
     )
 
 
+def _session_detail(db: Session, s: ReviewSession, with_comments: bool = True) -> ReviewSessionDetailOut:
+    versions = db.scalars(
+        select(ReviewVersion)
+        .where(ReviewVersion.session_id == s.id)
+        .order_by(ReviewVersion.number.desc())
+    ).all()
+    out = _session_out(db, s)
+    approvals = db.scalars(
+        select(ReviewApproval)
+        .where(ReviewApproval.session_id == s.id)
+        .order_by(ReviewApproval.created_at.desc())
+    ).all()
+    events = db.scalars(
+        select(ShareAccessEvent)
+        .where(ShareAccessEvent.session_id == s.id)
+        .order_by(ShareAccessEvent.created_at.desc())
+        .limit(50)
+    ).all()
+    return ReviewSessionDetailOut(
+        **out.model_dump(),
+        versions=[_version_out(db, v, with_comments=with_comments) for v in versions],
+        approvals=[
+            ReviewApprovalOut.model_validate(a, from_attributes=True) for a in approvals
+        ],
+        access_events=[
+            ShareAccessEventOut.model_validate(e, from_attributes=True) for e in events
+        ],
+        share_expires_at=s.share_expires_at,
+        share_permission=s.share_permission,
+        share_has_password=bool(s.share_password),
+        share_allowlist=s.share_allowlist,
+    )
+
+
+def _check_share_access(session: ReviewSession, actor: str = "", password: str | None = None) -> None:
+    """Enforce password / expiry / allowlist on a share link. Raises 401/403."""
+    if session.share_expires_at and session.share_expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This review link has expired")
+    if session.share_password and (password or "") != session.share_password:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This review link is password protected")
+    if session.share_allowlist.strip():
+        allowed = {e.strip().lower() for e in session.share_allowlist.split(",") if e.strip()}
+        if actor and actor.strip().lower() not in allowed:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Your email is not on the access list for this review")
+
+
+def _require_share_permission(session: ReviewSession, needed: str, actor: str = "", password: str | None = None) -> None:
+    """needed: comment | download. view is implied by anything above."""
+    _check_share_access(session, actor, password)
+    order = {"view": 0, "comment": 1, "download": 2}
+    if order.get(session.share_permission, 1) < order[needed]:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"This review link does not allow {needed}")
+
+
+def _log_access(db: Session, session: ReviewSession, actor: str, action: str, detail: str = "") -> None:
+    db.add(
+        ShareAccessEvent(
+            session_id=session.id,
+            actor=actor or "anonymous",
+            action=action,
+            detail=detail,
+        )
+    )
+
+
 # ---------- public share endpoints (no auth) ----------
 # Defined BEFORE /{session_id} routes so FastAPI matches them first
 # (otherwise "public" would be parsed as an int session_id and 404).
@@ -137,18 +215,37 @@ def get_public_session(db: Session, share_token: str) -> ReviewSession:
 @router.get("/public/{share_token}", response_model=ReviewSessionDetailOut)
 def public_session(
     share_token: str,
+    actor: str = "",
+    password: str | None = None,
     db: Session = Depends(get_db),
 ):
     session = get_public_session(db, share_token)
-    versions = db.scalars(
-        select(ReviewVersion)
-        .where(ReviewVersion.session_id == session.id)
-        .order_by(ReviewVersion.number.desc())
-    ).all()
-    out = _session_out(db, session)
-    return ReviewSessionDetailOut(
-        **out.model_dump(),
-        versions=[_version_out(db, v, with_comments=True) for v in versions],
+    _check_share_access(session, actor, password)
+    _log_access(db, session, actor, "opened")
+    db.commit()
+    return _session_detail(db, session)
+
+
+@router.get("/public/{share_token}/versions/{version_id}/audio")
+def public_download_audio(
+    share_token: str,
+    version_id: int,
+    actor: str = "",
+    password: str | None = None,
+    db: Session = Depends(get_db),
+):
+    session = get_public_session(db, share_token)
+    _require_share_permission(session, "download", actor, password)
+    version = get_version_or_404(db, session.id, version_id)
+    data = storage.read_blob(version.blob_sha)
+    _log_access(db, session, actor, "downloaded", version.label)
+    db.commit()
+    from fastapi.responses import Response
+
+    return Response(
+        content=data,
+        media_type=f"audio/{version.audio_format}",
+        headers={"Content-Disposition": f'inline; filename="{version.filename}"'},
     )
 
 
@@ -157,9 +254,11 @@ def guest_comment(
     share_token: str,
     version_id: int,
     payload: GuestReviewCommentCreate,
+    password: str | None = None,
     db: Session = Depends(get_db),
 ):
     session = get_public_session(db, share_token)
+    _require_share_permission(session, "comment", payload.author_name, password)
     version = get_version_or_404(db, session.id, version_id)
     if payload.parent_id:
         parent = db.get(ReviewComment, payload.parent_id)
@@ -173,10 +272,49 @@ def guest_comment(
         parent_id=payload.parent_id,
     )
     db.add(comment)
+    _log_access(db, session, payload.author_name, "commented", f"{version.label} @ {payload.time_s:.1f}s")
     session.updated_at = utcnow()
     db.commit()
     db.refresh(comment)
     return _comment_out(comment)
+
+
+@router.post(
+    "/public/{share_token}/versions/{version_id}/approvals",
+    response_model=ReviewApprovalOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def guest_approve(
+    share_token: str,
+    version_id: int,
+    payload: ReviewApprovalCreate,
+    password: str | None = None,
+    db: Session = Depends(get_db),
+):
+    session = get_public_session(db, share_token)
+    _require_share_permission(session, "comment", payload.approver_name, password)
+    version = get_version_or_404(db, session.id, version_id)
+    if not payload.approved and not payload.note.strip():
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "A 'needs changes' decision requires a note explaining what to change",
+        )
+    approval = ReviewApproval(
+        session_id=session.id,
+        version_id=version.id,
+        scope=payload.scope,
+        approved=payload.approved,
+        note=payload.note.strip(),
+        approver_name=payload.approver_name.strip()[:128] or "Reviewer",
+    )
+    db.add(approval)
+    _log_access(db, session, approval.approver_name, "approved" if payload.approved else "needs_changes", f"{version.label} · {payload.scope}")
+    version.status = "approved" if payload.approved else "needs_changes"
+    session.status = version.status
+    session.updated_at = utcnow()
+    db.commit()
+    db.refresh(approval)
+    return ReviewApprovalOut.model_validate(approval, from_attributes=True)
 
 
 # ---------- owner endpoints ----------
@@ -220,16 +358,63 @@ def get_session(
     db: Session = Depends(get_db),
 ):
     session = get_session_or_404(db, user, session_id)
-    versions = db.scalars(
+    return _session_detail(db, session)
+
+
+@router.patch("/{session_id}/share", response_model=ReviewSessionDetailOut)
+def update_share_settings(
+    session_id: int,
+    payload: ShareSettingsUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    session = get_session_or_404(db, user, session_id)
+    if payload.share_password is not None:
+        session.share_password = payload.share_password.strip() or None
+    session.share_expires_at = payload.share_expires_at
+    session.share_permission = payload.share_permission
+    session.share_allowlist = payload.share_allowlist.strip()
+    db.commit()
+    return _session_detail(db, session)
+
+
+@router.post("/{session_id}/versions/{version_id}/carry", response_model=ReviewVersionOut, status_code=status.HTTP_201_CREATED)
+def carry_unresolved_comments(
+    session_id: int,
+    version_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Copy unresolved comments from an old version onto the newest version
+    (marked 'carried'). Used when uploading v13: feedback must not get lost."""
+    session = get_session_or_404(db, user, session_id)
+    source = get_version_or_404(db, session.id, version_id)
+    target = db.scalar(
         select(ReviewVersion)
         .where(ReviewVersion.session_id == session.id)
         .order_by(ReviewVersion.number.desc())
-    ).all()
-    out = _session_out(db, session)
-    return ReviewSessionDetailOut(
-        **out.model_dump(),
-        versions=[_version_out(db, v, with_comments=True) for v in versions],
+        .limit(1)
     )
+    if target is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No versions to carry comments to")
+    if source.id == target.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Source is already the newest version")
+    carried = 0
+    for c in source.comments:
+        if c.resolved or c.parent_id:
+            continue  # only top-level unresolved threads
+        db.add(
+            ReviewComment(
+                version_id=target.id,
+                author_name=(c.author_name or (c.author.username if c.author else "Reviewer")) + " (carried)",
+                time_s=c.time_s,
+                body=c.body,
+            )
+        )
+        carried += 1
+    session.updated_at = utcnow()
+    db.commit()
+    return _version_out(db, target, with_comments=True)
 
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -300,7 +485,7 @@ def download_audio(
     return Response(
         content=data,
         media_type=f"audio/{version.audio_format}",
-        headers={"Content-Disposition": f'attachment; filename="{version.filename}"'},
+        headers={"Content-Disposition": f'inline; filename="{version.filename}"'},
     )
 
 
@@ -370,4 +555,40 @@ def set_version_status(
     db.commit()
     db.refresh(version)
     return _version_out(db, version)
+
+
+@router.post(
+    "/{session_id}/versions/{version_id}/approvals",
+    response_model=ReviewApprovalOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_approval(
+    session_id: int,
+    version_id: int,
+    payload: ReviewApprovalCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    session = get_session_or_404(db, user, session_id)
+    version = get_version_or_404(db, session.id, version_id)
+    if not payload.approved and not payload.note.strip():
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "A 'needs changes' decision requires a note explaining what to change",
+        )
+    approval = ReviewApproval(
+        session_id=session.id,
+        version_id=version.id,
+        scope=payload.scope,
+        approved=payload.approved,
+        note=payload.note.strip(),
+        approver_name=payload.approver_name.strip()[:128] or user.username,
+    )
+    db.add(approval)
+    version.status = "approved" if payload.approved else "needs_changes"
+    session.status = version.status
+    session.updated_at = utcnow()
+    db.commit()
+    db.refresh(approval)
+    return ReviewApprovalOut.model_validate(approval, from_attributes=True)
 

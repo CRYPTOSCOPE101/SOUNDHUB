@@ -124,6 +124,18 @@ class ReviewSession(Base):
     versions: Mapped[list["ReviewVersion"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
+    approvals: Mapped[list["ReviewApproval"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+    access_events: Mapped[list["ShareAccessEvent"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+
+    # Share-link settings (professional review links)
+    share_password: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    share_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    share_permission: Mapped[str] = mapped_column(String(32), default="comment")  # comment | view | download
+    share_allowlist: Mapped[str] = mapped_column(Text, default="")  # comma-separated emails
 
 
 class ReviewVersion(Base):
@@ -165,3 +177,40 @@ class ReviewComment(Base):
 
     version: Mapped["ReviewVersion"] = relationship(back_populates="comments")
     author: Mapped["User"] = relationship()
+
+
+class ReviewApproval(Base):
+    """An approval decision on a version: a verifiable artifact, not just a badge.
+
+    scope: mix | master | arrangement | release. A "needs_changes" decision is
+    also stored here (approved=False) so the history is complete.
+    """
+
+    __tablename__ = "review_approvals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"), index=True)
+    scope: Mapped[str] = mapped_column(String(32), default="mix")
+    approved: Mapped[bool] = mapped_column(default=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    approver_name: Mapped[str] = mapped_column(String(128), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    session: Mapped["ReviewSession"] = relationship(back_populates="approvals")
+    version: Mapped["ReviewVersion"] = relationship()
+
+
+class ShareAccessEvent(Base):
+    """Audit trail for a share link: who opened, downloaded, commented, approved."""
+
+    __tablename__ = "share_access_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    actor: Mapped[str] = mapped_column(String(128), default="")  # email or username
+    action: Mapped[str] = mapped_column(String(32))  # opened | commented | downloaded | approved
+    detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    session: Mapped["ReviewSession"] = relationship(back_populates="access_events")

@@ -48,6 +48,16 @@ def _migrate() -> None:
         ):
             if col not in projects_cols:
                 conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} {ddl}"))
+        if inspector.has_table("review_sessions"):
+            review_cols = {c["name"] for c in inspector.get_columns("review_sessions")}
+            for col, ddl in (
+                ("share_password", "VARCHAR(256)"),
+                ("share_expires_at", "DATETIME"),
+                ("share_permission", "VARCHAR(32) DEFAULT 'comment'"),
+                ("share_allowlist", "TEXT DEFAULT ''"),
+            ):
+                if col not in review_cols:
+                    conn.execute(text(f"ALTER TABLE review_sessions ADD COLUMN {col} {ddl}"))
         if "password_hash" in users_cols and not inspector.get_columns("users"):
             pass  # no-op guard
 
