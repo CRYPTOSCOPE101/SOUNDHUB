@@ -778,6 +778,19 @@ export default function PublicReviewPage() {
 
             {(session.share_permission === "comment" || canDownload) && (
               <div className="public-review-approve">
+                {session.approval_preset === "label_workflow" && (
+                  <div className="public-review-note public-approval-chain">
+                    🔐 Approval chain: <strong>Artist → mix</strong> · <strong>A&R → master</strong> ·{" "}
+                    <strong>label admin → release</strong>. Sign-offs are bound to this version — approve with the
+                    invited team member's email.
+                  </div>
+                )}
+                {session.approval_preset === "post_production" && (
+                  <div className="public-review-note public-approval-chain">
+                    🔐 Approval chain: <strong>Producer → mix</strong> · <strong>producer + director → master</strong> ·{" "}
+                    <strong>director → release</strong>. Sign-offs are bound to this version.
+                  </div>
+                )}
                 <ApprovalPanel token={token} version={current} approvals={approvals.filter((a) => a.version_id === current.id)} onDone={onApprovalDone} />
               </div>
             )}

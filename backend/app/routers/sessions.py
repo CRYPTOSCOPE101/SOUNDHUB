@@ -204,6 +204,11 @@ def _session_detail(db: Session, s: ReviewSession, with_comments: bool = True) -
         recall_fee_cents=s.recall_fee_cents,
         revision_fee_cents=s.revision_fee_cents,
         change_rounds_granted=s.change_rounds_granted,
+        approval_preset=s.approval_preset,
+        members=[
+            {"id": m.id, "session_id": m.session_id, "email": m.email, "role": m.role, "invited_by": m.invited_by, "created_at": m.created_at}
+            for m in s.members
+        ],
         service_type=s.service_type,
         genre=s.genre,
         goal=s.goal,
@@ -388,6 +393,29 @@ def public_download_audio(
     )
 
 
+def _approval_role_and_gate(db: Session, session: ReviewSession, scope: str, approver_name: str) -> str:
+    """Enforce the session's approval policy for `scope` and return the role.
+
+    Permissive presets (solo client / artist team): any reviewer with comment
+    access may approve — no role gymnastics for the freelance client.
+    Enforced presets (label workflow / post-production): the approver must be
+    an invited team member whose role covers the scope.
+    """
+    from ..services import roles
+
+    role = roles.member_role(db, session, approver_name)
+    if not roles.role_can_approve(session, role, scope):
+        preset = roles.preset_info(session.approval_preset)
+        if preset["enforced"]:
+            allowed = preset["policy"].get(scope, [])
+            labels = ", ".join(roles.ROLE_LABELS.get(r, r) for r in allowed)
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                f"{scope} approval requires {labels} — approve with the invited team member's email",
+            )
+    return role or ""
+
+
 def _create_comment(
     db: Session,
     version: ReviewVersion,
@@ -547,6 +575,7 @@ def guest_approve(
             status.HTTP_400_BAD_REQUEST,
             "A 'needs changes' decision requires a note explaining what to change",
         )
+    role = _approval_role_and_gate(db, session, payload.scope, payload.approver_name)
     approval = ReviewApproval(
         session_id=session.id,
         version_id=version.id,
@@ -554,6 +583,7 @@ def guest_approve(
         approved=payload.approved,
         note=payload.note.strip(),
         approver_name=payload.approver_name.strip()[:128] or "Reviewer",
+        role=role,
     )
     db.add(approval)
     _log_access(db, session, approval.approver_name, "approved" if payload.approved else "needs_changes", f"{version.label} · {payload.scope}")
@@ -567,7 +597,7 @@ def guest_approve(
         actor=approval.approver_name,
         entity_type="approval",
         entity_id=approval.id,
-        payload={"version": version.label, "scope": payload.scope, "approved": payload.approved, "note": payload.note.strip()[:200]},
+        payload={"version": version.label, "scope": payload.scope, "approved": payload.approved, "note": payload.note.strip()[:200], "role": role or ""},
     )
     db.commit()
     db.refresh(approval)
@@ -1235,6 +1265,7 @@ def add_approval(
             status.HTTP_400_BAD_REQUEST,
             "A 'needs changes' decision requires a note explaining what to change",
         )
+    role = _approval_role_and_gate(db, session, payload.scope, payload.approver_name or user.username)
     approval = ReviewApproval(
         session_id=session.id,
         version_id=version.id,
@@ -1242,6 +1273,7 @@ def add_approval(
         approved=payload.approved,
         note=payload.note.strip(),
         approver_name=payload.approver_name.strip()[:128] or user.username,
+        role=role,
     )
     db.add(approval)
     version.status = "approved" if payload.approved else "needs_changes"
@@ -1254,7 +1286,7 @@ def add_approval(
         actor=approval.approver_name,
         entity_type="approval",
         entity_id=approval.id,
-        payload={"version": version.label, "scope": payload.scope, "approved": payload.approved, "note": payload.note.strip()[:200]},
+        payload={"version": version.label, "scope": payload.scope, "approved": payload.approved, "note": payload.note.strip()[:200], "role": role or ""},
     )
     db.commit()
     db.refresh(approval)

@@ -1,4 +1,5 @@
 import type {
+  ApprovalPolicy,
   AudioAnalysis,
   Branch,
   ChangeOrder,
@@ -27,6 +28,7 @@ import type {
   ReviewComment,
   ReviewSession,
   ReviewVersion,
+  SessionMember,
   StemAsset,
   TokenResponse,
   Tree,
@@ -585,6 +587,23 @@ export const api = {
   optOutReminders: (shareToken: string) =>
     request<{ opted_out: boolean; dismissed: number }>(`/api/sessions/public/${shareToken}/reminders/opt-out`, {
       method: "POST",
+    }),
+  // team roles & approval chains
+  getTeamPolicy: (sessionId: number) =>
+    request<ApprovalPolicy>(`/api/sessions/${sessionId}/team`),
+  listMembers: (sessionId: number) =>
+    request<SessionMember[]>(`/api/sessions/${sessionId}/members`),
+  inviteMember: (sessionId: number, email: string, role: string) =>
+    request<SessionMember>(`/api/sessions/${sessionId}/members`, {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    }),
+  removeMember: (sessionId: number, memberId: number) =>
+    request<unknown>(`/api/sessions/${sessionId}/members/${memberId}`, { method: "DELETE" }),
+  setApprovalPreset: (sessionId: number, preset: string) =>
+    request<ApprovalPolicy>(`/api/sessions/${sessionId}/approval-preset`, {
+      method: "PUT",
+      body: JSON.stringify({ preset }),
     }),
   // GitHub API (public, unauthenticated) — the SoundHub code repo itself
   ghBranches: () =>

@@ -169,6 +169,16 @@ export interface ReviewApproval {
   approved: boolean;
   note: string;
   approver_name: string;
+  role: string;
+  created_at: string;
+}
+
+export interface SessionMember {
+  id: number;
+  session_id: number;
+  email: string;
+  role: string;
+  invited_by: string;
   created_at: string;
 }
 
@@ -218,6 +228,8 @@ export interface ReviewSession {
   reminder_categories?: string;
   reminders_client_opt_out?: boolean;
   client_email?: string;
+  approval_preset?: string;
+  members?: SessionMember[];
   service_type?: string;
   genre?: string;
   goal?: string;
@@ -262,6 +274,31 @@ export interface RemindersEvalResult {
   sent: number;
   failed: number;
   dismissed: number;
+}
+
+export const APPROVAL_PRESETS = [
+  { id: "solo_client", label: "Solo client", description: "Engineer + client — client approves, no role setup" },
+  { id: "artist_team", label: "Artist team", description: "Engineer + artist + feedback owner" },
+  { id: "label_workflow", label: "Label workflow", description: "Artist: mix · A&R: master · label admin: release" },
+  { id: "post_production", label: "Post-production", description: "Engineer + producer + director" },
+] as const;
+
+export const TEAM_ROLES = [
+  { id: "artist", label: "Artist" },
+  { id: "a_r", label: "A&R" },
+  { id: "label_admin", label: "Label admin" },
+  { id: "producer", label: "Producer" },
+  { id: "director", label: "Director" },
+  { id: "feedback_owner", label: "Feedback owner" },
+  { id: "viewer", label: "Viewer" },
+] as const;
+
+export interface ApprovalPolicy {
+  preset: string;
+  preset_label: string;
+  enforced: boolean;
+  policy: Record<string, string[]>;
+  roles: string[];
 }
 
 export const REMINDER_CATEGORIES = [

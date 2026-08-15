@@ -17,6 +17,7 @@ from .routers import (
     references,
     release_packages,
     reminders,
+    roles,
     sessions,
 )
 
@@ -47,6 +48,7 @@ app.include_router(comparisons.router)
 app.include_router(portfolio.router)
 app.include_router(references.router)
 app.include_router(reminders.router)
+app.include_router(roles.router)
 
 # The landing page CTA "Open a sample review" points here directly — a fixed,
 # human-readable token so the demo review is always reachable at /r/demo-review-token

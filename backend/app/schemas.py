@@ -295,7 +295,56 @@ class ReviewApprovalOut(BaseModel):
     approved: bool
     note: str
     approver_name: str
+    role: str = ""  # team role that signed off (empty in permissive presets)
     created_at: datetime
+
+
+# ---------- Team roles & approval chains ----------
+APPROVAL_PRESETS = ["solo_client", "artist_team", "label_workflow", "post_production"]
+TEAM_ROLES = [
+    "engineer",
+    "artist",
+    "feedback_owner",
+    "a_r",
+    "label_admin",
+    "producer",
+    "director",
+    "viewer",
+]
+
+
+class SessionMemberCreate(BaseModel):
+    email: str = Field(min_length=3, max_length=256)
+    role: str = Field(pattern=r"^(engineer|artist|feedback_owner|a_r|label_admin|producer|director|viewer)$")
+
+
+class SessionMemberOut(BaseModel):
+    id: int
+    session_id: int
+    email: str
+    role: str
+    invited_by: str = ""
+    created_at: datetime
+
+
+class ApprovalPresetUpdate(BaseModel):
+    preset: str = Field(pattern=r"^(solo_client|artist_team|label_workflow|post_production)$")
+
+
+class ApprovalPolicyOut(BaseModel):
+    preset: str = "solo_client"
+    preset_label: str = "Solo client"
+    enforced: bool = False
+    policy: dict = {}  # scope -> required roles
+    roles: list[str] = []
+
+
+class ApprovalStatusOut(BaseModel):
+    scope: str
+    ok: bool
+    missing: list[str] = []
+    required: list[str] = []
+    enforced: bool = False
 
 
 class ShareAccessEventOut(BaseModel):
@@ -356,6 +405,9 @@ class ReviewSessionDetailOut(ReviewSessionOut):
     reminder_categories: str = ""
     reminders_client_opt_out: bool = False
     client_email: str = ""
+    # team roles & approval chain
+    approval_preset: str = "solo_client"
+    members: list[SessionMemberOut] = []
     # client brief — expectations fixed before the first bounce
     service_type: str = "mix"
     genre: str = ""
