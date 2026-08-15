@@ -121,7 +121,7 @@ The user sees **Buy & Load** — not `approve`, not gas, not RPC. Details:
 | 5 | Token gating: issue tokens only after on-chain purchase check (buyer == wallet, escrowed > 0) | ⏳ next |
 | 6 | One-click insert into a device/Simpler via `live.object` | ⏳ |
 | 7 | WalletConnect signing inside M4L / relayer | ⏳ |
-| 8 | FL Studio / Cubase / REAPER equivalents | ⏳ later |
+| 8 | FL Studio / Cubase / REAPER equivalents | 🚧 prototypes: `feat/flstudio-integration` (Python MIDI scripting + file bridge), `feat/cubase-integration` (MIDI Remote + web panel); REAPER (ReaScript) ⏳ |
 
 ## Constraints
 
