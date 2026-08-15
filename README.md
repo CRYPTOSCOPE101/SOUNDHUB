@@ -2,32 +2,27 @@
 ![SoundHub repo page](screenshots/LOGO_modSHA.jpg)
 
 <div align="center" style="margin: 20px 0px;">
-<a href="https://github.com/kavishdevar/librepods/releases/latest">
-  <img src="https://img.shields.io/github/downloads/kavishdevar/librepods/total?label=GitHub%20Downloads" />
+<a href="https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/ci.yml">
+  <img src="https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/ci.yml/badge.svg" />
 </a>
-<a href="https://github.com/CRYPTOSCOPE101/SoundHub/tree/main/m4l">
-  <img src="https://github.com/kavishdevar/librepods/actions/workflows/ci-android.yml/badge.svg" />
+<a href="https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/release.yml">
+  <img src="https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/release.yml/badge.svg" />
 </a>
-<a href="https://github.com/kavishdevar/librepods/actions/workflows/ci-linux-rust.yml">
-  <img src="https://github.com/kavishdevar/librepods/actions/workflows/ci-linux-rust.yml/badge.svg" />
+<a href="https://github.com/CRYPTOSCOPE101/SoundHub/releases">
+  <img src="https://img.shields.io/github/v/release/CRYPTOSCOPE101/SoundHub?label=Release" />
 </a>
-<a href="https://github.com/kavishdevar/librepods/issues">
-  <img src="https://img.shields.io/github/issues/kavishdevar/librepods" />  
+<a href="https://github.com/CRYPTOSCOPE101/SoundHub/issues">
+  <img src="https://img.shields.io/github/issues/CRYPTOSCOPE101/SoundHub" />
 </a>
-<a href="https://discord.gg/HhG4ycVum4">
-  <img src="https://img.shields.io/discord/1441416992027574375?logoColor=white&color=5865F2&label=Discord" />
+<a href="https://github.com/CRYPTOSCOPE101/SoundHub/stargazers">
+  <img src="https://img.shields.io/github/stars/CRYPTOSCOPE101/SoundHub?style=social" />
+</a>
+<a href="LICENSE">
+  <img src="https://img.shields.io/badge/License-MIT-yellow.svg" />
 </a>
 </div>
 
 # 🎛 What is SoundHub?
-
-[![CI](https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/ci.yml/badge.svg)](https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/ci.yml)
-[![Release](https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/release.yml/badge.svg)](https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/release.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg)](backend/)
-[![React 18](https://img.shields.io/badge/React-18-61DAFB.svg)](frontend/)
-[![Solidity](https://img.shields.io/badge/Solidity-%5E0.8-363636.svg)](contracts/)
-[![Ableton Live](https://img.shields.io/badge/Max%20for%20Live-Ableton%20Live-BF00FF.svg)](m4l/)
 
 SoundHub is a tokenized marketplace where music producers buy and sell finished presets, loops, stems, and sound packs with on-chain ownership and licensing
 
