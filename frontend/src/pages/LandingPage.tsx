@@ -468,14 +468,14 @@ export default function LandingPage() {
           </div>
           <div className="landing-footer-col">
             <h4>DAWs</h4>
-            <a href="#workflow">Ableton Live</a>
-            <a href="#workflow">FL Studio</a>
-            <a href="#workflow">Cubase</a>
-            <a href="#workflow">REAPER · Q4 2026</a>
+            <a href="#workflow">Ableton Live · available</a>
+            <a href="#workflow">FL Studio · planned</a>
+            <a href="#workflow">Cubase · planned</a>
+            <a href="#workflow">REAPER · planned</a>
           </div>
           <div className="landing-footer-col">
             <h4>Ecosystem</h4>
-            <Link to="/session">Demo session</Link>
+            <Link to={SAMPLE_REVIEW_URL}>Open a sample review</Link>
             <Link to="/market">Marketplace</Link>
             <Link to="/dao">Community</Link>
             <Link to="/kettle">🫖 Kettle for beginners</Link>
