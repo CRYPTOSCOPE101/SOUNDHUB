@@ -161,7 +161,8 @@ git tag v0.1.0 && git push origin v0.1.0
 - [ ] Token gating on purchase, one-click device insert, key/tracks/devices context from Live API
 - [ ] Verification badges (DAW-parsed), seller reputation, license enforcement
 - [ ] Merges (DAG), audio preview, real-time collab
-- [ ] WalletConnect signing in M4L / relayer; FL Studio, Cubase, REAPER equivalents
+- [x] FL Studio & Cubase integration prototypes (`feat/flstudio-integration`, `feat/cubase-integration`)
+- [ ] WalletConnect signing in M4L / relayer; REAPER equivalent (ReaScript)
 - [ ] S3/Azure blob backend for production scale
 
 ## Tokenized platform (web3) 🪙
