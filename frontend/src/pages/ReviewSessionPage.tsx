@@ -1444,6 +1444,42 @@ const ROLE_SHORT: Record<string, string> = {
   client: "Client",
 };
 
+function ExportRequestsButtons({ sessionId, name }: { sessionId: number; name: string }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const download = async (format: "markdown" | "csv") => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const text = await api.exportRequests(sessionId, format);
+      const blob = new Blob([text], { type: format === "csv" ? "text/csv" : "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${name} open requests.${format === "csv" ? "csv" : "md"}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <button type="button" className="rs-btn ghost sm" disabled={busy} title="Open requests as Markdown" onClick={() => void download("markdown")}>
+        ⬇ MD
+      </button>
+      <button type="button" className="rs-btn ghost sm" disabled={busy} title="Open requests as CSV (DAW bridge)" onClick={() => void download("csv")}>
+        ⬇ CSV
+      </button>
+      {err && <span className="error" style={{ fontSize: 11 }}>{err}</span>}
+    </>
+  );
+}
+
 function TeamPanel({ sessionId }: { sessionId: number }) {
   const [policy, setPolicy] = useState<ApprovalPolicy | null>(null);
   const [members, setMembers] = useState<SessionMember[]>([]);
@@ -2100,8 +2136,9 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
               <div className="rs-comments">
                 <div className="rs-comments-head">
                   <span>Comments</span>
-                  <span className="rs-count">
+                  <span className="rs-count" style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     {resolvedCount} resolved · {openCount} open
+                    <ExportRequestsButtons sessionId={session.id} name={session.name} />
                   </span>
                 </div>
                 {current.comments.length === 0 && (

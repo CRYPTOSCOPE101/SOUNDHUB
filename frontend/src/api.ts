@@ -605,6 +605,18 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ preset }),
     }),
+  // DAW bridge: export open requests (markdown/csv text, not JSON)
+  exportRequests: async (sessionId: number, format: "markdown" | "csv") => {
+    const headers = new Headers();
+    const token = getToken();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    const res = await fetch(`/api/sessions/${sessionId}/requests/export?format=${format}`, { headers });
+    if (!res.ok) {
+      const detail = (await res.json().catch(() => null))?.detail;
+      throw new Error(detail || res.statusText);
+    }
+    return res.text();
+  },
   // GitHub API (public, unauthenticated) — the SoundHub code repo itself
   ghBranches: () =>
     fetch("https://api.github.com/repos/CRYPTOSCOPE101/SOUNDHUB/branches").then((r) =>
