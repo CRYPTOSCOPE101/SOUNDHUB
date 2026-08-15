@@ -12,11 +12,29 @@ email-шаблонов. Не добавляем фичи, пока не попр
 
 ## Задачи — у каждого своя, не весь маршрут всем подряд
 
-| Участник | Задача |
+| Участник | Задача (обязательная) |
 |---|---|
-| **Engineer** | Создать session из brief → отправить ссылку → экспортировать requests (MD/CSV) → загрузить новую версию **через CLI** (`./backend/soundhub push …`) |
+| **Engineer** | **Основной web-flow:** создать session из brief → отправить ссылку → посмотреть draft feedback / consolidated round → загрузить новую версию **через UI** → сравнить v12/v13 → собрать package и пройти QC → запросить approval |
 | **Client / artist** | Открыть public link **с телефона** → оставить structured note + voice note → сравнить две версии → отправить feedback → approve |
 | **A&R / label** | Посмотреть version history → выполнить approval **по своей роли** (настроить/использовать approval chain) → проверить delivery package и payment/delivery flow |
+
+### CLI — только для инженера, который реально живёт в терминале
+
+CLI **не обязателен** в первом тесте — не смешивай две проблемы (понятность
+review workflow и комфортность dev/DAW bridge). Если инженер регулярно работает
+в терминале — дай дополнительный сценарий:
+
+```bash
+soundhub requests --session "Neon Warehouse" --format csv
+soundhub locator --session "Neon Warehouse"
+soundhub push mix.wav --session "Neon Warehouse" --message "v14: kick revised"
+```
+
+Затем спроси отдельно:
+> «В какой момент твоей реальной DAW-работы ты бы запустил эту команду?»
+
+Ответ покажет: CLI нужен как самостоятельный продукт или только как фундамент
+для будущего Max for Live bridge.
 
 ## Как проводить
 
@@ -38,12 +56,23 @@ email-шаблонов. Не добавляем фичи, пока не попр
 
 ## Чек-лист лендинга (показать до/после первого экрана)
 
-1. **«Max for Live panel prototype»** рядом с `WAV, MP3 & stems` — спроси
+1. После 10–15 секунд просмотра спроси: **«Что это за продукт и кому он
+   нужен?»** Правильный ответ примерно: «Система review, версий и approvals
+   для музыкальных проектов — для инженеров, артистов и A&R». Если ответ
+   «магазин пресетов / крипто-магазин звуков» — marketplace на лендинге
+   занимает слишком много места.
+2. **«Max for Live panel prototype»** рядом с `WAV, MP3 & stems` — спроси
    не-Ableton пользователя: понятно ли, что уже работает, а что прототип?
-2. **Marketplace** — после первого экрана спроси: «Как ты думаешь, для чего
-   SoundHub?» Если ответ «магазин пресетов» — marketplace надо опускать ниже.
-3. **Roadmap (4 колонки)** — доходят ли люди до него вообще и влияет ли он
+3. **Marketplace** — воспринимается ли как главная функция? (смотреть
+   топ-навигацию и footer: ссылки Marketplace/DAO могут вернуть первое
+   впечатление «крипто-магазин».)
+4. **Roadmap (4 колонки)** — доходят ли люди до него вообще и влияет ли он
    на решение попробовать demo.
+
+Если 2 из 3 назовут marketplace основной функцией: уменьшить marketplace-блок
+вдвое, убрать «escrow protected» и «License bound on-chain» с лендинга в
+docs/marketplace, заменить CTA Marketplace в топ-навигации на «How it works» /
+«Open review», оставить marketplace одной компактной секцией после workflow.
 
 ## Метрики
 
@@ -94,12 +123,22 @@ email-шаблонов. Не добавляем фичи, пока не попр
 ### Вердикт: прошёл сам / с подсказками / не прошёл
 ```
 
-## После 3 отчётов
+## После 3 отчётов — сводная таблица
 
-1. Свести топ-3 боли по частоте и формулировкам.
-2. Точечно поправить: onboarding инженера / публичную review-страницу /
-   approval copy / pricing / landing narrative.
-3. Только потом: USDC, Max for Live review comments, REAPER.
+Свести все отчёты в таблицу:
+
+| Боль / цитата | Роль | Частота | Точка интерфейса | Решение |
+|---|---|---:|---|---|
+| «Боюсь нажать Approve» | Client | 2/3 | Approval | Confirmation с ясным scope |
+| «Не вижу, куда грузить v2» | Engineer | 2/3 | Versions | Primary CTA «Upload new version» |
+| «Я бы ответил в WhatsApp» | Artist | 1/3 | Public review | Shareable comment link / email notification |
+
+**Правило фиксов:** исправляй только пункты, повторившиеся у **2+ людей** или
+полностью блокирующие сценарий. Это защитит от фичей ради одного мнения.
+
+Порядок: onboarding инженера → публичная review-страница → approval copy →
+pricing / landing narrative. Только потом: USDC, Max for Live review comments,
+REAPER.
 
 ## Что НЕ тестируем и не строим сейчас
 

@@ -1603,6 +1603,7 @@ pre.diff-raw code {
 }
 
 .landing-status.panel-live { background: rgba(61, 220, 132, 0.14); color: var(--green); }
+.landing-status.available { background: rgba(61, 220, 132, 0.14); color: var(--green); }
 .landing-status.prototype { background: rgba(255, 217, 0, 0.14); color: var(--yellow); }
 .landing-status.planned { background: rgba(139, 146, 156, 0.14); color: var(--muted); }
 
