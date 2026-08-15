@@ -85,8 +85,18 @@ const FAQ = [
 ];
 
 const ROADMAP = [
-  { phase: "Now", items: ["Review sessions: versions & approvals", "Timestamped comments & replies", "Private share links", "Private beta on Base Sepolia"], state: "live" },
-  { phase: "Next", items: ["A/B version compare", "Stems & loop regions", "Ableton integration for comments", "Card / USDC checkout"], state: "next" },
+  {
+    phase: "Now",
+    items: [
+      "Review sessions: versions & approvals",
+      "Revision rounds: consolidated feedback",
+      "Release package: lock approved master + delivery link",
+      "Private share links & access audit",
+      "Private beta on Base Sepolia",
+    ],
+    state: "live",
+  },
+  { phase: "Next", items: ["Loudness-matched A/B compare", "Stems & loop regions", "Ableton integration for comments", "Card / USDC checkout"], state: "next" },
   { phase: "Later", items: ["REAPER integration", "Mainnet + security audit", "Seller reputation & packs", "DAO governance"], state: "later" },
 ];
 

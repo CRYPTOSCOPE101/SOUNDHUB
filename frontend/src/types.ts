@@ -205,6 +205,61 @@ export interface ReviewSession {
 export const APPROVAL_SCOPES = ["mix", "master", "arrangement", "release"] as const;
 export type ApprovalScope = (typeof APPROVAL_SCOPES)[number];
 
+export interface Deliverable {
+  id: number;
+  package_id: number;
+  type: string;
+  filename: string;
+  size: number;
+  sha256: string | null;
+  format: string;
+  sample_rate: number | null;
+  bit_depth: number | null;
+  integrated_lufs: number | null;
+  true_peak: number | null;
+  is_required: boolean;
+  source_version_id: number | null;
+  created_at: string;
+}
+
+export interface DeliveryEvent {
+  event: string;
+  actor: string;
+  detail: string;
+  created_at: string;
+}
+
+export interface ReleasePackage {
+  id: number;
+  session_id: number;
+  approved_version_id: number;
+  name: string;
+  status: string;
+  invoice_status: string;
+  immutable_at: string | null;
+  manifest_hash: string | null;
+  delivery_token: string | null;
+  created_at: string;
+  locked_by: string;
+  deliverables: Deliverable[];
+  events: DeliveryEvent[];
+}
+
+export interface DeliveryPage {
+  id: number;
+  name: string;
+  status: string;
+  invoice_status: string;
+  locked_by: string;
+  immutable_at: string | null;
+  manifest_hash: string | null;
+  approved_label: string;
+  approved_filename: string;
+  deliverables: Deliverable[];
+}
+
+export const DELIVERABLE_TYPES = ["master", "instrumental", "acapella", "clean_edit", "stems", "artwork", "other"] as const;
+
 export function fmtTime(s: number): string {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);

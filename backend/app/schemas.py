@@ -276,6 +276,87 @@ class ReviewSessionDetailOut(ReviewSessionOut):
     rounds_open: bool = True
 
 
+# ---------- Release packages (final delivery) ----------
+class ReleasePackageCreate(BaseModel):
+    session_id: int
+    approved_version_id: int
+    name: str = Field(default="Final delivery", max_length=160)
+
+
+class DeliverableType(str):
+    pass
+
+
+DELIVERABLE_TYPES = ["master", "instrumental", "acapella", "clean_edit", "stems", "artwork", "other"]
+
+
+class DeliverableCreate(BaseModel):
+    type: str = Field(pattern=r"^(master|instrumental|acapella|clean_edit|stems|artwork|other)$")
+    is_required: bool = True
+    from_version_id: int | None = None  # reuse an existing version's audio
+
+
+class DeliverableOut(BaseModel):
+    id: int
+    package_id: int
+    type: str
+    filename: str
+    size: int
+    sha256: str | None = None
+    format: str
+    sample_rate: int | None = None
+    bit_depth: int | None = None
+    integrated_lufs: float | None = None
+    true_peak: float | None = None
+    is_required: bool
+    source_version_id: int | None = None
+    created_at: datetime
+
+
+class ReleasePackageOut(BaseModel):
+    id: int
+    session_id: int
+    approved_version_id: int
+    name: str
+    status: str
+    invoice_status: str = "none"
+    immutable_at: datetime | None = None
+    manifest_hash: str | None = None
+    delivery_token: str | None = None
+    created_at: datetime
+    locked_by: str = ""
+    deliverables: list[DeliverableOut] = []
+    events: list[dict] = []
+
+
+class ReleaseLockIn(BaseModel):
+    approval_scope: str = Field(default="master", pattern=r"^(arrangement|mix|master|release)$")
+    note: str = Field(default="", max_length=1000)
+
+
+class DeliveryManifestOut(BaseModel):
+    package: ReleasePackageOut
+    manifest_json: dict
+    manifest_hash: str
+
+
+class DeliveryPageOut(BaseModel):
+    id: int
+    name: str
+    status: str
+    invoice_status: str = "none"
+    locked_by: str = ""
+    immutable_at: datetime | None = None
+    manifest_hash: str | None = None
+    approved_label: str = ""
+    approved_filename: str = ""
+    deliverables: list[DeliverableOut] = []
+
+
+class DeliveryInvoiceUpdate(BaseModel):
+    invoice_status: str = Field(pattern=r"^(none|deposit_due|balance_due|paid|waived)$")
+
+
 # ---------- Diff ----------
 class DiffChange(BaseModel):
     kind: str  # "bpm" | "tempo" | "track_added" | "track_removed" | "device_added" | "device_removed" | "info"

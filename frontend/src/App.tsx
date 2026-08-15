@@ -8,6 +8,7 @@ import DAOPage from "./pages/DAOPage";
 import GitHubRepoPage from "./pages/GitHubRepoPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
+import PublicDeliveryPage from "./pages/PublicDeliveryPage";
 import PublicReviewPage from "./pages/PublicReviewPage";
 import MarketplacePage from "./pages/MarketplacePage";
 import ReviewSessionPage from "./pages/ReviewSessionPage";
@@ -86,8 +87,7 @@ export default function App() {
           <Route path="/session" element={<ReviewSessionPage />} />
           <Route path="/sessions" element={<ReviewSessionPage />} />
           <Route path="/r/:token" element={<PublicReviewPage />} />
-          <Route path="/sessions" element={<ReviewSessionPage />} />
-          <Route path="/r/:token" element={<PublicReviewPage />} />
+          <Route path="/d/:token" element={<PublicDeliveryPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/projects"

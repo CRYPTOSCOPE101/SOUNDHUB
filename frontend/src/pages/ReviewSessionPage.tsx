@@ -5,6 +5,8 @@ import { fmtClock, WaveformCanvas, CommentComposer, ApprovalPanel } from "../com
 import {
   humanSize,
   shortDate,
+  DELIVERABLE_TYPES,
+  type ReleasePackage,
   type ReviewApproval,
   type ReviewComment,
   type ReviewSession,
@@ -12,6 +14,248 @@ import {
 } from "../types";
 
 /* ---------- helpers ---------- */
+
+const STATUS_TEXT: Record<string, string> = {
+  draft: "draft",
+  ready: "ready",
+  delivered: "delivered",
+  archived: "archived",
+};
+
+function ReleasePackagePanel({
+  sessionId,
+  version,
+}: {
+  sessionId: number;
+  version: ReviewVersion;
+}) {
+  const [pkg, setPkg] = useState<ReleasePackage | null>(null);
+  const [activeType, setActiveType] = useState<string>("instrumental");
+  const [lockNote, setLockNote] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showManifest, setShowManifest] = useState(false);
+  const [manifest, setManifest] = useState<{ manifest_json: Record<string, unknown>; manifest_hash: string } | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const list = await api.listReleasePackages(sessionId);
+      setPkg(list.find((p) => p.approved_version_id === version.id) ?? list[0] ?? null);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to load packages");
+    }
+  }, [sessionId, version.id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const create = async () => {
+    setBusy(true);
+    setErr(null);
+    setInfo(null);
+    try {
+      const p = await api.createReleasePackage(sessionId, version.id, "Final delivery");
+      // pre-add the approved master as the required master deliverable
+      await api.addDeliverableFromVersion(p.id, "master", version.id);
+      await load();
+      setInfo("Package created — approved master added ✓");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to create package");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const addFromVersion = async (type: string) => {
+    if (!pkg) return;
+    setErr(null);
+    try {
+      await api.addDeliverableFromVersion(pkg.id, type, version.id);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  const uploadFile = async (type: string, file: File) => {
+    if (!pkg) return;
+    setErr(null);
+    try {
+      await api.uploadDeliverable(pkg.id, type, file);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  const lock = async () => {
+    if (!pkg) return;
+    setBusy(true);
+    setErr(null);
+    setInfo(null);
+    try {
+      await api.lockReleasePackage(pkg.id, "master", lockNote);
+      await load();
+      setInfo("RELEASE PACKAGE LOCKED ✓ — manifest hashed, delivery link opened");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Lock failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const viewManifest = async () => {
+    if (!pkg) return;
+    setManifest(await api.getReleaseManifest(pkg.id));
+    setShowManifest(true);
+  };
+
+  const copyDelivery = async () => {
+    if (!pkg?.delivery_token) return;
+    const url = `${window.location.origin}/d/${pkg.delivery_token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <div className="rs-release">
+      <div className="rs-versions-head">Final delivery</div>
+      {version.status !== "approved" ? (
+        <div className="rs-empty">Approve {version.label} to build the release package.</div>
+      ) : !pkg ? (
+        <div className="rs-release-empty">
+          <p>Master approved — assemble the release package: master, instrumental, artwork…</p>
+          <button type="button" className="rs-btn approve" onClick={create} disabled={busy}>
+            {busy ? "…" : "Create release package"}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className={`rs-release-status st-${pkg.status}`}>
+            {pkg.status === "ready" ? "🔒 RELEASE PACKAGE LOCKED" : STATUS_TEXT[pkg.status]?.toUpperCase()}
+            {pkg.manifest_hash && <span className="rs-release-sha">SHA-256 {pkg.manifest_hash.slice(0, 8)}…{pkg.manifest_hash.slice(-4)}</span>}
+          </div>
+
+          <div className="rs-release-check">
+            {DELIVERABLE_TYPES.filter((t) => t !== "other").map((t) => {
+              const d = pkg.deliverables.find((x) => x.type === t);
+              return (
+                <div key={t} className={`rs-release-item ${d ? "ok" : ""}`}>
+                  <span className="rs-release-check-icon">{d ? "✓" : "·"}</span>
+                  <span className="rs-release-item-type">{t}</span>
+                  {d ? (
+                    <span className="rs-release-item-file">
+                      {d.filename} · {humanSize(d.size)} · {d.format}
+                      {d.sample_rate ? ` · ${(d.sample_rate / 1000).toFixed(1)} kHz / ${d.bit_depth}-bit` : ""}
+                    </span>
+                  ) : (
+                    <span className="rs-release-item-missing">missing</span>
+                  )}
+                  {pkg.status === "draft" && !d && (
+                    <span className="rs-release-actions">
+                      <button type="button" className="rs-btn ghost sm" onClick={() => void addFromVersion(t)}>
+                        from {version.label}
+                      </button>
+                      <label className="rs-btn ghost sm">
+                        upload
+                        <input
+                          type="file"
+                          accept=".wav,.mp3,.flac,.png,.jpg,.pdf,.zip,audio/*,image/*"
+                          hidden
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) void uploadFile(t, f);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            <label className="rs-release-add">
+              + add file as
+              <select value={activeType} onChange={(e) => setActiveType(e.target.value)} className="rs-select" style={{ margin: 0 }}>
+                {DELIVERABLE_TYPES.filter((t) => t !== "master").map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="file"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void uploadFile(activeType, f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+
+          {pkg.status === "draft" ? (
+            <div className="rs-release-lock">
+              <input
+                type="text"
+                value={lockNote}
+                onChange={(e) => setLockNote(e.target.value)}
+                placeholder="Note for the receipt (optional)"
+                className="rs-input"
+              />
+              <button type="button" className="rs-btn approve" onClick={lock} disabled={busy || pkg.deliverables.length === 0}>
+                {busy ? "…" : "🔒 Lock approved master"}
+              </button>
+            </div>
+          ) : (
+            <div className="rs-release-delivery">
+              <code>soundhub.app/d/{pkg.delivery_token}</code>
+              <button type="button" className="rs-btn ghost sm" onClick={copyDelivery}>
+                {copied ? "✓ Copied" : "Copy delivery link"}
+              </button>
+              <button type="button" className="rs-btn ghost sm" onClick={viewManifest}>
+                View manifest
+              </button>
+              <label className="rs-btn ghost sm">
+                Invoice: {pkg.invoice_status}
+                <select
+                  value={pkg.invoice_status}
+                  onChange={(e) => {
+                    void api.setInvoiceStatus(pkg.id, e.target.value).then(load);
+                  }}
+                  className="rs-select"
+                  style={{ margin: 0 }}
+                >
+                  <option value="none">none</option>
+                  <option value="deposit_due">deposit due</option>
+                  <option value="balance_due">balance due</option>
+                  <option value="paid">paid</option>
+                  <option value="waived">waived</option>
+                </select>
+              </label>
+            </div>
+          )}
+          {showManifest && manifest && (
+            <pre className="rs-release-manifest">
+              {JSON.stringify(manifest.manifest_json, null, 2)}
+            </pre>
+          )}
+        </>
+      )}
+      {info && <div className="success">{info}</div>}
+      {err && <div className="error">{err}</div>}
+    </div>
+  );
+}
 
 async function fetchAudioBlob(url: string): Promise<string> {
   const headers: Record<string, string> = {};
@@ -586,6 +830,8 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                 </div>
 
                 <ApprovalPanel sessionId={session.id} version={current} approvals={approvals.filter((a) => a.version_id === current.id)} onDone={refresh} />
+
+                <ReleasePackagePanel sessionId={session.id} version={current} />
 
                 <div className="rs-share-block">
                   <div className="rs-versions-head">Review link</div>

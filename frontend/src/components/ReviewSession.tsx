@@ -89,6 +89,14 @@ export default function ReviewSession({ compact = false }: { compact?: boolean }
         <div className={`rs-status ${statusChip.cls}`}>{statusChip.text}</div>
       </div>
 
+      {/* revision round bar — the moat, not just comments */}
+      <div className="rs-round-bar">
+        <span className="rs-round-chip">Round 2</span>
+        <span className="rs-round-stat">3 open requests</span>
+        <span className="rs-round-stat">8 resolved</span>
+        <span className="rs-round-stat muted">feedback closes Aug 18</span>
+      </div>
+
       {/* waveform */}
       <div className="rs-wave-wrap">
         <div className={`rs-playhead ${playing ? "run" : ""}`} />

@@ -2,10 +2,13 @@ import type {
   Branch,
   Commit,
   CommitDetail,
+  Deliverable,
+  DeliveryPage,
   Diff,
   GhBranch,
   GhCommit,
   Project,
+  ReleasePackage,
   ReviewApproval,
   ReviewComment,
   ReviewSession,
@@ -259,6 +262,57 @@ export const api = {
   publicAudioUrl: (token: string, versionId: number) =>
     `/api/sessions/public/${token}/versions/${versionId}/audio`,
   audioUrl: (path: string) => `${API_ORIGIN}${path}`,
+  // Release packages — final delivery
+  listReleasePackages: (sessionId?: number) =>
+    request<ReleasePackage[]>(
+      `/api/release-packages${sessionId ? `?session_id=${sessionId}` : ""}`
+    ),
+  createReleasePackage: (sessionId: number, approvedVersionId: number, name: string) =>
+    request<ReleasePackage>("/api/release-packages", {
+      method: "POST",
+      body: JSON.stringify({ session_id: sessionId, approved_version_id: approvedVersionId, name }),
+    }),
+  addDeliverableFromVersion: (packageId: number, type: string, fromVersionId: number) =>
+    request<Deliverable>(`/api/release-packages/${packageId}/deliverables/from-version`, {
+      method: "POST",
+      body: JSON.stringify({ type, from_version_id: fromVersionId, is_required: true }),
+    }),
+  uploadDeliverable: (packageId: number, type: string, file: File) =>
+    request<Deliverable>(`/api/release-packages/${packageId}/deliverables/upload`, {
+      method: "POST",
+      body: (() => {
+        const fd = new FormData();
+        fd.append("type", type);
+        fd.append("is_required", "true");
+        fd.append("file", file);
+        return fd;
+      })(),
+    }),
+  lockReleasePackage: (packageId: number, approvalScope: string, note: string) =>
+    request<ReleasePackage>(`/api/release-packages/${packageId}/lock`, {
+      method: "POST",
+      body: JSON.stringify({ approval_scope: approvalScope, note }),
+    }),
+  getReleaseManifest: (packageId: number) =>
+    request<{ package: ReleasePackage; manifest_json: Record<string, unknown>; manifest_hash: string }>(
+      `/api/release-packages/${packageId}/manifest`
+    ),
+  setInvoiceStatus: (packageId: number, invoiceStatus: string) =>
+    request<ReleasePackage>(`/api/release-packages/${packageId}/invoice`, {
+      method: "PATCH",
+      body: JSON.stringify({ invoice_status: invoiceStatus }),
+    }),
+  releaseDownloadUrl: (packageId: number, deliverableId: number) =>
+    `/api/release-packages/${packageId}/download?deliverable_id=${deliverableId}`,
+  // public delivery link
+  publicDeliveryPage: (token: string) =>
+    request<DeliveryPage>(`/api/release-packages/public/${token}`),
+  publicDeliveryDownloadUrl: (token: string, deliverableId: number) =>
+    `/api/release-packages/public/${token}/files/${deliverableId}`,
+  publicDeliveryDownload: (token: string, deliverableId: number) =>
+    request<Blob>(`/api/release-packages/public/${token}/files/${deliverableId}`, {
+      headers: { Accept: "application/octet-stream" },
+    }),
   // GitHub API (public, unauthenticated) — the SoundHub code repo itself
   ghBranches: () =>
     fetch("https://api.github.com/repos/CRYPTOSCOPE101/SOUNDHUB/branches").then((r) =>
