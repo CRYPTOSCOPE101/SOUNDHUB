@@ -103,7 +103,7 @@ const ROADMAP = [
     state: "live",
   },
   {
-    phase: "Also available",
+    phase: "Already works",
     items: [
       "Stems + loop regions, matched by logical name",
       "Reference tracks: mix vs reference A/B (private, non-deliverable)",
