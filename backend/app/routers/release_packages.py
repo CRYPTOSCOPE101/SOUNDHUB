@@ -319,6 +319,11 @@ def lock_package(
     _require_owner(package, user)
     if package.status != "draft":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Package is already locked")
+    if package.session.deposit_status == "deposit_due":
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            "Booking deposit due — collect the deposit before locking the final delivery",
+        )
     delivs = db.scalars(
         select(Deliverable).where(Deliverable.package_id == package.id)
     ).all()
@@ -495,6 +500,8 @@ def public_delivery_page(
         invoice_status=package.invoice_status,
         amount_due_cents=package.amount_due_cents,
         currency=package.currency or "usd",
+        deposit_due_cents=package.session.deposit_due_cents,
+        deposit_status=package.session.deposit_status,
         locked_by=package.locked_by,
         immutable_at=package.immutable_at,
         manifest_hash=package.manifest_hash,
@@ -515,6 +522,11 @@ def public_delivery_download(
     )
     if package is None or package.status != "ready":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Delivery link not found")
+    if package.session.deposit_status == "deposit_due":
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            "Booking deposit due — pay it before downloading the final files",
+        )
     if package.invoice_status not in ("none", "paid", "waived"):
         raise HTTPException(
             status.HTTP_402_PAYMENT_REQUIRED,
@@ -631,17 +643,32 @@ def owner_checkout(
 @router.post("/public/{delivery_token}/checkout", response_model=CheckoutOut)
 def public_checkout(
     delivery_token: str,
+    kind: str = Form("package"),
     success_url: str = Form(""),
     cancel_url: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    """Let the client pay from the delivery page without an account."""
+    """Let the client pay from the delivery page without an account.
+
+    `kind=package` charges the package invoice; `kind=deposit` charges the
+    session's booking deposit (same webhook, metadata kind=deposit).
+    """
     package = db.scalar(
         select(ReleasePackage).where(ReleasePackage.delivery_token == delivery_token)
     )
     if package is None or package.status != "ready":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Delivery link not found")
     origin = success_url or f"http://localhost:5173/d/{delivery_token}?paid=1"
+    if kind == "deposit":
+        from .sessions import _session_checkout
+
+        return _session_checkout(
+            package.session,
+            "deposit",
+            success_url=origin,
+            cancel_url=cancel_url or f"http://localhost:5173/d/{delivery_token}",
+            db=db,
+        )
     return _checkout_session(
         package,
         success_url=origin,
@@ -667,8 +694,45 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     if event.get("type") != "checkout.session.completed":
         return {"received": True, "handled": False}
     session_obj = event.get("data", {}).get("object", {})
-    package_id = (session_obj.get("metadata") or {}).get("package_id")
-    if package_id is None:
+    metadata = session_obj.get("metadata") or {}
+
+    # Session-level charges: booking deposit and extra revision rounds are
+    # paid through the same webhook, identified by metadata `kind`.
+    kind = metadata.get("kind")
+    session_id = metadata.get("session_id")
+    if kind in ("deposit", "extra_round") and session_id:
+        session = db.get(ReviewSession, int(session_id))
+        if session is None:
+            return {"received": True, "handled": False}
+        if kind == "deposit" and session.deposit_status != "paid":
+            session.deposit_status = "paid"
+            session.updated_at = utcnow()
+            ledger.append(
+                db,
+                "deposit.paid",
+                session_id=session.id,
+                actor="stripe",
+                entity_type="session",
+                entity_id=session.id,
+                payload={"session": session.name, "method": "stripe", "checkout": session_obj.get("id")},
+            )
+        if kind == "extra_round":
+            session.rounds_paid = (session.rounds_paid or 0) + 1
+            session.updated_at = utcnow()
+            ledger.append(
+                db,
+                "round.extra_paid",
+                session_id=session.id,
+                actor="stripe",
+                entity_type="round",
+                entity_id=session.id,
+                payload={"round": session.round_number + 1, "method": "stripe", "checkout": session_obj.get("id")},
+            )
+        db.commit()
+        return {"received": True, "handled": True}
+
+    package_id = metadata.get("package_id")
+    if package_id is None or package_id == "0":
         return {"received": True, "handled": False}
     package = db.get(ReleasePackage, int(package_id))
     if package is None:

@@ -49,6 +49,8 @@ export default function PublicDeliveryPage() {
       setDlErr(msg);
       if (msg.toLowerCase().includes("payment")) {
         setDlErr("💳 Payment required — the engineer has set an outstanding balance on this delivery.");
+      } else if (msg.toLowerCase().includes("deposit")) {
+        setDlErr("💳 Booking deposit required — pay it above to unlock the files.");
       }
     } finally {
       setDownloading(null);
@@ -93,7 +95,22 @@ export default function PublicDeliveryPage() {
   }
 
   const locked = page.status === "ready" || page.status === "delivered";
-  const gate = page.invoice_status === "balance_due" || page.invoice_status === "deposit_due";
+  const depositDue = page.deposit_status === "deposit_due";
+  const gate = page.invoice_status === "balance_due" || page.invoice_status === "deposit_due" || depositDue;
+
+  const payDeposit = async () => {
+    if (!token) return;
+    setPaying(true);
+    setPayErr(null);
+    try {
+      const checkout = await api.publicCheckout(token, "deposit");
+      window.location.href = checkout.checkout_url;
+    } catch (e) {
+      setPayErr(e instanceof Error ? e.message : "Failed to start checkout");
+    } finally {
+      setPaying(false);
+    }
+  };
 
   return (
     <div className="public-delivery">
@@ -125,7 +142,21 @@ export default function PublicDeliveryPage() {
           </div>
         )}
 
-        {gate && (
+        {depositDue && (
+          <div className="public-delivery-gate">
+            <div className="public-delivery-gate-text">
+              💳 Booking deposit due
+              {page.deposit_due_cents ? ` — ${fmtMoney(page.deposit_due_cents, page.currency)}` : ""}
+              <span className="public-delivery-gate-sub">
+                The engineer requires a booking deposit before the final files are handed over.
+              </span>
+            </div>
+            <button type="button" className="rs-btn approve" onClick={() => void payDeposit()} disabled={paying}>
+              {paying ? "Opening checkout…" : "💳 Pay deposit"}
+            </button>
+          </div>
+        )}
+        {gate && !depositDue && (
           <div className="public-delivery-gate">
             <div className="public-delivery-gate-text">
               💳 {page.invoice_status === "balance_due" ? "Outstanding balance" : "Deposit due"}

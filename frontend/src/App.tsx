@@ -6,8 +6,10 @@ import CommitPage from "./pages/CommitPage";
 import DiffPage from "./pages/DiffPage";
 import DAOPage from "./pages/DAOPage";
 import GitHubRepoPage from "./pages/GitHubRepoPage";
+import KettlePage from "./pages/KettlePage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
+import PortfolioPage from "./pages/PortfolioPage";
 import PublicDeliveryPage from "./pages/PublicDeliveryPage";
 import PublicReviewPage from "./pages/PublicReviewPage";
 import MarketplacePage from "./pages/MarketplacePage";
@@ -52,6 +54,12 @@ export default function App() {
         </div>
         {user && (
           <div className="userbox">
+            <Link to="/kettle" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
+              🫖 Kettle
+            </Link>
+            <Link to={`/p/${user.username}`} className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
+              🎚 Portfolio
+            </Link>
             <Link to="/market" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
               🛒 Market
             </Link>
@@ -72,6 +80,9 @@ export default function App() {
         )}
         {!user && (
           <div className="userbox">
+            <Link to="/kettle" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
+              🫖 Kettle
+            </Link>
             <Link to="/login" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
               Sign in
             </Link>
@@ -84,6 +95,8 @@ export default function App() {
       <main className="content">
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/kettle" element={<KettlePage />} />
+          <Route path="/p/:username" element={<PortfolioPage />} />
           <Route path="/session" element={<ReviewSessionPage />} />
           <Route path="/sessions" element={<ReviewSessionPage />} />
           <Route path="/r/:token" element={<PublicReviewPage />} />

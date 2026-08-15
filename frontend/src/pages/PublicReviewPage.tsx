@@ -1,8 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
+import ReferenceCompare from "../components/ReferenceCompare";
 import { fmtClock, WaveformCanvas, CommentComposer, ApprovalPanel } from "../components/ReviewShared";
-import { fmtTime, humanSize, type ReviewSession, type ReviewVersion } from "../types";
+import {
+  fmtTime,
+  humanSize,
+  type ReferenceComparison,
+  type ReferenceTrack,
+  type ReviewSession,
+  type ReviewVersion,
+} from "../types";
+
+const SERVICE_LABELS: Record<string, string> = {
+  mix: "Mix",
+  master: "Master",
+  mix_master: "Mix + master",
+  production: "Production",
+  stems: "Stem delivery",
+};
 
 export default function PublicReviewPage() {
   const { token } = useParams<{ token: string }>();
@@ -24,6 +40,12 @@ export default function PublicReviewPage() {
   const [approvals, setApprovals] = useState(session?.approvals ?? []);
   const [submitNote, setSubmitNote] = useState("");
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
+  const [needPay, setNeedPay] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [refs, setRefs] = useState<ReferenceTrack[] | null>(null);
+  const [refCompare, setRefCompare] = useState<{ ref: ReferenceTrack; comp: ReferenceComparison } | null>(null);
+  const [refErr, setRefErr] = useState<string | null>(null);
+  const [refBusy, setRefBusy] = useState<number | null>(null);
 
   const load = useCallback(
     async (pwd?: string) => {
@@ -55,6 +77,34 @@ export default function PublicReviewPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // reviewer-visible references (the endpoint enforces comment permission)
+  useEffect(() => {
+    if (!token) return;
+    api
+      .publicReferences(token)
+      .then((r) => setRefs(r))
+      .catch(() => setRefs([]));
+  }, [token, session?.round_number]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const compareReference = async (ref: ReferenceTrack) => {
+    if (!token || !current) return;
+    setRefBusy(ref.id);
+    setRefErr(null);
+    try {
+      const comp = await api.publicReferenceComparison(token, {
+        versionId: current.id,
+        referenceId: ref.id,
+        startMs: 0,
+        endMs: null,
+      });
+      setRefCompare({ ref, comp });
+    } catch (e) {
+      setRefErr(e instanceof Error ? e.message : "Comparison failed");
+    } finally {
+      setRefBusy(null);
+    }
+  };
 
   // playhead sync
   useEffect(() => {
@@ -119,13 +169,30 @@ export default function PublicReviewPage() {
   const submitFeedback = async () => {
     if (!token) return;
     setSubmitMsg(null);
+    setNeedPay(false);
     try {
       await api.publicSubmitFeedback(token, submitNote, actor || "Reviewer");
       setSubmitNote("");
       setSubmitMsg("Feedback submitted — the engineer now has one consolidated list ✓");
       await onApprovalDone();
     } catch (e) {
-      setSubmitMsg(e instanceof Error ? e.message : "Failed to submit");
+      const msg = e instanceof Error ? e.message : "Failed to submit";
+      setSubmitMsg(msg);
+      if (msg.toLowerCase().includes("round")) setNeedPay(true);
+    }
+  };
+
+  const payExtraRound = async () => {
+    if (!token) return;
+    setPaying(true);
+    setSubmitMsg(null);
+    try {
+      const c = await api.publicSessionCheckout(token, "extra_round");
+      window.location.href = c.checkout_url;
+    } catch (e) {
+      setSubmitMsg(e instanceof Error ? e.message : "Checkout failed");
+    } finally {
+      setPaying(false);
     }
   };
 
@@ -217,6 +284,45 @@ export default function PublicReviewPage() {
         <div className="public-review-closed">This revision round is closed — new notes will be accepted once the engineer uploads the next version.</div>
       )}
 
+      {(() => {
+        const briefBits: Array<[string, string]> = [];
+        if (session.service_type) briefBits.push(["Service", SERVICE_LABELS[session.service_type] ?? session.service_type]);
+        if (session.genre) briefBits.push(["Genre", session.genre]);
+        if (session.goal) briefBits.push(["Goal", session.goal]);
+        if (session.deadline_at) briefBits.push(["Deadline", new Date(session.deadline_at).toLocaleDateString()]);
+        if (session.required_deliverables) briefBits.push(["Deliverables", session.required_deliverables]);
+        const refs = (session.reference_links ?? "").split(/\n+/).map((s) => s.trim()).filter(Boolean);
+        if (briefBits.length === 0 && refs.length === 0 && !session.do_not_change) return null;
+        return (
+          <div className="public-brief">
+            <div className="public-brief-head">📋 The brief — what was agreed</div>
+            <div className="public-brief-grid">
+              {briefBits.map(([k, v]) => (
+                <div key={k} className="public-brief-chip">
+                  <span className="public-brief-key">{k}</span>
+                  <span className="public-brief-val">{v}</span>
+                </div>
+              ))}
+            </div>
+            {refs.length > 0 && (
+              <div className="public-brief-row">
+                <span className="public-brief-key">References</span>
+                <span>
+                  {refs.map((r) => (
+                    <a key={r} href={r} target="_blank" rel="noreferrer" className="public-brief-link">
+                      {r.replace(/^https?:\/\//, "")} ↗
+                    </a>
+                  ))}
+                </span>
+              </div>
+            )}
+            {session.do_not_change && (
+              <div className="public-brief-dnc">🚫 Will not change: {session.do_not_change}</div>
+            )}
+          </div>
+        );
+      })()}
+
       {current ? (
         <>
           <div className="rs rs-real">
@@ -290,7 +396,76 @@ export default function PublicReviewPage() {
             </div>
 
             {current.waveform_synthetic && <div className="public-review-note">Waveform is illustrative — this file isn't a WAV.</div>}
+            {current.watermarked && (
+              <div className="public-review-note wm">
+                🔊 This preview carries an audible watermark — the clean files arrive after the final delivery.
+              </div>
+            )}
           </div>
+
+          {refCompare && (
+            <ReferenceCompare
+              comparison={refCompare.comp}
+              reference={refCompare.ref}
+              onClose={() => setRefCompare(null)}
+            />
+          )}
+          {refErr && <div className="error">{refErr}</div>}
+
+          {refs && refs.length > 0 && (
+            <div className="public-refs">
+              <div className="public-refs-head">
+                🎯 References — the engineer's orientation tracks
+                <span className="public-refs-note">A/B your mix against these</span>
+              </div>
+              {refs.map((r) => (
+                <div key={r.id} className="public-ref">
+                  <div className="public-ref-info">
+                    <div className="public-ref-title">
+                      {r.title}
+                      {r.artist && <span className="rs-ref-artist"> · {r.artist}</span>}
+                    </div>
+                    <div className="public-ref-meta">
+                      <span className="rs-ref-purpose">{r.purpose}</span>
+                      {r.integrated_lufs != null && <span>{r.integrated_lufs} LUFS</span>}
+                      {r.true_peak_dbtp != null && <span>{r.true_peak_dbtp} dBTP</span>}
+                      {r.sample_rate ? <span>{(r.sample_rate / 1000).toFixed(1)} kHz</span> : null}
+                    </div>
+                    {r.note && <div className="public-ref-note">“{r.note}”</div>}
+                    {r.source_type === "external_url" && r.external_url && (
+                      <a href={r.external_url} target="_blank" rel="noreferrer" className="rs-ref-link">
+                        Open reference ↗
+                      </a>
+                    )}
+                  </div>
+                  <div className="public-ref-actions">
+                    {r.source_type === "private_upload" && (
+                      <audio
+                        controls
+                        preload="none"
+                        src={api.audioUrl(api.publicReferenceAudioUrl(token ?? "", r.id))}
+                        className="public-ref-audio"
+                      />
+                    )}
+                    {r.source_type === "private_upload" && r.analysis_status === "done" && current && (
+                      <button
+                        type="button"
+                        className="rs-btn approve sm"
+                        disabled={refBusy === r.id}
+                        onClick={() => void compareReference(r)}
+                      >
+                        {refBusy === r.id ? "…" : `A/B with ${current.label}`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <p className="ref-disclaimer">
+                Reference audio is private to this review session and is never delivered, redistributed, or included in
+                release exports.
+              </p>
+            </div>
+          )}
 
           <div className="public-review-lower">
             <div className="public-review-comments">
@@ -354,6 +529,14 @@ export default function PublicReviewPage() {
                       <button type="button" className="rs-btn approve" onClick={submitFeedback}>
                         Submit revision notes → Round {(session.round_number ?? 1) + 1}
                       </button>
+                      {needPay && (
+                        <div className="rs-pay-prompt">
+                          <span>This round is beyond the included revision budget</span>
+                          <button type="button" className="rs-btn approve sm" onClick={() => void payExtraRound()} disabled={paying}>
+                            {paying ? "Opening checkout…" : "💳 Pay for extra round"}
+                          </button>
+                        </div>
+                      )}
                       {submitMsg && <div className={submitMsg.includes("✓") ? "success" : "error"}>{submitMsg}</div>}
                     </div>
                   )}

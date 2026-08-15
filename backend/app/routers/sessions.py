@@ -28,8 +28,10 @@ from ..models import (
     utcnow,
 )
 from ..schemas import (
+    CheckoutOut,
     GuestReviewCommentCreate,
     ReviewApprovalCreate,
+    ReviewBriefUpdate,
     ReviewApprovalOut,
     ReviewCommentCreate,
     ReviewCommentOut,
@@ -46,7 +48,7 @@ from ..schemas import (
     ReviewVersionOut,
 )
 from ..security import get_current_user
-from ..services import ledger, storage, waveform
+from ..services import ledger, storage, watermark, waveform
 
 router = APIRouter(prefix="/api/sessions", tags=["review sessions"])
 
@@ -102,6 +104,10 @@ def _version_out(db: Session, v: ReviewVersion, with_comments: bool = False) -> 
     comments = (
         [_comment_out(c) for c in v.comments] if with_comments else []
     )
+    session = db.get(ReviewSession, v.session_id)
+    watermarked = bool(
+        session and session.watermark_enabled and v.status != "approved"
+    )
     return ReviewVersionOut(
         id=v.id,
         session_id=v.session_id,
@@ -118,6 +124,7 @@ def _version_out(db: Session, v: ReviewVersion, with_comments: bool = False) -> 
         waveform=wf["peaks"],
         waveform_synthetic=wf["synthetic"],
         comments=comments,
+        watermarked=watermarked,
     )
 
 
@@ -184,6 +191,20 @@ def _session_detail(db: Session, s: ReviewSession, with_comments: bool = True) -
         feedback_owner=s.feedback_owner,
         included_rounds=s.included_rounds,
         rounds_open=s.rounds_open,
+        deposit_due_cents=s.deposit_due_cents,
+        deposit_status=s.deposit_status,
+        extra_round_price_cents=s.extra_round_price_cents,
+        rounds_paid=s.rounds_paid,
+        portfolio_public=s.portfolio_public,
+        watermark_enabled=s.watermark_enabled,
+        service_type=s.service_type,
+        genre=s.genre,
+        goal=s.goal,
+        deadline_at=s.deadline_at,
+        review_start_at=s.review_start_at,
+        reference_links=s.reference_links,
+        do_not_change=s.do_not_change,
+        required_deliverables=s.required_deliverables,
     )
 
 
@@ -215,6 +236,92 @@ def _log_access(db: Session, session: ReviewSession, actor: str, action: str, de
             action=action,
             detail=detail,
         )
+    )
+
+
+def _check_round_budget(session: ReviewSession) -> None:
+    """Enforce included + paid revision rounds when a new round is opened.
+
+    Round 1 is the initial mix review; `included_rounds` covers the included
+    revision cycles after it. Any round beyond `1 + included_rounds` requires
+    a paid extra round (`rounds_paid`), or is a hard stop when the engineer
+    hasn't set a price.
+    """
+    included = session.included_rounds if session.included_rounds is not None else 1
+    free = 1 + included
+    budget = free + (session.rounds_paid or 0)
+    if session.round_number + 1 <= budget:
+        return
+    if session.extra_round_price_cents:
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            "Extra revision round required — this round is beyond the included budget",
+        )
+    raise HTTPException(
+        status.HTTP_403_FORBIDDEN,
+        "Revision round limit reached — this session includes only the first rounds",
+    )
+
+
+def _session_checkout(
+    session: ReviewSession,
+    kind: str,
+    success_url: str,
+    cancel_url: str,
+    db: Session,
+) -> CheckoutOut:
+    """Stripe Checkout for a session-level charge: booking deposit or an extra
+    revision round. Shares the same webhook (metadata `kind`) as packages."""
+    from ..schemas import CheckoutOut
+    from ..services import stripe_pay
+
+    if not stripe_pay.enabled():
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Stripe is not configured — set STRIPE_SECRET_KEY or adjust the settings manually",
+        )
+    if kind == "deposit":
+        if session.deposit_status != "deposit_due":
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "No deposit is due on this session")
+        amount = session.deposit_due_cents
+        item_name = f"{session.name} — booking deposit"
+    elif kind == "extra_round":
+        if not session.extra_round_price_cents:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "No extra-round price is set on this session")
+        amount = session.extra_round_price_cents
+        item_name = f"{session.name} — extra revision round"
+    else:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown checkout kind")
+    if not amount or amount <= 0:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Set an amount before creating a checkout session")
+    try:
+        session_id, url = stripe_pay.create_checkout_session(
+            amount_cents=amount,
+            currency="usd",
+            package_id=0,  # session-level charge, not a package
+            package_name=item_name,
+            session_id=session.id,
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={"kind": kind},
+        )
+    except Exception as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc))
+    ledger.append(
+        db,
+        "invoice.checkout_created",
+        session_id=session.id,
+        actor="owner",
+        entity_type="session",
+        entity_id=session.id,
+        payload={"kind": kind, "stripe_session": session_id, "amount_cents": amount},
+    )
+    db.commit()
+    return CheckoutOut(
+        checkout_url=url,
+        session_id=session_id,
+        amount_due_cents=amount,
+        currency="usd",
     )
 
 
@@ -258,6 +365,11 @@ def public_download_audio(
     _require_share_permission(session, "download", actor, password)
     version = get_version_or_404(db, session.id, version_id)
     data = storage.read_blob(version.blob_sha)
+    # Unapproved versions served to guests carry an audible watermark — a
+    # leaked preview is traceable and never "the final file". Approved
+    # versions are clean: the client already approved them.
+    if session.watermark_enabled and version.status != "approved":
+        data = watermark.watermarked_blob(db, version)
     _log_access(db, session, actor, "downloaded", version.label)
     db.commit()
     from fastapi.responses import Response
@@ -460,9 +572,11 @@ def update_share_settings(
     if payload.share_password is not None:
         session.share_password = payload.share_password.strip() or None
     session.share_expires_at = payload.share_expires_at
-    session.share_permission = payload.share_permission
-    session.share_allowlist = payload.share_allowlist.strip()
-    if payload.feedback_owner:
+    if payload.share_permission is not None:
+        session.share_permission = payload.share_permission
+    if payload.share_allowlist is not None:
+        session.share_allowlist = payload.share_allowlist.strip()
+    if payload.feedback_owner is not None:
         session.feedback_owner = payload.feedback_owner.strip()
     if payload.included_rounds is not None:
         session.included_rounds = payload.included_rounds
@@ -470,8 +584,101 @@ def update_share_settings(
         session.rounds_open = payload.rounds_open
     if payload.feedback_due_at is not None:
         session.feedback_due_at = payload.feedback_due_at
+    # booking deposit + paid rounds
+    if payload.deposit_due_cents is not None:
+        session.deposit_due_cents = payload.deposit_due_cents
+        if payload.deposit_due_cents > 0 and session.deposit_status == "none":
+            session.deposit_status = "deposit_due"
+    if payload.deposit_status is not None:
+        session.deposit_status = payload.deposit_status
+    if payload.extra_round_price_cents is not None:
+        session.extra_round_price_cents = payload.extra_round_price_cents
+    if payload.rounds_paid is not None:
+        session.rounds_paid = payload.rounds_paid
+    # portfolio + watermark
+    if payload.portfolio_public is not None:
+        session.portfolio_public = payload.portfolio_public
+    if payload.watermark_enabled is not None:
+        session.watermark_enabled = payload.watermark_enabled
     db.commit()
     return _session_detail(db, session)
+
+
+@router.patch("/{session_id}/brief", response_model=ReviewSessionDetailOut)
+def update_brief(
+    session_id: int,
+    payload: ReviewBriefUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Save the client brief — expectations fixed before the first bounce."""
+    session = get_session_or_404(db, user, session_id)
+    session.service_type = payload.service_type
+    session.genre = payload.genre.strip()
+    session.goal = payload.goal.strip()
+    session.deadline_at = payload.deadline_at
+    session.review_start_at = payload.review_start_at
+    session.reference_links = payload.reference_links.strip()
+    session.do_not_change = payload.do_not_change.strip()
+    session.required_deliverables = payload.required_deliverables.strip()
+    session.updated_at = utcnow()
+    ledger.append(
+        db,
+        "brief.updated",
+        session_id=session.id,
+        actor=user.username,
+        entity_type="session",
+        entity_id=session.id,
+        payload={
+            "service_type": payload.service_type,
+            "genre": payload.genre.strip()[:80],
+            "goal": payload.goal.strip()[:40],
+            "deadline": payload.deadline_at.isoformat() if payload.deadline_at else "",
+            "do_not_change": payload.do_not_change.strip()[:120],
+            "required_deliverables": payload.required_deliverables.strip()[:120],
+        },
+    )
+    db.commit()
+    return _session_detail(db, session)
+
+
+@router.post("/{session_id}/checkout", response_model=CheckoutOut)
+def owner_session_checkout(
+    session_id: int,
+    kind: str = Form("deposit"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Owner-side Stripe Checkout for a booking deposit or an extra round."""
+    session = get_session_or_404(db, user, session_id)
+    origin = "http://localhost:5173"  # dev; frontend passes its own URL
+    return _session_checkout(
+        session,
+        kind,
+        success_url=f"{origin}/sessions?paid=1",
+        cancel_url=f"{origin}/sessions",
+        db=db,
+    )
+
+
+@router.post("/public/{share_token}/checkout", response_model=CheckoutOut)
+def public_session_checkout(
+    share_token: str,
+    kind: str = Form("deposit"),
+    success_url: str = Form(""),
+    cancel_url: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """Client-side checkout from the share link (deposit / extra round)."""
+    session = get_public_session(db, share_token)
+    origin = success_url or f"http://localhost:5173/r/{share_token}?paid=1"
+    return _session_checkout(
+        session,
+        kind,
+        success_url=origin,
+        cancel_url=cancel_url or f"http://localhost:5173/r/{share_token}",
+        db=db,
+    )
 
 
 @router.post("/{session_id}/versions/{version_id}/carry", response_model=ReviewVersionOut, status_code=status.HTTP_201_CREATED)
@@ -715,6 +922,7 @@ def submit_feedback(
     list of change requests.
     """
     session = get_session_or_404(db, user, session_id)
+    _check_round_budget(session)
     drafts = db.scalars(
         select(ReviewComment)
         .where(ReviewComment.status == "draft")
@@ -770,6 +978,7 @@ def public_submit_feedback(
             status.HTTP_403_FORBIDDEN,
             f"Only {session.feedback_owner} can submit the consolidated feedback for this review",
         )
+    _check_round_budget(session)
     drafts = db.scalars(
         select(ReviewComment)
         .where(ReviewComment.status == "draft")

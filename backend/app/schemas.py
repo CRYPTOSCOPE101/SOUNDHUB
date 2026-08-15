@@ -176,6 +176,7 @@ class ReviewVersionOut(BaseModel):
     waveform: list[float] = []
     waveform_synthetic: bool = False
     comments: list[ReviewCommentOut] = []
+    watermarked: bool = False  # guests hear an audible watermark on this preview
 
 
 class ReviewVersionCreate(BaseModel):
@@ -203,15 +204,36 @@ class ReviewStatusUpdate(BaseModel):
     status: str = Field(pattern=r"^(in_review|needs_changes|approved)$")
 
 
+class ReviewBriefUpdate(BaseModel):
+    """The client brief: what the client expects, agreed before the first bounce."""
+
+    service_type: str = Field(default="mix", pattern=r"^(mix|master|mix_master|production|stems)$")
+    genre: str = Field(default="", max_length=128)
+    goal: str = Field(default="", max_length=64)
+    deadline_at: datetime | None = None
+    review_start_at: datetime | None = None
+    reference_links: str = Field(default="", max_length=4000)
+    do_not_change: str = Field(default="", max_length=2000)
+    required_deliverables: str = Field(default="", max_length=500)
+
+
 class ShareSettingsUpdate(BaseModel):
     share_password: str | None = Field(default=None, max_length=128)
     share_expires_at: datetime | None = None
-    share_permission: str = Field(default="comment", pattern=r"^(comment|view|download)$")
-    share_allowlist: str = Field(default="", max_length=2000)
-    feedback_owner: str = Field(default="", max_length=128)
+    share_permission: str | None = Field(default=None, pattern=r"^(comment|view|download)$")
+    share_allowlist: str | None = Field(default=None, max_length=2000)
+    feedback_owner: str | None = Field(default=None, max_length=128)
     included_rounds: int | None = Field(default=None, ge=0, le=50)
     rounds_open: bool | None = None
     feedback_due_at: datetime | None = None
+    # booking deposit + paid extra rounds
+    deposit_due_cents: int | None = Field(default=None, ge=0, le=100_000_000)
+    deposit_status: str | None = Field(default=None, pattern=r"^(none|deposit_due|paid|waived)$")
+    extra_round_price_cents: int | None = Field(default=None, ge=0, le=100_000_000)
+    rounds_paid: int | None = Field(default=None, ge=0, le=1000)
+    # portfolio + preview protection
+    portfolio_public: bool | None = None
+    watermark_enabled: bool | None = None
 
 
 class ReviewApprovalCreate(BaseModel):
@@ -274,6 +296,21 @@ class ReviewSessionDetailOut(ReviewSessionOut):
     feedback_owner: str = ""
     included_rounds: int = 1
     rounds_open: bool = True
+    deposit_due_cents: int | None = None
+    deposit_status: str = "none"
+    extra_round_price_cents: int | None = None
+    rounds_paid: int = 0
+    portfolio_public: bool = False
+    watermark_enabled: bool = True
+    # client brief — expectations fixed before the first bounce
+    service_type: str = "mix"
+    genre: str = ""
+    goal: str = ""
+    deadline_at: datetime | None = None
+    review_start_at: datetime | None = None
+    reference_links: str = ""
+    do_not_change: str = ""
+    required_deliverables: str = ""
 
 
 # ---------- Audio analysis & A/B comparison ----------
@@ -340,6 +377,82 @@ class ComparisonOut(BaseModel):
     label: str = ""
     mode: str = "full_mix"
     stem_logical_name: str | None = None
+    created_at: datetime
+
+
+# ---------- Reference tracks (mix/reference A/B) ----------
+REFERENCE_PURPOSES = ["balance", "low_end", "vocal", "width", "arrangement", "overall"]
+REFERENCE_VISIBILITY = ["engineer_only", "reviewers"]
+
+
+class ReferenceTrackCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    artist: str = Field(default="", max_length=128)
+    source_type: str = Field(pattern=r"^(external_url|private_upload)$")
+    external_url: str = Field(default="", max_length=2000)
+    purpose: str = Field(default="overall", pattern=r"^(balance|low_end|vocal|width|arrangement|overall)$")
+    visibility: str = Field(default="reviewers", pattern=r"^(engineer_only|reviewers)$")
+    note: str = Field(default="", max_length=1000)
+
+
+class ReferenceTrackUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    artist: str | None = Field(default=None, max_length=128)
+    external_url: str | None = Field(default=None, max_length=2000)
+    purpose: str | None = Field(default=None, pattern=r"^(balance|low_end|vocal|width|arrangement|overall)$")
+    visibility: str | None = Field(default=None, pattern=r"^(engineer_only|reviewers)$")
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class ReferenceTrackOut(BaseModel):
+    id: int
+    session_id: int
+    title: str
+    artist: str = ""
+    source_type: str
+    external_url: str = ""
+    purpose: str = "overall"
+    visibility: str = "reviewers"
+    note: str = ""
+    created_by: str = ""
+    created_at: datetime
+    filename: str = ""
+    size: int = 0
+    audio_format: str = ""
+    duration_s: float = 0.0
+    integrated_lufs: float | None = None
+    true_peak_dbtp: float | None = None
+    sample_rate: int | None = None
+    channels: int | None = None
+    analysis_status: str = "pending"
+    waveform: list[float] = []
+    waveform_synthetic: bool = False
+
+
+class ReferenceComparisonCreate(BaseModel):
+    version_id: int
+    reference_id: int
+    start_ms: int = Field(default=0, ge=0)
+    end_ms: int | None = Field(default=None, ge=0)
+    level_match: str = Field(default="short_term_lufs", pattern=r"^(none|integrated_lufs|short_term_lufs)$")
+
+
+class ReferenceComparisonOut(BaseModel):
+    id: int
+    session_id: int
+    version_id: int
+    reference_id: int
+    version_label: str = ""
+    reference_label: str = ""
+    start_ms: int = 0
+    end_ms: int | None = None
+    mix_gain_db: float = 0.0
+    ref_gain_db: float = 0.0
+    short_term_lufs: dict = {}
+    level_match: str = "none"
+    label: str = ""
+    mix_audio_url: str = ""
+    ref_audio_url: str = ""
     created_at: datetime
 
 
@@ -416,6 +529,8 @@ class DeliveryPageOut(BaseModel):
     invoice_status: str = "none"
     amount_due_cents: int | None = None
     currency: str = "usd"
+    deposit_due_cents: int | None = None
+    deposit_status: str = "none"
     locked_by: str = ""
     immutable_at: datetime | None = None
     manifest_hash: str | None = None
@@ -437,6 +552,27 @@ class CheckoutOut(BaseModel):
     session_id: str
     amount_due_cents: int
     currency: str
+
+
+# ---------- Public engineer portfolio ----------
+class PortfolioTrackOut(BaseModel):
+    session_id: int
+    name: str
+    status: str
+    version_count: int = 0
+    has_approved: bool = False
+    approved_label: str = ""
+    approved_filename: str = ""
+    approved_version_id: int | None = None
+    approved_duration_s: float = 0.0
+    approved_at: datetime | None = None
+    delivery_token: str | None = None  # locked release package, when one exists
+
+
+class PortfolioOut(BaseModel):
+    username: str
+    track_count: int = 0
+    tracks: list[PortfolioTrackOut] = []
 
 
 # ---------- Diff ----------

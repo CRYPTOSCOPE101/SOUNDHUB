@@ -842,6 +842,527 @@ def test_stem_upload_list_and_stem_comparison(client):
     assert r.content[:4] == b"RIFF"
 
 
+def test_watermark_on_public_preview(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    wav = make_wav(2.0)
+    v = _upload(client, token, s["id"], wav, "v1")
+    share = s["share_token"]
+
+    # guest preview requires download permission to stream audio
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"share_permission": "download"},
+        headers=_auth(token),
+    )
+
+    # owner always gets the clean original
+    r = client.get(f"/api/sessions/{s['id']}/versions/{v['id']}/audio", headers=_auth(token))
+    assert r.status_code == 200
+    assert r.content == wav
+
+    # guest (unapproved version) gets a watermarked preview — different bytes
+    r = client.get(f"/api/sessions/public/{share}/versions/{v['id']}/audio")
+    assert r.status_code == 200
+    assert r.content != wav
+    assert r.content[:4] == b"RIFF"  # still a valid WAV
+
+    # version detail flags the watermark
+    r = client.get(f"/api/sessions/public/{share}")
+    assert r.json()["versions"][0]["watermarked"] is True
+
+    # watermark disabled → clean preview again
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"watermark_enabled": False},
+        headers=_auth(token),
+    )
+    r = client.get(f"/api/sessions/public/{share}/versions/{v['id']}/audio")
+    assert r.content == wav
+
+    # approved versions are always served clean to guests
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"watermark_enabled": True},
+        headers=_auth(token),
+    )
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    r = client.get(f"/api/sessions/public/{share}/versions/{v['id']}/audio")
+    assert r.content == wav
+
+
+def test_deposit_gate_blocks_lock_until_paid(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "approved master")
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    pkg = client.post(
+        "/api/release-packages",
+        json={"session_id": s["id"], "approved_version_id": v["id"], "name": "Final"},
+        headers=_auth(token),
+    ).json()
+    client.post(
+        f"/api/release-packages/{pkg['id']}/deliverables/from-version",
+        json={"type": "master", "from_version_id": v["id"]},
+        headers=_auth(token),
+    )
+
+    # setting a deposit amount arms the deposit (deposit_due)
+    r = client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"deposit_due_cents": 5000},
+        headers=_auth(token),
+    )
+    assert r.json()["deposit_status"] == "deposit_due"
+
+    # locking the final delivery is blocked until the deposit is paid
+    r = client.post(
+        f"/api/release-packages/{pkg['id']}/lock",
+        json={"approval_scope": "master"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 402
+    assert "deposit" in r.json()["detail"].lower()
+
+    # manual mark paid (Stripe-less mode) → lock succeeds
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"deposit_status": "paid"},
+        headers=_auth(token),
+    )
+    r = client.post(
+        f"/api/release-packages/{pkg['id']}/lock",
+        json={"approval_scope": "master"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    pkg = r.json()
+    assert pkg["status"] == "ready"
+    assert pkg["delivery_token"]
+
+    # deposit also gates public delivery downloads ("approved, then never paid")
+    tok = client.get(f"/api/sessions/{s['id']}", headers=_auth(token)).json()["share_token"]
+    did = client.get("/api/release-packages", params={"session_id": s["id"]}, headers=_auth(token)).json()[0]["deliverables"][0]["id"]
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"deposit_due_cents": 3000, "deposit_status": "deposit_due"},
+        headers=_auth(token),
+    )
+    durl = f"/api/release-packages/public/{pkg['delivery_token']}/files/{did}"
+    assert client.get(durl).status_code == 402
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"deposit_status": "paid"},
+        headers=_auth(token),
+    )
+    assert client.get(durl).status_code == 200
+
+    # waive also works
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"deposit_due_cents": 3000, "deposit_status": "waived"},
+        headers=_auth(token),
+    )
+    assert client.get(f"/api/sessions/{s['id']}", headers=_auth(token)).json()["deposit_status"] == "waived"
+
+
+def test_extra_round_budget_paywall(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    share = s["share_token"]
+
+    def submit(note):
+        return client.post(
+            f"/api/sessions/{s['id']}/submit-feedback",
+            json={"note": note},
+            headers=_auth(token),
+        )
+
+    # included_rounds=1 → round 1 (initial) + round 2 (revision) are free
+    client.post(
+        f"/api/sessions/public/{share}/versions/{v['id']}/comments",
+        json={"time_s": 0.2, "body": "round 1 notes", "author_name": "Aisha"},
+    )
+    r = submit("round 1")
+    assert r.status_code == 200
+    assert r.json()["round_number"] == 2
+
+    # upload v2 (reopens the round), add drafts, submit again → opens round 3
+    v2 = _upload(client, token, s["id"], make_wav(1.0), "v2")
+    client.post(
+        f"/api/sessions/public/{share}/versions/{v2['id']}/comments",
+        json={"time_s": 0.1, "body": "round 2 notes", "author_name": "Aisha"},
+    )
+
+    # no price set → hard limit
+    r = submit("round 2")
+    assert r.status_code == 403
+    assert "limit" in r.json()["detail"].lower()
+
+    # price set → 402 payment required (drafts are still there)
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"extra_round_price_cents": 2500},
+        headers=_auth(token),
+    )
+    r = submit("round 2")
+    assert r.status_code == 402
+    assert "round" in r.json()["detail"].lower()
+
+    # pay for the extra round (manual) → submission goes through
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"rounds_paid": 1},
+        headers=_auth(token),
+    )
+    r = submit("round 2")
+    assert r.status_code == 200
+    assert r.json()["round_number"] == 3
+
+    # round budget reflects paid rounds
+    detail = client.get(f"/api/sessions/{s['id']}", headers=_auth(token)).json()
+    assert detail["rounds_paid"] == 1
+
+
+def test_reference_url_and_upload_flow(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(2.0), "v1 mix")
+
+    # external-URL reference — no audio job, just a stored link
+    r = client.post(
+        f"/api/sessions/{s['id']}/references",
+        json={
+            "title": "Ref A",
+            "artist": "Artist X",
+            "source_type": "external_url",
+            "external_url": "https://soundcloud.com/x/ref1",
+            "purpose": "low_end",
+            "visibility": "reviewers",
+            "note": "oriented by low end and width",
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 201
+    ref_url = r.json()
+    assert ref_url["source_type"] == "external_url"
+    assert ref_url["analysis_status"] == "pending"
+    assert ref_url["external_url"] == "https://soundcloud.com/x/ref1"
+
+    # private upload reference — analysed like a version (neutral measurements)
+    wav = make_wav(1.0)
+    r = client.post(
+        f"/api/sessions/{s['id']}/references/upload",
+        headers=_auth(token),
+        data={"title": "Ref B", "artist": "Artist Y", "purpose": "overall", "visibility": "reviewers"},
+        files=[("file", ("ref.wav", wav, "audio/wav"))],
+    )
+    assert r.status_code == 201
+    ref_up = r.json()
+    assert ref_up["source_type"] == "private_upload"
+    assert ref_up["analysis_status"] == "done"
+    assert ref_up["integrated_lufs"] is not None
+    assert ref_up["sample_rate"] == 8000
+    assert len(ref_up["waveform"]) == 96
+
+    # owner lists both; guest (reviewer) sees reviewers-visible only
+    assert len(client.get(f"/api/sessions/{s['id']}/references", headers=_auth(token)).json()) == 2
+    share = s["share_token"]
+    r = client.get(f"/api/sessions/public/{share}/references")
+    assert r.status_code == 200
+    assert len(r.json()) == 2
+
+    # engineer_only is hidden from guests (list + audio both 404/absent)
+    client.patch(
+        f"/api/sessions/{s['id']}/references/{ref_up['id']}",
+        json={"visibility": "engineer_only"},
+        headers=_auth(token),
+    )
+    r = client.get(f"/api/sessions/public/{share}/references")
+    assert len(r.json()) == 1
+    assert client.get(f"/api/sessions/public/{share}/references/{ref_up['id']}/audio").status_code == 404
+
+    # owner can still stream the private reference
+    r = client.get(f"/api/sessions/{s['id']}/references/{ref_up['id']}/audio", headers=_auth(token))
+    assert r.status_code == 200
+    assert r.content == wav
+
+    # update → back to reviewers, ledger events track everything
+    client.patch(
+        f"/api/sessions/{s['id']}/references/{ref_up['id']}",
+        json={"visibility": "reviewers", "note": "updated note"},
+        headers=_auth(token),
+    )
+    events = {e["event"] for e in client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token)).json()["events"]}
+    assert "reference.created" in events
+    assert "reference.updated" in events
+
+    client.delete(f"/api/sessions/{s['id']}/references/{ref_url['id']}", headers=_auth(token))
+    events = {e["event"] for e in client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token)).json()["events"]}
+    assert "reference.removed" in events
+
+    # non-audio upload rejected
+    r = client.post(
+        f"/api/sessions/{s['id']}/references/upload",
+        headers=_auth(token),
+        data={"title": "Bad"},
+        files=[("file", ("evil.exe", b"MZ", "application/octet-stream"))],
+    )
+    assert r.status_code == 400
+
+
+def test_reference_never_deliverable_and_not_on_delivery_link(client):
+    import hashlib as _hl
+
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    ref_wav = io.BytesIO()
+    with wave.open(ref_wav, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(8000)
+        w.writeframes(b"".join(struct.pack("<h", int(8000 * 0.9)) for _ in range(8000)))
+    ref = client.post(
+        f"/api/sessions/{s['id']}/references/upload",
+        headers=_auth(token),
+        data={"title": "Secret ref", "purpose": "overall"},
+        files=[("file", ("ref.wav", ref_wav.getvalue(), "audio/wav"))],
+    ).json()
+    ref_sha = _hl.sha256(ref_wav.getvalue()).hexdigest()
+
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    pkg = client.post(
+        "/api/release-packages",
+        json={"session_id": s["id"], "approved_version_id": v["id"], "name": "Final"},
+        headers=_auth(token),
+    ).json()
+    client.post(
+        f"/api/release-packages/{pkg['id']}/deliverables/from-version",
+        json={"type": "master", "from_version_id": v["id"]},
+        headers=_auth(token),
+    )
+    # a from_version_id that resolves to no version is rejected server-side
+    # (references are not versions — the only way into a package is a version
+    # or a fresh upload, so a reference blob can never become a deliverable)
+    r = client.post(
+        f"/api/release-packages/{pkg['id']}/deliverables/from-version",
+        json={"type": "stems", "from_version_id": 999999},
+        headers=_auth(token),
+    )
+    assert r.status_code == 404
+    pkg = client.post(
+        f"/api/release-packages/{pkg['id']}/lock",
+        json={"approval_scope": "master"},
+        headers=_auth(token),
+    ).json()
+
+    # the reference never becomes a deliverable: its blob hash never appears
+    # among package checksums
+    assert ref_sha not in [d["sha256"] for d in pkg["deliverables"]]
+    assert [d["type"] for d in pkg["deliverables"]] == ["master"]
+
+    # public delivery link exposes no references — not in HTML payload, not in API
+    tok = pkg["delivery_token"]
+    r = client.get(f"/api/release-packages/public/{tok}")
+    body = r.json()
+    assert "references" not in body
+    assert "reference" not in str(body).lower()
+
+
+def test_reference_comparison_gains_and_gates(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(2.0), "v1 quiet mix")
+
+    # loud reference (0.9 amplitude vs ~0.5-0 alternating in make_wav)
+    buf = io.BytesIO()
+    n = 16000
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(8000)
+        w.writeframes(b"".join(struct.pack("<h", int(8000 * 0.9)) for _ in range(n)))
+    ref = client.post(
+        f"/api/sessions/{s['id']}/references/upload",
+        headers=_auth(token),
+        data={"title": "Loud ref", "purpose": "balance"},
+        files=[("file", ("ref.wav", buf.getvalue(), "audio/wav"))],
+    ).json()
+    assert ref["analysis_status"] == "done"
+
+    # URL references can't be compared in-app
+    url_ref = client.post(
+        f"/api/sessions/{s['id']}/references",
+        json={"title": "Url", "source_type": "external_url", "external_url": "https://x.com/a"},
+        headers=_auth(token),
+    ).json()
+    r = client.post(
+        f"/api/sessions/{s['id']}/references/compare",
+        json={"version_id": v["id"], "reference_id": url_ref["id"], "start_ms": 0, "end_ms": 800},
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+
+    # mix (quieter) stays at 0 dB; louder reference is attenuated
+    r = client.post(
+        f"/api/sessions/{s['id']}/references/compare",
+        json={"version_id": v["id"], "reference_id": ref["id"], "start_ms": 0, "end_ms": 800},
+        headers=_auth(token),
+    )
+    assert r.status_code == 201
+    comp = r.json()
+    assert comp["level_match"] == "short_term_lufs"
+    assert comp["mix_gain_db"] == 0
+    assert comp["ref_gain_db"] < 0
+    assert comp["reference_label"].startswith("Loud ref")
+    assert comp["mix_audio_url"].endswith(f"/versions/{v['id']}/audio")
+    assert comp["ref_audio_url"].endswith(f"/references/{ref['id']}/audio")
+
+    # ledger records the comparison
+    events = {e["event"] for e in client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token)).json()["events"]}
+    assert "reference.compared" in events
+
+    # reviewer (guest) can compare reviewers-visible references; URLs are public
+    share = s["share_token"]
+    r = client.post(
+        f"/api/sessions/public/{share}/references/compare",
+        json={"version_id": v["id"], "reference_id": ref["id"], "start_ms": 0, "end_ms": 800},
+    )
+    assert r.status_code == 201
+    gcomp = r.json()
+    assert "/public/" in gcomp["mix_audio_url"]
+    assert "/public/" in gcomp["ref_audio_url"]
+
+    # unknown reference in a comparison → 404
+    r = client.post(
+        f"/api/sessions/{s['id']}/references/compare",
+        json={"version_id": v["id"], "reference_id": 99999, "start_ms": 0},
+        headers=_auth(token),
+    )
+    assert r.status_code == 404
+
+
+def test_client_brief_and_revision_rules(client):
+    token = _register(client)
+    s = _create_session(client, token)
+
+    # defaults
+    r = client.get(f"/api/sessions/{s['id']}", headers=_auth(token))
+    assert r.json()["service_type"] == "mix"
+
+    # save a full brief
+    r = client.patch(
+        f"/api/sessions/{s['id']}/brief",
+        json={
+            "service_type": "mix_master",
+            "genre": "Neo-soul",
+            "goal": "label",
+            "deadline_at": "2026-09-01T12:00:00Z",
+            "review_start_at": "2026-08-20T12:00:00Z",
+            "reference_links": "https://soundcloud.com/x/ref1\nhttps://open.spotify.com/track/abc",
+            "do_not_change": "Keep the vocal balance as-is; don't touch the arrangement",
+            "required_deliverables": "master, instrumental, acapella",
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    brief = r.json()
+    assert brief["service_type"] == "mix_master"
+    assert brief["genre"] == "Neo-soul"
+    assert brief["goal"] == "label"
+    assert "spotify.com" in brief["reference_links"]
+    assert brief["required_deliverables"] == "master, instrumental, acapella"
+
+    # invalid service type rejected
+    r = client.patch(
+        f"/api/sessions/{s['id']}/brief",
+        json={"service_type": "bogus"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 422
+
+    # guest on the share link sees the brief (rules are visible to the client)
+    share = s["share_token"]
+    r = client.get(f"/api/sessions/public/{share}")
+    assert r.json()["service_type"] == "mix_master"
+    assert r.json()["do_not_change"].startswith("Keep the vocal")
+
+    # ledger records brief.updated
+    r = client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token))
+    assert "brief.updated" in {e["event"] for e in r.json()["events"]}
+
+
+def test_engineer_portfolio(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "approved master")
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+
+    # not public yet → empty portfolio
+    r = client.get("/api/portfolio/producer")
+    assert r.status_code == 200
+    assert r.json()["track_count"] == 0
+
+    # lock a release package so the portfolio carries a delivery link
+    pkg = client.post(
+        "/api/release-packages",
+        json={"session_id": s["id"], "approved_version_id": v["id"], "name": "Final"},
+        headers=_auth(token),
+    ).json()
+    client.post(
+        f"/api/release-packages/{pkg['id']}/deliverables/from-version",
+        json={"type": "master", "from_version_id": v["id"]},
+        headers=_auth(token),
+    )
+    pkg = client.post(
+        f"/api/release-packages/{pkg['id']}/lock",
+        json={"approval_scope": "master"},
+        headers=_auth(token),
+    ).json()
+
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"portfolio_public": True},
+        headers=_auth(token),
+    )
+
+    r = client.get("/api/portfolio/producer")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["track_count"] == 1
+    t = body["tracks"][0]
+    assert t["name"] == "Neon Warehouse"
+    assert t["approved_label"] == "v1"
+    assert t["delivery_token"] == pkg["delivery_token"]
+
+    # portfolio preview is watermarked even though the version is approved
+    r = client.get(f"/api/portfolio/producer/preview/{v['id']}")
+    assert r.status_code == 200
+    assert r.content != make_wav(1.0)
+    assert r.content[:4] == b"RIFF"
+
+    # unknown engineer → 404
+    assert client.get("/api/portfolio/nobody").status_code == 404
+
+
 def test_stem_missing_in_one_version_returns_clear_error(client):
     token = _register(client)
     s = _create_session(client, token)

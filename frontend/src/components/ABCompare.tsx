@@ -399,7 +399,7 @@ export default function ABCompare({
   );
 }
 
-async function fetchAudioBlob(url: string): Promise<string> {
+export async function fetchAudioBlob(url: string): Promise<string> {
   const token = localStorage.getItem("soundhub_token");
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -408,7 +408,7 @@ async function fetchAudioBlob(url: string): Promise<string> {
   return URL.createObjectURL(await res.blob());
 }
 
-async function decodeAudio(ctx: AudioContext, url: string): Promise<AudioBuffer> {
+export async function decodeAudio(ctx: AudioContext, url: string): Promise<AudioBuffer> {
   const res = await fetch(url);
   const buf = await res.arrayBuffer();
   return ctx.decodeAudioData(buf);

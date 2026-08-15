@@ -142,6 +142,7 @@ export interface ReviewVersion {
   waveform: number[];
   waveform_synthetic: boolean;
   comments: ReviewComment[];
+  watermarked: boolean;
 }
 
 export interface ReviewRound {
@@ -200,6 +201,40 @@ export interface ReviewSession {
   feedback_owner?: string;
   included_rounds?: number;
   rounds_open?: boolean;
+  deposit_due_cents?: number | null;
+  deposit_status?: string;
+  extra_round_price_cents?: number | null;
+  rounds_paid?: number;
+  portfolio_public?: boolean;
+  watermark_enabled?: boolean;
+  service_type?: string;
+  genre?: string;
+  goal?: string;
+  deadline_at?: string | null;
+  review_start_at?: string | null;
+  reference_links?: string;
+  do_not_change?: string;
+  required_deliverables?: string;
+}
+
+export interface PortfolioTrack {
+  session_id: number;
+  name: string;
+  status: string;
+  version_count: number;
+  has_approved: boolean;
+  approved_label: string;
+  approved_filename: string;
+  approved_version_id: number | null;
+  approved_duration_s: number;
+  approved_at: string | null;
+  delivery_token: string | null;
+}
+
+export interface Portfolio {
+  username: string;
+  track_count: number;
+  tracks: PortfolioTrack[];
 }
 
 export const APPROVAL_SCOPES = ["mix", "master", "arrangement", "release"] as const;
@@ -254,6 +289,8 @@ export interface DeliveryPage {
   invoice_status: string;
   amount_due_cents: number | null;
   currency: string;
+  deposit_due_cents: number | null;
+  deposit_status: string;
   locked_by: string;
   immutable_at: string | null;
   manifest_hash: string | null;
@@ -293,6 +330,53 @@ export interface LedgerVerify {
   total: number;
   head_hash: string | null;
   problems: Array<{ id: number; event: string; expected: string; stored: string }>;
+}
+
+export const REFERENCE_PURPOSES = ["balance", "low_end", "vocal", "width", "arrangement", "overall"] as const;
+export const REFERENCE_VISIBILITY = ["engineer_only", "reviewers"] as const;
+
+export interface ReferenceTrack {
+  id: number;
+  session_id: number;
+  title: string;
+  artist: string;
+  source_type: "external_url" | "private_upload";
+  external_url: string;
+  purpose: string;
+  visibility: string;
+  note: string;
+  created_by: string;
+  created_at: string;
+  filename: string;
+  size: number;
+  audio_format: string;
+  duration_s: number;
+  integrated_lufs: number | null;
+  true_peak_dbtp: number | null;
+  sample_rate: number | null;
+  channels: number | null;
+  analysis_status: string;
+  waveform: number[];
+  waveform_synthetic: boolean;
+}
+
+export interface ReferenceComparison {
+  id: number;
+  session_id: number;
+  version_id: number;
+  reference_id: number;
+  version_label: string;
+  reference_label: string;
+  start_ms: number;
+  end_ms: number | null;
+  mix_gain_db: number;
+  ref_gain_db: number;
+  short_term_lufs: Record<string, number>;
+  level_match: string;
+  label: string;
+  mix_audio_url: string;
+  ref_audio_url: string;
+  created_at: string;
 }
 
 export interface AudioAnalysis {

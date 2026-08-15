@@ -60,6 +60,20 @@ def _migrate() -> None:
                 ("feedback_owner", "VARCHAR(128) DEFAULT ''"),
                 ("included_rounds", "INTEGER DEFAULT 1"),
                 ("rounds_open", "BOOLEAN DEFAULT 1"),
+                ("deposit_due_cents", "INTEGER"),
+                ("deposit_status", "VARCHAR(32) DEFAULT 'none'"),
+                ("extra_round_price_cents", "INTEGER"),
+                ("rounds_paid", "INTEGER DEFAULT 0"),
+                ("portfolio_public", "BOOLEAN DEFAULT 0"),
+                ("watermark_enabled", "BOOLEAN DEFAULT 1"),
+                ("service_type", "VARCHAR(32) DEFAULT 'mix'"),
+                ("genre", "VARCHAR(128) DEFAULT ''"),
+                ("goal", "VARCHAR(64) DEFAULT ''"),
+                ("deadline_at", "DATETIME"),
+                ("review_start_at", "DATETIME"),
+                ("reference_links", "TEXT DEFAULT ''"),
+                ("do_not_change", "TEXT DEFAULT ''"),
+                ("required_deliverables", "TEXT DEFAULT ''"),
             ):
                 if col not in review_cols:
                     conn.execute(text(f"ALTER TABLE review_sessions ADD COLUMN {col} {ddl}"))
@@ -67,6 +81,8 @@ def _migrate() -> None:
             v_cols = {c["name"] for c in inspector.get_columns("review_versions")}
             if "round_number" not in v_cols:
                 conn.execute(text("ALTER TABLE review_versions ADD COLUMN round_number INTEGER DEFAULT 1"))
+            if "watermark_sha" not in v_cols:
+                conn.execute(text("ALTER TABLE review_versions ADD COLUMN watermark_sha VARCHAR(64)"))
         if inspector.has_table("review_comments"):
             cm_cols = {c["name"] for c in inspector.get_columns("review_comments")}
             for col, ddl in (
