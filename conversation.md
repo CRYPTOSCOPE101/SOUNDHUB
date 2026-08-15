@@ -403,6 +403,8 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
 
 **Принцип фазы:** не добавлять новые модули (crypto-слой, Max for Live comments) до user tests; упрощать то, что уже есть.
 
+**`USER_TESTS.md` v2 (по фидбеку «как провести первые 3 теста»):** задачи **по ролям** вместо общего маршрута — Engineer (session из brief → ссылка → экспорт requests → push через CLI), Client/artist с телефона (structured + voice note → сравнить версии → feedback → approve), A&R/label (version history → approval по роли → delivery package → payment). Единая вступительная фраза «Представь, что это твой текущий проект…», без объяснения интерфейса. Запись **дословных формулировок** («мне страшно нажать Approve, потому что…», «я бы всё равно отправил в WhatsApp…») — как готовые тексты для UI/onboarding/email. Отдельный чек-лист лендинга: понятен ли «Max for Live panel prototype» не-Ableton пользователю, не воспринимается ли marketplace как главное («для чего SoundHub?»), доходят ли до roadmap с 4 колонками.
+
 ---
 
 ## Запуск
