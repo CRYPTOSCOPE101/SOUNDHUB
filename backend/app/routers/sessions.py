@@ -19,6 +19,7 @@ from ..database import get_db
 from ..models import (
     ReviewApproval,
     ReviewComment,
+    ReviewRound,
     ReviewSession,
     ReviewVersion,
     ShareAccessEvent,
@@ -31,6 +32,9 @@ from ..schemas import (
     ReviewApprovalOut,
     ReviewCommentCreate,
     ReviewCommentOut,
+    ReviewRequestStatusUpdate,
+    ReviewRoundOut,
+    ReviewRoundSubmit,
     ReviewSessionCreate,
     ReviewSessionDetailOut,
     ReviewSessionOut,
@@ -85,6 +89,9 @@ def _comment_out(c: ReviewComment) -> ReviewCommentOut:
         author_name=name,
         parent_id=c.parent_id,
         created_at=c.created_at,
+        status=c.status,
+        fixed_in=c.fixed_in,
+        verified_at=c.verified_at,
     )
 
 
@@ -106,6 +113,7 @@ def _version_out(db: Session, v: ReviewVersion, with_comments: bool = False) -> 
         duration_s=wf["duration_s"],
         audio_format=v.audio_format,
         created_at=v.created_at,
+        round_number=v.round_number,
         waveform=wf["peaks"],
         waveform_synthetic=wf["synthetic"],
         comments=comments,
@@ -151,6 +159,11 @@ def _session_detail(db: Session, s: ReviewSession, with_comments: bool = True) -
         .order_by(ShareAccessEvent.created_at.desc())
         .limit(50)
     ).all()
+    rounds = db.scalars(
+        select(ReviewRound)
+        .where(ReviewRound.session_id == s.id)
+        .order_by(ReviewRound.number.desc())
+    ).all()
     return ReviewSessionDetailOut(
         **out.model_dump(),
         versions=[_version_out(db, v, with_comments=with_comments) for v in versions],
@@ -160,10 +173,16 @@ def _session_detail(db: Session, s: ReviewSession, with_comments: bool = True) -
         access_events=[
             ShareAccessEventOut.model_validate(e, from_attributes=True) for e in events
         ],
+        rounds=[ReviewRoundOut.model_validate(r, from_attributes=True) for r in rounds],
         share_expires_at=s.share_expires_at,
         share_permission=s.share_permission,
         share_has_password=bool(s.share_password),
         share_allowlist=s.share_allowlist,
+        round_number=s.round_number,
+        feedback_due_at=s.feedback_due_at,
+        feedback_owner=s.feedback_owner,
+        included_rounds=s.included_rounds,
+        rounds_open=s.rounds_open,
     )
 
 
@@ -259,6 +278,11 @@ def guest_comment(
 ):
     session = get_public_session(db, share_token)
     _require_share_permission(session, "comment", payload.author_name, password)
+    if not session.rounds_open:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "This revision round is closed — new notes go into the next round once feedback is submitted",
+        )
     version = get_version_or_404(db, session.id, version_id)
     if payload.parent_id:
         parent = db.get(ReviewComment, payload.parent_id)
@@ -270,6 +294,8 @@ def guest_comment(
         time_s=payload.time_s,
         body=payload.body.strip(),
         parent_id=payload.parent_id,
+        # reviewers leave private draft notes; the feedback owner consolidates them
+        status=payload.status if payload.status == "draft" else "draft",
     )
     db.add(comment)
     _log_access(db, session, payload.author_name, "commented", f"{version.label} @ {payload.time_s:.1f}s")
@@ -374,6 +400,14 @@ def update_share_settings(
     session.share_expires_at = payload.share_expires_at
     session.share_permission = payload.share_permission
     session.share_allowlist = payload.share_allowlist.strip()
+    if payload.feedback_owner:
+        session.feedback_owner = payload.feedback_owner.strip()
+    if payload.included_rounds is not None:
+        session.included_rounds = payload.included_rounds
+    if payload.rounds_open is not None:
+        session.rounds_open = payload.rounds_open
+    if payload.feedback_due_at is not None:
+        session.feedback_due_at = payload.feedback_due_at
     db.commit()
     return _session_detail(db, session)
 
@@ -462,8 +496,24 @@ def upload_version(
         size=len(data),
         duration_s=wf["duration_s"],
         audio_format=ext,
+        round_number=session.round_number,
     )
     db.add(version)
+    db.flush()  # assign version.id before linking open requests to it
+    # engineer uploaded a new version: mark the current round's requests as fixed_in
+    open_reqs = db.scalars(
+        select(ReviewComment)
+        .join(ReviewVersion, ReviewComment.version_id == ReviewVersion.id)
+        .where(
+            ReviewVersion.session_id == session.id,
+            ReviewComment.status.in_(["open", "acknowledged", "in_progress"]),
+            ReviewComment.fixed_in.is_(None),
+        )
+    ).all()
+    for c in open_reqs:
+        c.status = "fixed"
+        c.fixed_in = version.id
+    session.rounds_open = True  # new version shipped → new round open for feedback
     session.updated_at = utcnow()  # touch
     db.commit()
     db.refresh(version)
@@ -555,6 +605,125 @@ def set_version_status(
     db.commit()
     db.refresh(version)
     return _version_out(db, version)
+
+
+@router.post("/{session_id}/submit-feedback", response_model=ReviewSessionDetailOut)
+def submit_feedback(
+    session_id: int,
+    payload: ReviewRoundSubmit,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Consolidate all draft notes into one revision round and open round N+1.
+
+    This is the anti-chaos step: reviewers left private drafts, and now the
+    designated feedback owner (or the engineer) submits a single consolidated
+    list of change requests.
+    """
+    session = get_session_or_404(db, user, session_id)
+    drafts = db.scalars(
+        select(ReviewComment)
+        .where(ReviewComment.status == "draft")
+        .order_by(ReviewComment.time_s)
+    ).all()
+    drafts = [d for d in drafts if d.version.session_id == session.id]
+    if not drafts:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No draft notes to submit")
+    for d in drafts:
+        d.status = "open"
+    round_ = ReviewRound(
+        session_id=session.id,
+        number=session.round_number,
+        status="submitted",
+        submitted_at=utcnow(),
+        due_at=payload.due_at or session.feedback_due_at,
+        note=payload.note.strip(),
+        request_count=len(drafts),
+    )
+    db.add(round_)
+    session.round_number += 1
+    session.rounds_open = False  # round closed until the engineer ships the next version
+    session.updated_at = utcnow()
+    db.commit()
+    return _session_detail(db, session)
+
+
+@router.post(
+    "/public/{share_token}/submit-feedback",
+    response_model=ReviewSessionDetailOut,
+)
+def public_submit_feedback(
+    share_token: str,
+    payload: ReviewRoundSubmit,
+    actor: str = "",
+    password: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Feedback owner consolidates drafts through the share link."""
+    session = get_public_session(db, share_token)
+    _require_share_permission(session, "comment", actor, password)
+    if session.feedback_owner and actor.strip().lower() != session.feedback_owner.strip().lower():
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Only {session.feedback_owner} can submit the consolidated feedback for this review",
+        )
+    drafts = db.scalars(
+        select(ReviewComment)
+        .where(ReviewComment.status == "draft")
+        .order_by(ReviewComment.time_s)
+    ).all()
+    drafts = [d for d in drafts if d.version.session_id == session.id]
+    if not drafts:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No draft notes to submit")
+    for d in drafts:
+        d.status = "open"
+    round_ = ReviewRound(
+        session_id=session.id,
+        number=session.round_number,
+        status="submitted",
+        submitted_at=utcnow(),
+        due_at=payload.due_at or session.feedback_due_at,
+        note=payload.note.strip(),
+        request_count=len(drafts),
+    )
+    db.add(round_)
+    session.round_number += 1
+    session.rounds_open = False  # round closed until the engineer ships the next version
+    _log_access(db, session, actor, "submitted_feedback", f"{len(drafts)} requests")
+    session.updated_at = utcnow()
+    db.commit()
+    return _session_detail(db, session)
+
+
+@router.post(
+    "/{session_id}/versions/{version_id}/requests/{comment_id}/status",
+    response_model=ReviewCommentOut,
+)
+def update_request_status(
+    session_id: int,
+    version_id: int,
+    comment_id: int,
+    payload: ReviewRequestStatusUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Move a change request through its lifecycle (engineer side)."""
+    get_session_or_404(db, user, session_id)
+    version = get_version_or_404(db, session_id, version_id)
+    comment = db.get(ReviewComment, comment_id)
+    if comment is None or comment.version_id != version.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
+    comment.status = payload.status
+    if payload.status == "fixed" and payload.fixed_in_version_id:
+        comment.fixed_in = payload.fixed_in_version_id
+    if payload.status == "verified":
+        comment.verified_at = utcnow()
+    if payload.status == "approved":
+        comment.resolved = True
+        comment.verified_at = utcnow()
+    db.commit()
+    db.refresh(comment)
+    return _comment_out(comment)
 
 
 @router.post(

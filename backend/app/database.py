@@ -55,9 +55,27 @@ def _migrate() -> None:
                 ("share_expires_at", "DATETIME"),
                 ("share_permission", "VARCHAR(32) DEFAULT 'comment'"),
                 ("share_allowlist", "TEXT DEFAULT ''"),
+                ("round_number", "INTEGER DEFAULT 1"),
+                ("feedback_due_at", "DATETIME"),
+                ("feedback_owner", "VARCHAR(128) DEFAULT ''"),
+                ("included_rounds", "INTEGER DEFAULT 1"),
+                ("rounds_open", "BOOLEAN DEFAULT 1"),
             ):
                 if col not in review_cols:
                     conn.execute(text(f"ALTER TABLE review_sessions ADD COLUMN {col} {ddl}"))
+        if inspector.has_table("review_versions"):
+            v_cols = {c["name"] for c in inspector.get_columns("review_versions")}
+            if "round_number" not in v_cols:
+                conn.execute(text("ALTER TABLE review_versions ADD COLUMN round_number INTEGER DEFAULT 1"))
+        if inspector.has_table("review_comments"):
+            cm_cols = {c["name"] for c in inspector.get_columns("review_comments")}
+            for col, ddl in (
+                ("status", "VARCHAR(32) DEFAULT 'open'"),
+                ("fixed_in", "INTEGER"),
+                ("verified_at", "DATETIME"),
+            ):
+                if col not in cm_cols:
+                    conn.execute(text(f"ALTER TABLE review_comments ADD COLUMN {col} {ddl}"))
         if "password_hash" in users_cols and not inspector.get_columns("users"):
             pass  # no-op guard
 

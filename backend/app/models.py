@@ -130,12 +130,22 @@ class ReviewSession(Base):
     access_events: Mapped[list["ShareAccessEvent"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
+    rounds: Mapped[list["ReviewRound"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
 
     # Share-link settings (professional review links)
     share_password: Mapped[str | None] = mapped_column(String(256), nullable=True)
     share_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     share_permission: Mapped[str] = mapped_column(String(32), default="comment")  # comment | view | download
     share_allowlist: Mapped[str] = mapped_column(Text, default="")  # comma-separated emails
+
+    # Mix review rounds (controlled revisions)
+    round_number: Mapped[int] = mapped_column(Integer, default=1)
+    feedback_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    feedback_owner: Mapped[str] = mapped_column(String(128), default="")  # who consolidates draft notes
+    included_rounds: Mapped[int] = mapped_column(Integer, default=1)  # paid/included rounds
+    rounds_open: Mapped[bool] = mapped_column(default=True)  # can clients still add notes?
 
 
 class ReviewVersion(Base):
@@ -153,12 +163,15 @@ class ReviewVersion(Base):
     duration_s: Mapped[float] = mapped_column(default=0.0)
     audio_format: Mapped[str] = mapped_column(String(16), default="wav")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    round_number: Mapped[int] = mapped_column(Integer, default=1)
 
     __table_args__ = (UniqueConstraint("session_id", "number", name="uq_review_version_number"),)
 
     session: Mapped["ReviewSession"] = relationship(back_populates="versions")
     comments: Mapped[list["ReviewComment"]] = relationship(
-        back_populates="version", cascade="all, delete-orphan"
+        back_populates="version",
+        cascade="all, delete-orphan",
+        foreign_keys="ReviewComment.version_id",
     )
 
 
@@ -175,8 +188,39 @@ class ReviewComment(Base):
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("review_comments.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
-    version: Mapped["ReviewVersion"] = relationship(back_populates="comments")
+    version: Mapped["ReviewVersion"] = relationship(
+        back_populates="comments", foreign_keys=[version_id]
+    )
     author: Mapped["User"] = relationship()
+
+    # request lifecycle: draft → open → acknowledged → in_progress → fixed → verified → approved
+    status: Mapped[str] = mapped_column(String(32), default="open")
+    fixed_in: Mapped[int | None] = mapped_column(ForeignKey("review_versions.id"), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ReviewRound(Base):
+    """A closed revision round: one consolidated list of change requests.
+
+    Round 1 = initial mix review. Submitting feedback consolidates draft notes
+    into open requests and increments the round; the next version belongs to
+    the new round.
+    """
+
+    __tablename__ = "review_rounds"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    number: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(32), default="open")  # open | submitted | closed
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    request_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    __table_args__ = (UniqueConstraint("session_id", "number", name="uq_review_round_number"),)
+
+    session: Mapped["ReviewSession"] = relationship(back_populates="rounds")
 
 
 class ReviewApproval(Base):

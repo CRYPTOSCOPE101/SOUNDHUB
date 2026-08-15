@@ -366,3 +366,109 @@ def test_share_settings_password_and_permissions(client):
     actions = {e["action"] for e in r.json()["access_events"]}
     assert "opened" in actions
     assert "downloaded" in actions
+
+
+def test_revision_rounds_consolidated_feedback(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v1 = _upload(client, token, s["id"], make_wav(1.0))
+    share = s["share_token"]
+
+    # reviewers leave private draft notes via the share link
+    for i, body in enumerate(["Bass masks vocal", "Hats too loud", "Outro needs air"]):
+        r = client.post(
+            f"/api/sessions/public/{share}/versions/{v1['id']}/comments",
+            json={"time_s": 0.2 + i * 0.3, "body": body, "author_name": f"reviewer{i}"},
+        )
+        assert r.status_code == 201
+        assert r.json()["status"] == "draft"  # guests always leave drafts
+
+    # drafts are visible to the owner but not yet open requests
+    r = client.get(f"/api/sessions/{s['id']}", headers=_auth(token))
+    assert all(c["status"] == "draft" for c in r.json()["versions"][0]["comments"])
+
+    # submit feedback: drafts consolidate into one round of open requests
+    r = client.post(
+        f"/api/sessions/{s['id']}/submit-feedback",
+        json={"note": "Consolidated notes from A&R + artist"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    detail = r.json()
+    assert detail["round_number"] == 2
+    assert detail["rounds"][0]["number"] == 1
+    assert detail["rounds"][0]["status"] == "submitted"
+    assert detail["rounds"][0]["request_count"] == 3
+    assert all(c["status"] == "open" for c in detail["versions"][0]["comments"])
+
+    # round 1 closed: guests can no longer add notes
+    r = client.post(
+        f"/api/sessions/public/{share}/versions/{v1['id']}/comments",
+        json={"time_s": 0.9, "body": "too late", "author_name": "latecomer"},
+    )
+    assert r.status_code == 403
+
+    # upload v2 belongs to round 2 and auto-marks requests on v1 as fixed
+    v2 = _upload(client, token, s["id"], make_wav(1.0), "v2 bass fixed")
+    assert v2["round_number"] == 2
+    r = client.get(f"/api/sessions/{s['id']}", headers=_auth(token))
+    v1_out = next(v for v in r.json()["versions"] if v["id"] == v1["id"])
+    fixed = [c for c in v1_out["comments"] if c["status"] == "fixed"]
+    assert len(fixed) == 3
+    assert fixed[0]["fixed_in"] == v2["id"]
+
+    # owner can move a request through its lifecycle
+    cid = fixed[0]["id"]
+    r = client.post(
+        f"/api/sessions/{s['id']}/versions/{v1['id']}/requests/{cid}/status",
+        json={"status": "verified"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "verified"
+    assert r.json()["verified_at"]
+
+    # approving closes it
+    r = client.post(
+        f"/api/sessions/{s['id']}/versions/{v1['id']}/requests/{cid}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    assert r.json()["status"] == "approved"
+    assert r.json()["resolved"] is True
+
+
+def test_feedback_owner_submits_via_share_link(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0))
+    share = s["share_token"]
+
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"feedback_owner": "aisha@label.com"},
+        headers=_auth(token),
+    )
+
+    client.post(
+        f"/api/sessions/public/{share}/versions/{v['id']}/comments",
+        json={"time_s": 0.3, "body": "draft note", "author_name": "artist@mail.com"},
+    )
+
+    # wrong actor can't submit
+    r = client.post(
+        f"/api/sessions/public/{share}/submit-feedback",
+        json={"note": ""},
+        params={"actor": "stranger@x.com"},
+    )
+    assert r.status_code == 403
+
+    # the feedback owner can
+    r = client.post(
+        f"/api/sessions/public/{share}/submit-feedback",
+        json={"note": "Aisha's consolidated list"},
+        params={"actor": "aisha@label.com"},
+    )
+    assert r.status_code == 200
+    assert r.json()["round_number"] == 2
+    assert r.json()["rounds"][0]["request_count"] == 1

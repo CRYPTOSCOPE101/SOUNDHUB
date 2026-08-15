@@ -28,7 +28,13 @@ async function fetchAudioBlob(url: string): Promise<string> {
 function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: () => void }) {
   const [versions, setVersions] = useState<ReviewVersion[]>(session.versions ?? []);
   const [approvals, setApprovals] = useState<ReviewApproval[]>(session.approvals ?? []);
+  const [rounds, setRounds] = useState(session.rounds ?? []);
   const [events, setEvents] = useState(session.access_events ?? []);
+  const [roundNumber, setRoundNumber] = useState(session.round_number ?? 1);
+  const [roundsOpen, setRoundsOpen] = useState(session.rounds_open ?? true);
+  const [feedbackOwner, setFeedbackOwner] = useState(session.feedback_owner ?? "");
+  const [includedRounds, setIncludedRounds] = useState(session.included_rounds ?? 1);
+  const [submitNote, setSubmitNote] = useState("");
   const [share, setShare] = useState({
     permission: session.share_permission ?? "comment",
     password: "",
@@ -60,7 +66,12 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
     const s = await api.getSession(session.id);
     setVersions(s.versions ?? []);
     setApprovals(s.approvals ?? []);
+    setRounds(s.rounds ?? []);
     setEvents(s.access_events ?? []);
+    setRoundNumber(s.round_number ?? 1);
+    setRoundsOpen(s.rounds_open ?? true);
+    setFeedbackOwner(s.feedback_owner ?? "");
+    setIncludedRounds(s.included_rounds ?? 1);
     setCurrentId((prev) => {
       if (prev && s.versions?.some((v) => v.id === prev)) return prev;
       return s.versions?.length ? s.versions[0].id : null;
@@ -173,6 +184,25 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
     }
   };
 
+  const submitFeedback = async () => {
+    setErr(null);
+    setInfo(null);
+    try {
+      await api.submitFeedback(session.id, submitNote);
+      setSubmitNote("");
+      setInfo("Feedback consolidated — round closed, next round opened ✓");
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Submit failed");
+    }
+  };
+
+  const setRequestStatus = async (commentId: number, status: string) => {
+    if (!current) return;
+    await api.setRequestStatus(session.id, current.id, commentId, status);
+    await refresh();
+  };
+
   const copyLink = async () => {
     const url = `${window.location.origin}/r/${session.share_token}`;
     try {
@@ -203,6 +233,8 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
         share_password: share.password || null,
         share_expires_at: share.expires ? `${share.expires}T23:59:59Z` : null,
         share_allowlist: share.allowlist,
+        feedback_owner: feedbackOwner,
+        included_rounds: includedRounds,
       });
       setInfo("Share settings saved ✓");
     } catch (e) {
@@ -221,6 +253,8 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
 
   const resolvedCount = current?.comments.filter((c) => c.resolved).length ?? 0;
   const openCount = (current?.comments.length ?? 0) - resolvedCount;
+  const drafts = current?.comments.filter((c) => c.status === "draft") ?? [];
+  const openRequests = current?.comments.filter((c) => c.status === "open" && !c.resolved) ?? [];
   const statusChip =
     current?.status === "approved"
       ? { text: `${current.label} · Approved ✓`, cls: "status-approved" }
@@ -237,11 +271,30 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
           <div>
             <div className="rs-name">{session.name}</div>
             <div className="rs-sub">
-              {versions.length} version{versions.length === 1 ? "" : "s"} · shared via private link
+              Round {roundNumber} · {versions.length} version{versions.length === 1 ? "" : "s"} · shared via private link
             </div>
           </div>
         </div>
         <div className={`rs-status ${statusChip.cls}`}>{statusChip.text}</div>
+      </div>
+
+      {/* revision round summary */}
+      <div className="rs-round-bar">
+        <span className="rs-round-chip">Round {roundNumber}</span>
+        <span className="rs-round-stat">
+          {openRequests.length} open request{openRequests.length === 1 ? "" : "s"}
+        </span>
+        <span className="rs-round-stat">
+          {drafts.length} draft note{drafts.length === 1 ? "" : "s"}
+        </span>
+        <span className={`rs-round-stat ${roundsOpen ? "open" : "closed"}`}>
+          {roundsOpen ? "collecting feedback" : "round closed"}
+        </span>
+        {rounds.length > 0 && (
+          <span className="rs-round-stat muted">
+            {rounds.filter((r) => r.status === "submitted").length} submitted
+          </span>
+        )}
       </div>
 
       {current ? (
@@ -406,14 +459,38 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                       <div className="rs-comment-author">
                         <span className="rs-avatar">{c.author_name[0]?.toUpperCase() ?? "?"}</span>
                         <strong>{c.author_name}</strong>
+                        {c.status !== "open" && c.status !== "draft" && (
+                          <span className={`rs-req-status st-${c.status}`}>{c.status}</span>
+                        )}
                       </div>
                       <p>{c.body}</p>
                       <div className="rs-comment-actions">
-                        <button type="button" className="rs-link" onClick={() => toggleResolved(c.id, c.resolved)}>
-                          {c.resolved ? "Reopen" : "Mark resolved"}
-                        </button>
+                        {c.status === "draft" && <span className="rs-req-draft">draft — visible to you only</span>}
+                        {c.status === "open" && (
+                          <button type="button" className="rs-link" onClick={() => setRequestStatus(c.id, "acknowledged")}>
+                            Acknowledge
+                          </button>
+                        )}
+                        {(c.status === "acknowledged" || c.status === "in_progress") && (
+                          <button type="button" className="rs-link" onClick={() => setRequestStatus(c.id, c.status === "acknowledged" ? "in_progress" : "fixed")}>
+                            {c.status === "acknowledged" ? "Start working" : "Mark fixed"}
+                          </button>
+                        )}
+                        {c.status === "fixed" && (
+                          <button type="button" className="rs-link" onClick={() => setRequestStatus(c.id, "verified")}>
+                            Verify
+                          </button>
+                        )}
+                        {c.status === "verified" && (
+                          <button type="button" className="rs-link" onClick={() => setRequestStatus(c.id, "approved")}>
+                            Approve request
+                          </button>
+                        )}
                         <button type="button" className="rs-link" onClick={() => copyCommentLink(c)}>
                           Copy link to comment
+                        </button>
+                        <button type="button" className="rs-link" onClick={() => toggleResolved(c.id, c.resolved)}>
+                          {c.resolved ? "Reopen" : "Mark resolved"}
                         </button>
                       </div>
                     </div>
@@ -468,6 +545,46 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                   {err && <div className="error">{err}</div>}
                 </div>
 
+                {/* consolidated feedback — one submitted revision round */}
+                <div className="rs-rounds">
+                  <div className="rs-versions-head">Revision rounds</div>
+                  {rounds.length === 0 && drafts.length === 0 && (
+                    <div className="rs-empty">Round {roundNumber} — share the link and collect feedback, then submit one consolidated list.</div>
+                  )}
+                  {drafts.length > 0 && (
+                    <div className="rs-round-drafts">
+                      <div className="rs-round-drafts-head">
+                        {drafts.length} draft note{drafts.length === 1 ? "" : "s"} → consolidated list
+                      </div>
+                      {drafts.map((c) => (
+                        <div key={c.id} className="rs-round-draft">
+                          <span className="rs-comment-at">@{fmtClock(c.time_s)}</span>
+                          <span className="rs-round-draft-body">{c.body}</span>
+                          <span className="rs-round-draft-author">{c.author_name}</span>
+                        </div>
+                      ))}
+                      <textarea
+                        value={submitNote}
+                        onChange={(e) => setSubmitNote(e.target.value)}
+                        placeholder="Note to the engineer (optional)"
+                        className="rs-approval-note-input"
+                        rows={2}
+                      />
+                      <button type="button" className="rs-btn approve" onClick={submitFeedback}>
+                        Submit revision notes → Round {roundNumber + 1}
+                      </button>
+                    </div>
+                  )}
+                  {rounds.map((r) => (
+                    <div key={r.id} className="rs-round-row">
+                      <span className="rs-round-chip">Round {r.number}</span>
+                      <span className="rs-round-stat">{r.request_count} requests</span>
+                      <span className={`rs-round-stat ${r.status === "submitted" ? "open" : "closed"}`}>{r.status}</span>
+                      {r.note && <span className="rs-round-note">“{r.note}”</span>}
+                    </div>
+                  ))}
+                </div>
+
                 <ApprovalPanel sessionId={session.id} version={current} approvals={approvals.filter((a) => a.version_id === current.id)} onDone={refresh} />
 
                 <div className="rs-share-block">
@@ -510,6 +627,27 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                         value={share.allowlist}
                         onChange={(e) => setShare({ ...share, allowlist: e.target.value })}
                         placeholder="aisha@label.com, artist@mail.com"
+                        className="rs-input"
+                      />
+                    </label>
+                    <label>
+                      Feedback owner (consolidates notes)
+                      <input
+                        type="text"
+                        value={feedbackOwner}
+                        onChange={(e) => setFeedbackOwner(e.target.value)}
+                        placeholder="aisha@label.com"
+                        className="rs-input"
+                      />
+                    </label>
+                    <label>
+                      Included revision rounds
+                      <input
+                        type="number"
+                        min={0}
+                        max={50}
+                        value={includedRounds}
+                        onChange={(e) => setIncludedRounds(Number(e.target.value) || 0)}
                         className="rs-input"
                       />
                     </label>
