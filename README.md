@@ -1,5 +1,5 @@
 
-![SoundHub repo page](screenshots/LOGO_modSH.jpg)
+![SoundHub repo page](screenshots/LOGO_modSHA.jpg)
 
 <div align="center" style="margin: 20px 0px;">
 <a href="https://github.com/kavishdevar/librepods/releases/latest">
