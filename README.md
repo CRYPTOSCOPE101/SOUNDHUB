@@ -1,6 +1,12 @@
 
 ![SoundHub repo page](screenshots/LOGO_modSH.jpg)
 
+[![GitHub Downloads](https://img.shields.io/github/downloads/USER/REPO/total)](https://github.com/USER/REPO/releases)
+[![Android CI](https://github.com/USER/REPO/actions/workflows/ci-android.yml/badge.svg)](https://github.com/USER/REPO/actions)
+[![Linux CI](https://github.com/USER/REPO/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/USER/REPO/actions)
+[![Issues](https://img.shields.io/github/issues/USER/REPO)](https://github.com/USER/REPO/issues)
+
+
 # 🎛 What is SoundHub?
 
 SoundHub is a tokenized marketplace where music producers buy and sell finished presets, loops, stems, and sound packs with on-chain ownership and licensing
