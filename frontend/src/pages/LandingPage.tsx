@@ -161,7 +161,7 @@ export default function LandingPage() {
       {/* ---------- sticky landing nav ---------- */}
       <nav className="landing-nav">
         <a href="#top" className="landing-nav-brand">
-          <span className="landing-nav-logo">S</span> SoundHub
+          <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" /> SoundHub
         </a>
         <div className="landing-nav-links">
           {NAV_LINKS.map((l) => (
@@ -439,7 +439,7 @@ export default function LandingPage() {
       <footer className="landing-footer">
         <div className="landing-footer-grid">
           <div className="landing-footer-brand">
-            <span className="landing-nav-logo">S</span> SoundHub
+            <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" /> SoundHub
             <p className="landing-footer-tag">Don't generate. Buy. — GitHub for sound, tokenized, inside your DAW.</p>
           </div>
           <div className="landing-footer-col">

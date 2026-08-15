@@ -41,7 +41,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <Link to="/" className="logo" title="SoundHub">
-            S
+            <img src="/logo.png" alt="SoundHub" />
           </Link>
           <Link to="/">SoundHub</Link>
           {!user && <span className="tagline">buy finished sound</span>}
