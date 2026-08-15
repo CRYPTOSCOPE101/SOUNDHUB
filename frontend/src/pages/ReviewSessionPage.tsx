@@ -202,6 +202,10 @@ function ReleasePackagePanel({
   const [sessionManifest, setSessionManifest] = useState("");
   const [consolidate, setConsolidate] = useState(false);
   const [archiveExpires, setArchiveExpires] = useState("");
+  const [showForceForm, setShowForceForm] = useState(false);
+  const [confirmForce, setConfirmForce] = useState(false);
+  const [forceReason, setForceReason] = useState("");
+  const [lastVerified, setLastVerified] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -213,6 +217,10 @@ function ReleasePackagePanel({
       setSessionManifest(JSON.stringify(p?.session_manifest ?? {}, null, 2));
       setConsolidate(p?.consolidate_audio ?? false);
       setArchiveExpires(p?.archive_expires_at ? p.archive_expires_at.slice(0, 10) : "");
+      setLastVerified(p?.last_verified_opened_at ? p.last_verified_opened_at.slice(0, 10) : "");
+      setShowForceForm(false);
+      setConfirmForce(false);
+      setForceReason("");
       setPreflight(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load packages");
@@ -279,11 +287,15 @@ function ReleasePackagePanel({
 
   const lock = async (force = false) => {
     if (!pkg) return;
+    if (force && !forceReason.trim()) {
+      setErr("Write down why you're overriding QC — it goes into the manifest and the ledger.");
+      return;
+    }
     setBusy(true);
     setErr(null);
     setInfo(null);
     try {
-      await api.lockReleasePackage(pkg.id, "master", lockNote, force);
+      await api.lockReleasePackage(pkg.id, "master", lockNote, force, forceReason);
       await load();
       setInfo("RELEASE PACKAGE LOCKED ✓ — manifest hashed, delivery link opened");
     } catch (e) {
@@ -309,6 +321,7 @@ function ReleasePackagePanel({
         session_manifest: manifest,
         consolidate_audio: consolidate,
         archive_expires_at: archiveExpires ? `${archiveExpires}T23:59:59Z` : null,
+        last_verified_opened_at: lastVerified ? `${lastVerified}T12:00:00Z` : null,
       });
       await load();
       setInfo("Handoff manifest saved ✓");
@@ -448,12 +461,39 @@ function ReleasePackagePanel({
                 <div className="rs-preflight">
                   <div className="rs-preflight-head">
                     Pre-flight check{preflight.blocking ? " — blocking issues found" : preflight.checks.length ? " — clear" : ""}
-                    {preflight.blocking && !preflight.passed && (
-                      <button type="button" className="rs-btn ghost sm" onClick={() => void lock(true)} disabled={busy} title="Skip the blocking checks — you own the risk">
+                    {preflight.blocking && !preflight.passed && !showForceForm && (
+                      <button type="button" className="rs-btn ghost sm" onClick={() => setShowForceForm(true)} title="Skip the blocking checks — you own the risk">
                         Lock anyway (force)
                       </button>
                     )}
                   </div>
+                  {preflight.blocking && !preflight.passed && showForceForm && (
+                    <div className="rs-force-lock">
+                      <p className="rs-brief-hint">
+                        ⚠️ A forced lock is recorded as <code>qc_status: forced</code> in the manifest and as a
+                        dedicated ledger event — reason, unresolved warnings and who confirmed stay on record.
+                      </p>
+                      <textarea
+                        value={forceReason}
+                        onChange={(e) => setForceReason(e.target.value)}
+                        rows={2}
+                        placeholder="Why are you overriding QC? e.g. label moved the deadline, stems ship next week"
+                        className="rs-approval-note-input"
+                      />
+                      <label className="rs-check">
+                        <input type="checkbox" checked={confirmForce} onChange={(e) => setConfirmForce(e.target.checked)} />
+                        I confirm the forced lock with the reason above
+                      </label>
+                      <div className="rs-share-row">
+                        <button type="button" className="rs-btn approve sm" onClick={() => void lock(true)} disabled={busy || !forceReason.trim() || !confirmForce}>
+                          {busy ? "…" : "Confirm forced lock"}
+                        </button>
+                        <button type="button" className="rs-btn ghost sm" onClick={() => { setShowForceForm(false); setConfirmForce(false); setForceReason(""); }}>
+                          Back
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {preflight.checks.map((c, i) => (
                     <div key={i} className={`rs-preflight-row ${c.status}`}>
                       <span className="rs-preflight-icon">{c.status === "block" ? "✕" : c.status === "warn" ? "!" : "✓"}</span>
@@ -542,6 +582,10 @@ function ReleasePackagePanel({
               and how long the archive is retained — never promise session restoration without a retention date.
             </p>
             <div className="rs-share-row">
+              <label>
+                Last verified opened
+                <input type="date" value={lastVerified} onChange={(e) => setLastVerified(e.target.value)} className="rs-input" />
+              </label>
               <label>
                 Archive status
                 <select
@@ -1160,9 +1204,15 @@ function ChangeOrdersPanel({ sessionId }: { sessionId: number }) {
             {co.price_cents != null && <span>{money(co.price_cents)}</span>}
             {co.deadline_at && <span>by {new Date(co.deadline_at).toLocaleDateString()}</span>}
             <span>reopens Round {co.target_round}</span>
+            {co.quote_version > 0 && <span>quote v{co.quote_version}</span>}
+            {co.quote_expires_at && co.status === "quoted" && (
+              <span className={new Date(co.quote_expires_at) < new Date() ? "rs-round-stat closed" : ""}>
+                quote {new Date(co.quote_expires_at) < new Date() ? "expired" : `expires ${new Date(co.quote_expires_at).toLocaleDateString()}`}
+              </span>
+            )}
             {co.accepted_at && <span>accepted {shortDate(co.accepted_at)}</span>}
           </div>
-          {co.status === "requested" && (
+          {co.status === "requested" || co.status === "quoted" || co.status === "expired" ? (
             <div className="rs-co-actions">
               <select
                 value={quote[co.id]?.decision ?? "paid_round"}
@@ -1189,13 +1239,13 @@ function ChangeOrdersPanel({ sessionId }: { sessionId: number }) {
                 className="rs-input"
               />
               <button type="button" className="rs-btn approve sm" disabled={busy} onClick={() => void quoteOrder(co)}>
-                Send quote
+                {co.status === "requested" ? "Send quote" : "Re-quote (v" + ((co.quote_version || 0) + 1) + ")"}
               </button>
               <button type="button" className="rs-btn ghost sm" disabled={busy} onClick={() => void act(() => api.declineChangeOrder(sessionId, co.id))}>
                 Decline
               </button>
             </div>
-          )}
+          ) : null}
           {co.status === "accepted" && !co.round_granted && (co.price_cents ?? 0) > 0 && (
             <div className="rs-co-actions">
               <span className="rs-round-stat open">Client accepted — collect the payment, then the round reopens</span>
@@ -1788,6 +1838,9 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                         )}
                       </div>
                       <p>{c.body}</p>
+                      {c.voice_format && (
+                        <audio controls preload="none" src={api.voiceAudioUrl(session.id, current.id, c.id)} className="rs-voice" style={{ width: "100%", marginTop: 6 }} />
+                      )}
                       <div className="rs-comment-actions">
                         {c.status === "draft" && <span className="rs-req-draft">draft — visible to you only</span>}
                         {c.status === "open" && (

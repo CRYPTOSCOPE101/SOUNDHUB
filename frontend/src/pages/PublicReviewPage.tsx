@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
 import ReferenceCompare from "../components/ReferenceCompare";
-import { fmtClock, WaveformCanvas, CommentComposer, ApprovalPanel } from "../components/ReviewShared";
+import { fmtClock, WaveformCanvas, ApprovalPanel } from "../components/ReviewShared";
+import ABCompare from "../components/ABCompare";
+import VoiceRecorder from "../components/VoiceRecorder";
 import {
   fmtTime,
   humanSize,
@@ -12,13 +14,32 @@ import {
   type ReferenceTrack,
   type ReviewSession,
   type ReviewVersion,
+  type VersionComparison,
 } from "../types";
+
+const FEEDBACK_TEMPLATES = [
+  { id: "too_loud", label: "🔊 Something is too loud / quiet", text: "Something is too loud / quiet" },
+  { id: "masked", label: "🌫 Something is unclear or masked", text: "Something is unclear or masked" },
+  { id: "energy", label: "⚡ The energy changes here", text: "The energy changes here" },
+  { id: "reference", label: "🎯 This differs from the reference", text: "This differs from the reference" },
+  { id: "technical", label: "🔧 Technical issue / click / edit", text: "Technical issue / click / edit" },
+  { id: "keep", label: "❤️ I like this — keep it", text: "I like this — keep it" },
+];
+
+const ELEMENTS = ["Vocal", "Bass", "Drums", "Synths", "Other"];
+const DIRECTIONS = ["louder", "quieter", "brighter", "darker", "wider", "tighter"];
 
 const REASON_LABELS: Record<string, string> = {
   mix_revision: "Mix revision",
   new_stem_request: "New stem request",
   format_change: "Format change",
   mastering_recall: "Mastering recall",
+};
+
+const DECISION_LABELS: Record<string, string> = {
+  courtesy: "Included courtesy change",
+  paid_round: "Paid revision round",
+  new_mastering_pass: "New mastering pass",
 };
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -61,6 +82,18 @@ export default function PublicReviewPage() {
   const [changeMsg, setChangeMsg] = useState<string | null>(null);
   const [showChangeForm, setShowChangeForm] = useState(false);
   const [coBusy, setCoBusy] = useState(false);
+  // structured feedback + voice notes
+  const [fbTemplate, setFbTemplate] = useState<string | null>(null);
+  const [fbElement, setFbElement] = useState("Vocal");
+  const [fbDirection, setFbDirection] = useState("louder");
+  const [fbNote, setFbNote] = useState("");
+  const [voiceBlob, setVoiceBlob] = useState<{ blob: Blob; dur: number } | null>(null);
+  const [fbMsg, setFbMsg] = useState<string | null>(null);
+  // public version A/B
+  const [compareBaseId, setCompareBaseId] = useState<number | null>(null);
+  const [publicComp, setPublicComp] = useState<VersionComparison | null>(null);
+  const [compareErr, setCompareErr] = useState<string | null>(null);
+  const [compareBusy, setCompareBusy] = useState(false);
 
   const load = useCallback(
     async (pwd?: string) => {
@@ -159,18 +192,63 @@ export default function PublicReviewPage() {
     setPosition(t);
   };
 
-  const addComment = async (timeS: number, body: string, authorName: string) => {
+  const addVoiceNote = async (blob: Blob, dur: number) => {
+    setVoiceBlob({ blob, dur });
+    setFbMsg(null);
+  };
+
+  const submitFeedbackNote = async () => {
     if (!token || !current) return;
-    const c = await api.publicAddComment(token, current.id, timeS, body, authorName || name || "Reviewer");
-    setSession((s) =>
-      s
-        ? {
-            ...s,
-            versions: (s.versions ?? []).map((v) => (v.id === current.id ? { ...v, comments: [...v.comments, c] } : v)),
-          }
-        : s
-    );
-    setPendingComment(null);
+    const t = pendingComment ?? position;
+    let body = "";
+    if (fbTemplate) {
+      const tpl = FEEDBACK_TEMPLATES.find((x) => x.id === fbTemplate);
+      body = `${tpl?.text ?? fbTemplate} · Element: ${fbElement} · Direction: ${fbDirection}`;
+    }
+    if (fbNote.trim()) body = body ? `${body}\n${fbNote.trim()}` : fbNote.trim();
+    if (!body && !voiceBlob) {
+      setFbMsg("Pick a template or write what you hear — then add the note.");
+      return;
+    }
+    try {
+      const c = voiceBlob
+        ? await api.publicAddVoiceComment(token, current.id, t, body, name || "Reviewer", voiceBlob.blob, voiceBlob.dur)
+        : await api.publicAddComment(token, current.id, t, body, name || "Reviewer");
+      setSession((s) =>
+        s
+          ? {
+              ...s,
+              versions: (s.versions ?? []).map((v) => (v.id === current.id ? { ...v, comments: [...v.comments, c] } : v)),
+            }
+          : s
+      );
+      setFbTemplate(null);
+      setFbNote("");
+      setVoiceBlob(null);
+      setPendingComment(null);
+      setFbMsg("✓ Note added to your draft notes.");
+    } catch (e) {
+      setFbMsg(e instanceof Error ? e.message : "Failed to add the note");
+    }
+  };
+
+  const runPublicCompare = async () => {
+    if (!token || !current || !compareBaseId) return;
+    setCompareBusy(true);
+    setCompareErr(null);
+    try {
+      const comp = await api.publicCompareVersions(token, {
+        baseVersionId: compareBaseId,
+        compareVersionId: current.id,
+        startMs: 0,
+        endMs: null,
+      });
+      setPublicComp(comp);
+    } catch (e) {
+      setCompareErr(e instanceof Error ? e.message : "Compare failed");
+    } finally {
+      setCompareBusy(false);
+    }
   };
 
   const onApprovalDone = useCallback(async () => {
@@ -262,6 +340,7 @@ export default function PublicReviewPage() {
   const resolvedCount = current?.comments.filter((c) => c.resolved).length ?? 0;
   const openCount = (current?.comments.length ?? 0) - resolvedCount;
   const canDownload = session.share_permission === "download";
+  const versionList = session.versions ?? []; // newest first
 
   return (
     <div className="public-review">
@@ -294,11 +373,18 @@ export default function PublicReviewPage() {
           {session.rounds_open === false ? " · this round is closed — notes reopen when the engineer ships the next version" : " · notes are private drafts until the feedback owner submits the consolidated list"}
           {session.feedback_owner ? ` · feedback owner: ${session.feedback_owner}` : ""}
         </p>
-        {session.share_permission !== "comment" && (
-          <p className="public-review-note">
-            {canDownload ? "You can comment and download." : "View only — comments are disabled on this link."}
-          </p>
-        )}
+        <details className="public-details">
+          <summary>Details</summary>
+          <ul className="public-details-list">
+            <li>Round {session.round_number ?? 1}{session.rounds_open === false ? " · closed (reopens with the next version)" : ""}</li>
+            {session.feedback_due_at && <li>Feedback due {new Date(session.feedback_due_at).toLocaleDateString()}</li>}
+            {session.feedback_owner && <li>Feedback owner: {session.feedback_owner}</li>}
+            <li>Share permission: {session.share_permission}</li>
+            <li>Watermarked previews: {session.watermark_enabled ? "on (unapproved versions)" : "off"}</li>
+            <li>Included revision rounds: {session.included_rounds ?? 1}{session.change_rounds_granted ? ` + ${session.change_rounds_granted} granted by change orders` : ""}</li>
+            {session.retention_until && <li>Archive retained until {new Date(session.retention_until).toLocaleDateString()}</li>}
+          </ul>
+        </details>
       </div>
 
       {session.rounds_open === false && (
@@ -404,16 +490,6 @@ export default function PublicReviewPage() {
                 preload="auto"
               />
 
-              {pendingComment != null && (
-                <CommentComposer
-                  timeS={pendingComment}
-                  showName
-                  placeholder="Comment at this point…"
-                  autoFocus
-                  onCancel={() => setPendingComment(null)}
-                  onSubmit={(t, body, authorName) => addComment(t, body, authorName)}
-                />
-              )}
             </div>
 
             {current.waveform_synthetic && <div className="public-review-note">Waveform is illustrative — this file isn't a WAV.</div>}
@@ -423,6 +499,47 @@ export default function PublicReviewPage() {
               </div>
             )}
           </div>
+
+          {versionList.length > 1 && (
+            <div className="public-compare">
+              <div className="public-compare-head">↔ Compare versions</div>
+              <div className="rs-share-row">
+                <label>
+                  Version A (base)
+                  <select
+                    value={compareBaseId ?? versionList[versionList.length - 1]?.id ?? ""}
+                    onChange={(e) => {
+                      setCompareBaseId(Number(e.target.value));
+                      setPublicComp(null);
+                    }}
+                    className="rs-select"
+                  >
+                    {versionList.filter((v) => v.id !== current.id).map((v) => (
+                      <option key={v.id} value={v.id}>{v.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <button type="button" className="rs-btn approve sm" onClick={() => void runPublicCompare()} disabled={compareBusy}>
+                  {compareBusy ? "…" : `Compare ${current.label} ↔ base`}
+                </button>
+              </div>
+              <p className="rs-brief-hint">
+                Same playhead, loop region, loudness matched in the preview — so you compare quality, not volume.
+              </p>
+              {compareErr && <div className="error">{compareErr}</div>}
+              {publicComp && (
+                <ABCompare
+                  sessionId={0}
+                  comparison={publicComp}
+                  onClose={() => setPublicComp(null)}
+                  audioUrls={{
+                    base: api.audioUrl(api.publicAudioUrl(token ?? "", publicComp.base_version_id)),
+                    compare: api.audioUrl(api.publicAudioUrl(token ?? "", publicComp.compare_version_id)),
+                  }}
+                />
+              )}
+            </div>
+          )}
 
           {refCompare && (
             <ReferenceCompare
@@ -509,6 +626,9 @@ export default function PublicReviewPage() {
                       {c.status !== "open" && <span className={`rs-req-status st-${c.status}`}>{c.status}</span>}
                     </div>
                     <p>{c.body}</p>
+                    {c.voice_format && (
+                      <audio controls preload="none" src={api.publicVoiceAudioUrl(token!, current.id, c.id)} className="rs-voice" style={{ width: "100%", marginTop: 6 }} />
+                    )}
                     <div className="rs-comment-actions">
                       {c.status === "draft" && <span className="rs-req-draft">draft note — submitted when the feedback owner closes the round</span>}
                     </div>
@@ -518,7 +638,12 @@ export default function PublicReviewPage() {
 
               {(session.share_permission === "comment" || canDownload) && (
                 <div className="public-review-form">
-                  <div className="public-review-form-head">Leave feedback</div>
+                  <div className="public-review-form-head">
+                    Leave feedback
+                    <span className="rs-count">
+                      your draft notes: {allDrafts.length}
+                    </span>
+                  </div>
                   <input
                     type="text"
                     value={name}
@@ -527,13 +652,67 @@ export default function PublicReviewPage() {
                     className="rs-comment-input"
                     style={{ marginBottom: 8 }}
                   />
-                  <CommentComposer
-                    timeS={0}
-                    showName={false}
-                    placeholder="e.g. Bass masks the vocal at this moment…"
-                    autoFocus
-                    onSubmit={(t, body, authorName) => addComment(t, body, authorName || name)}
+                  <p className="rs-brief-hint">
+                    {pendingComment != null
+                      ? `📌 Note lands at ${fmtTime(pendingComment)} — click the waveform to move it.`
+                      : "Tap a spot on the waveform to pin the moment, or use the playhead position."}
+                  </p>
+                  <div className="fb-templates">
+                    {FEEDBACK_TEMPLATES.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className={`fb-tpl ${fbTemplate === t.id ? "active" : ""}`}
+                        onClick={() => setFbTemplate(fbTemplate === t.id ? null : t.id)}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  {fbTemplate && (
+                    <div className="fb-structured">
+                      <div className="rs-share-row">
+                        <label>
+                          Element
+                          <select value={fbElement} onChange={(e) => setFbElement(e.target.value)} className="rs-select">
+                            {ELEMENTS.map((el) => (
+                              <option key={el} value={el}>{el}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Direction
+                          <select value={fbDirection} onChange={(e) => setFbDirection(e.target.value)} className="rs-select">
+                            {DIRECTIONS.map((d) => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <p className="rs-brief-hint">
+                        {fmtTime(pendingComment ?? position)} — what should change?
+                      </p>
+                    </div>
+                  )}
+                  <textarea
+                    value={fbNote}
+                    onChange={(e) => setFbNote(e.target.value)}
+                    rows={2}
+                    placeholder="Add detail in your own words (optional) — e.g. “at 01:24 the kick and bass clash”"
+                    className="rs-comment-input"
                   />
+                  <div className="rs-share-row" style={{ justifyContent: "space-between" }}>
+                    <VoiceRecorder onRecorded={(blob, dur) => void addVoiceNote(blob, dur)} onCancel={() => setVoiceBlob(null)} />
+                    <button type="button" className="rs-btn approve sm" onClick={() => void submitFeedbackNote()} disabled={compareBusy}>
+                      {voiceBlob ? "🎙 Add voice note" : "Add note"}
+                    </button>
+                  </div>
+                  {voiceBlob && (
+                    <div className="success" style={{ marginTop: 6 }}>
+                      🎙 Voice note ready ({voiceBlob.dur}s) — press “Add voice note” to attach it.
+                    </div>
+                  )}
+                  {fbMsg && <div className={fbMsg.includes("✓") ? "success" : "error"} style={{ marginTop: 6 }}>{fbMsg}</div>}
                   {isFeedbackOwner && allDrafts.length > 0 && (
                     <div className="public-review-submit">
                       <div className="public-review-form-head">You are the feedback owner</div>
@@ -607,6 +786,17 @@ export default function PublicReviewPage() {
                       </div>
                       {co.status === "quoted" && (
                         <div className="rs-co-actions">
+                          <div className="rs-co-summary">
+                            <strong>{DECISION_LABELS[co.decision ?? ""] ?? (co.decision ?? "").replace(/_/g, " ")}</strong>
+                            {co.price_cents != null && (
+                              <span>
+                                {co.price_cents === 0 ? "· free (courtesy)" : ` · ${new Intl.NumberFormat("en-US", { style: "currency", currency: co.currency.toUpperCase() }).format(co.price_cents / 100)}`}
+                              </span>
+                            )}
+                            {co.deadline_at && <span>· delivery by {new Date(co.deadline_at).toLocaleDateString()}</span>}
+                            {session.retention_until && <span>· archive retained until {new Date(session.retention_until).toLocaleDateString()}</span>}
+                            {co.quote_expires_at && <span>· quote expires {new Date(co.quote_expires_at).toLocaleDateString()}</span>}
+                          </div>
                           <button
                             type="button"
                             className="rs-btn approve sm"
@@ -617,7 +807,7 @@ export default function PublicReviewPage() {
                                 setChangeMsg(null);
                                 try {
                                   await api.acceptChangeOrder(token!, co.id, name || "Client");
-                                  setChangeMsg("✓ Change quote accepted — the engineer will reopen the round after payment.");
+                                  setChangeMsg("✓ Quote accepted — the engineer will reopen the round after payment.");
                                   setChangeOrders(await api.publicChangeOrders(token!));
                                 } catch (e2) {
                                   setChangeMsg(e2 instanceof Error ? e2.message : "Accept failed");
@@ -629,6 +819,11 @@ export default function PublicReviewPage() {
                           >
                             Accept quote
                           </button>
+                        </div>
+                      )}
+                      {co.status === "expired" && (
+                        <div className="rs-co-actions">
+                          <span className="rs-round-stat closed">This quote expired — ask the engineer to re-quote</span>
                         </div>
                       )}
                       {co.status === "accepted" && !co.round_granted && (co.price_cents ?? 0) > 0 && (

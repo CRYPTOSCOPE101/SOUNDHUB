@@ -301,18 +301,41 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
 
 ---
 
+## Фаза 11 — localhost/smoke + client experience + доводка P0
+
+**Локальный запуск и smoke (было: ERR_CONNECTION_REFUSED на :5173):**
+- `make dev` — backend :8000 + frontend :5173 (vite, прокси /api) с cleanup.
+- `make smoke` — health API + demo seed + frontend раздаётся + e2e journey.
+- `backend/tests/test_e2e.py` — полный путь: public review → draft → submit round → upload v2 → approve → package (template) → QC preflight → lock → invoice → payment → download + целостность ledger.
+- Demo-сид при старте → CTA «Open a sample review» работает без логина.
+
+**Public review — mobile-first + structured feedback + voice notes:**
+- Композитор по шаблонам: 6 чипов (too loud / masked / energy / reference / technical / keep) → Element + Direction → свободный текст → **voice note** (MediaRecorder, webm/ogg, без аккаунта).
+- Счётчик «your draft notes: N», submit consolidated, approve — на виду; SHA-256, ledger, share-права, раунды — в `<details> Details`.
+- Публичный A/B версий (`/api/sessions/public/{token}/compare`) — level-matched, тот же playhead/loop, guest-URLы в ABCompare.
+- Voice-эндпоинты (owner + guest): multipart загрузка, blob-хранилище, стриминг, ledger с флагом `voice`; transcription — честный placeholder.
+
+**Доводка P0:**
+- **Change order:** quote живёт 7 дней (`quote_expires_at`), состояние `expired`; после `accepted` цена/scope/дедлайн заморожены (PATCH → 400); re-quote создаёт `quote_version` v2 + событие `change_order.requoted`. Клиент видит сводку до подтверждения: «New mastering pass · $99 · delivery by … · archive retained until …».
+- **QC preflight:** force-lock требует reason + двухшаговое подтверждение; ledger `package.lock_forced`; manifest `qc_status: forced` + `unresolved_warnings` + `confirmed_by`.
+- **Archive handoff:** `last_verified_opened_at`; честный дисклеймер на delivery-странице («archived as delivered; exact playback may require the original DAW, plugins, licenses…»).
+
+**Тесты:** 60 backend (e2e journey, force-lock evidence, quote expiry/immutability, voice notes owner+guest, public compare) + frontend build + `make smoke`.
+
+---
+
 ## Запуск
 
 ```bash
-# backend
-cd backend && .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+# весь стек (backend :8000 + frontend :5173)
+make dev
 
-# frontend
-cd frontend && npm run dev   # http://localhost:5173
+# минимальный pre-release smoke
+make smoke
 
 # тесты
-cd backend && .venv/bin/python -m pytest tests/ -q
-cd frontend && npm run build
+make test          # backend pytest + frontend build
+make e2e           # только e2e journey
 ```
 
 Переменные окружения (backend): `SOUNDHUB_DATABASE_URL`, `SOUNDHUB_SECRET_KEY`,

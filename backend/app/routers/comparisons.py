@@ -36,6 +36,33 @@ def _get_version(db: Session, user: User, version_id: int) -> ReviewVersion:
     return v
 
 
+def _full_mix_levels(db: Session, base: ReviewVersion, compare: ReviewVersion, start_ms: int, end_ms: int, level_match: str) -> tuple[dict, str, float | None, float | None]:
+    """Level-match two full-mix versions (region LUFS for WAV, integrated fallback)."""
+    short: dict = {}
+    matched = "none"
+    base_lufs = compare_lufs = None
+    if level_match and level_match != "none":
+        try:
+            b_data = storage.read_blob(base.blob_sha)
+            c_data = storage.read_blob(compare.blob_sha)
+            if base.audio_format == "wav" and compare.audio_format == "wav":
+                base_lufs = loudness.short_term_lufs(b_data, start_ms, end_ms)
+                compare_lufs = loudness.short_term_lufs(c_data, start_ms, end_ms)
+                if base_lufs is not None and compare_lufs is not None:
+                    short = {base.label: base_lufs, compare.label: compare_lufs}
+                    matched = "short_term_lufs"
+            else:
+                ba = db.scalar(select(AudioAnalysis).where(AudioAnalysis.version_id == base.id))
+                ca = db.scalar(select(AudioAnalysis).where(AudioAnalysis.version_id == compare.id))
+                if ba and ca and ba.integrated_lufs is not None and ca.integrated_lufs is not None:
+                    base_lufs, compare_lufs = ba.integrated_lufs, ca.integrated_lufs
+                    short = {base.label: base_lufs, compare.label: compare_lufs}
+                    matched = "integrated_lufs"
+        except Exception:
+            matched = "none"
+    return short, matched, base_lufs, compare_lufs
+
+
 def _analysis_out(a: AudioAnalysis | None) -> AudioAnalysisOut:
     if a is None:
         return AudioAnalysisOut(analysis_status="pending")
@@ -127,25 +154,9 @@ def create_comparison(
         stem_url = f"/api/versions/{base.id}/stems/{base_stem.id}/audio"
 
     if payload.mode != "stem" and payload.level_match and payload.level_match != "none":
-        try:
-            b_data = storage.read_blob(base.blob_sha)
-            c_data = storage.read_blob(compare.blob_sha)
-            if base.audio_format == "wav" and compare.audio_format == "wav":
-                base_lufs = loudness.short_term_lufs(b_data, start_ms, end_ms)
-                compare_lufs = loudness.short_term_lufs(c_data, start_ms, end_ms)
-                if base_lufs is not None and compare_lufs is not None:
-                    short = {base.label: base_lufs, compare.label: compare_lufs}
-                    level_match = "short_term_lufs"
-            else:
-                # integrated fallback from stored analysis
-                ba = db.scalar(select(AudioAnalysis).where(AudioAnalysis.version_id == base.id))
-                ca = db.scalar(select(AudioAnalysis).where(AudioAnalysis.version_id == compare.id))
-                if ba and ca and ba.integrated_lufs is not None and ca.integrated_lufs is not None:
-                    base_lufs, compare_lufs = ba.integrated_lufs, ca.integrated_lufs
-                    short = {base.label: base_lufs, compare.label: compare_lufs}
-                    level_match = "integrated_lufs"
-        except Exception:
-            level_match = "none"
+        short, level_match, base_lufs, compare_lufs = _full_mix_levels(
+            db, base, compare, start_ms, end_ms, payload.level_match
+        )
 
     base_gain, compare_gain = loudness.gain_to_match(base_lufs, compare_lufs)
     comp = VersionComparison(
@@ -178,6 +189,67 @@ def create_comparison(
             "level_match": level_match,
             "mode": payload.mode,
             "stem": stem_name,
+            "gains": {"base": base_gain, "compare": compare_gain},
+        },
+    )
+    db.commit()
+    return _comparison_out(comp)
+
+
+@router.post("/sessions/public/{share_token}/compare", response_model=ComparisonOut, status_code=status.HTTP_201_CREATED)
+def public_create_comparison(
+    share_token: str,
+    payload: ComparisonCreate,
+    password: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Guest A/B between two versions of the same shared session.
+
+    Same level-matched graph as the engineer's tool — gains are applied only in
+    the Web Audio preview, never to the files. Full mix only (no stems).
+    """
+    from .sessions import _require_share_permission, get_public_session
+
+    session = get_public_session(db, share_token)
+    _require_share_permission(session, "comment", "", password)
+    if payload.mode == "stem":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Stem comparison is engineer-only — compare the full mix")
+    base = db.get(ReviewVersion, payload.base_version_id)
+    compare = db.get(ReviewVersion, payload.compare_version_id)
+    if base is None or compare is None or base.session_id != session.id or compare.session_id != session.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Version not found in this session")
+    start_ms = payload.start_ms
+    end_ms = payload.end_ms or start_ms + 20000
+    short, level_match, base_lufs, compare_lufs = _full_mix_levels(
+        db, base, compare, start_ms, end_ms, payload.level_match
+    )
+    base_gain, compare_gain = loudness.gain_to_match(base_lufs, compare_lufs)
+    comp = VersionComparison(
+        session_id=session.id,
+        base_version_id=base.id,
+        compare_version_id=compare.id,
+        start_ms=start_ms,
+        end_ms=end_ms,
+        base_gain_db=round(base_gain, 1),
+        compare_gain_db=round(compare_gain, 1),
+        level_match=level_match,
+        short_term_lufs=short,
+        mode="full_mix",
+    )
+    db.add(comp)
+    db.flush()
+    ledger.append(
+        db,
+        "comparison.created",
+        session_id=session.id,
+        actor="guest",
+        entity_type="comparison",
+        entity_id=comp.id,
+        payload={
+            "base": base.label,
+            "compare": compare.label,
+            "level_match": level_match,
+            "mode": "full_mix",
             "gains": {"base": base_gain, "compare": compare_gain},
         },
     )

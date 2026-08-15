@@ -14,6 +14,8 @@ Every step lands in the decision ledger (`change_order.created` /
 "new job, not a revision" boundary is auditable end to end.
 """
 
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, Form, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,6 +29,8 @@ from ..services import ledger, stripe_pay
 router = APIRouter(prefix="/api/sessions", tags=["change orders"])
 
 ACTIVE = ("requested", "quoted", "accepted")
+
+QUOTE_TTL_DAYS = 7  # client must accept a quote within this window, or it expires
 
 
 def _co_out(co: ChangeOrder) -> ChangeOrderOut:
@@ -43,6 +47,8 @@ def _co_out(co: ChangeOrder) -> ChangeOrderOut:
         deadline_at=co.deadline_at,
         target_round=co.target_round,
         round_granted=co.round_granted,
+        quote_version=co.quote_version or 0,
+        quote_expires_at=co.quote_expires_at,
         quoted_at=co.quoted_at,
         accepted_at=co.accepted_at,
         paid_at=co.paid_at,
@@ -237,6 +243,26 @@ def client_accept_quote(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Change order not found")
     if co.status != "quoted":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Cannot accept a '{co.status}' change order")
+    expiry = co.quote_expires_at
+    if expiry is not None and expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=utcnow().tzinfo)  # sqlite returns naive
+    if expiry is not None and expiry < utcnow():
+        co.status = "expired"
+        co.session.updated_at = utcnow()
+        ledger.append(
+            db,
+            "change_order.expired",
+            session_id=session.id,
+            actor=actor.strip()[:128] or "Client",
+            entity_type="change_order",
+            entity_id=co.id,
+            payload={"reason": co.reason, "quote_version": co.quote_version},
+        )
+        db.commit()
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "This quote has expired — ask the engineer to re-quote",
+        )
     co.status = "accepted"
     co.accepted_at = utcnow()
     session.updated_at = utcnow()
@@ -321,8 +347,14 @@ def owner_quote_change_order(
     db: Session = Depends(get_db),
 ):
     co = _owner_change_order(db, session_id, co_id, user)
-    if co.status != "requested":
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Cannot quote a '{co.status}' change order")
+    # accepted quotes are FROZEN: price, scope and deadline cannot be edited
+    # (the client already confirmed them). Re-quoting a pending/expired quote
+    # bumps quote_version instead of silently editing the old one.
+    if co.status not in ("requested", "quoted", "expired"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Cannot quote a '{co.status}' change order — accepted quotes are final",
+        )
     session = co.session
     price = payload.price_cents
     if price is None:
@@ -334,21 +366,29 @@ def owner_quote_change_order(
             status.HTTP_400_BAD_REQUEST,
             "Set a price for this change (or add a revision/recall fee to the service preset)",
         )
+    is_requote = co.quote_version > 0 or co.status in ("quoted", "expired")
     co.decision = payload.decision
     co.price_cents = price
     if payload.deadline_at is not None:
         co.deadline_at = payload.deadline_at
+    co.quote_version = (co.quote_version or 0) + 1
+    co.quote_expires_at = utcnow() + timedelta(days=QUOTE_TTL_DAYS)
     co.status = "quoted"
     co.quoted_at = utcnow()
     session.updated_at = utcnow()
     ledger.append(
         db,
-        "change_order.quoted",
+        "change_order.quoted" if not is_requote else "change_order.requoted",
         session_id=session.id,
         actor=user.username,
         entity_type="change_order",
         entity_id=co.id,
-        payload={"decision": payload.decision, "price_cents": price, "reason": co.reason},
+        payload={
+            "decision": payload.decision,
+            "price_cents": price,
+            "reason": co.reason,
+            "quote_version": co.quote_version,
+        },
     )
     db.commit()
     db.refresh(co)

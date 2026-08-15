@@ -183,6 +183,20 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ time_s: timeS, body, parent_id: parentId ?? null }),
     }),
+  addVoiceComment: (id: number, versionId: number, timeS: number, body: string, voice: Blob, durationS: number) => {
+    const fd = new FormData();
+    fd.append("time_s", String(timeS));
+    fd.append("body", body);
+    fd.append("voice_duration_s", String(durationS));
+    const ext = voice.type.includes("ogg") ? "ogg" : voice.type.includes("mp4") || voice.type.includes("m4a") ? "m4a" : voice.type.includes("mp3") ? "mp3" : "webm";
+    fd.append("voice", voice, `voice.${ext}`);
+    return request<ReviewComment>(`/api/sessions/${id}/versions/${versionId}/comments/voice`, {
+      method: "POST",
+      body: fd,
+    });
+  },
+  voiceAudioUrl: (id: number, versionId: number, commentId: number) =>
+    `/api/sessions/${id}/versions/${versionId}/comments/${commentId}/voice`,
   resolveComment: (id: number, versionId: number, commentId: number, resolved: boolean) =>
     request<ReviewComment>(
       `/api/sessions/${id}/versions/${versionId}/comments/${commentId}?resolved=${resolved}`,
@@ -399,6 +413,32 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ time_s: timeS, body, author_name: authorName }),
     }),
+  publicAddVoiceComment: (token: string, versionId: number, timeS: number, body: string, authorName: string, voice: Blob, durationS: number) => {
+    const fd = new FormData();
+    fd.append("time_s", String(timeS));
+    fd.append("body", body);
+    fd.append("author_name", authorName);
+    fd.append("voice_duration_s", String(durationS));
+    const ext = voice.type.includes("ogg") ? "ogg" : voice.type.includes("mp4") || voice.type.includes("m4a") ? "m4a" : voice.type.includes("mp3") ? "mp3" : "webm";
+    fd.append("voice", voice, `voice.${ext}`);
+    return request<ReviewComment>(`/api/sessions/public/${token}/versions/${versionId}/comments/voice`, {
+      method: "POST",
+      body: fd,
+    });
+  },
+  publicVoiceAudioUrl: (token: string, versionId: number, commentId: number) =>
+    `/api/sessions/public/${token}/versions/${versionId}/comments/${commentId}/voice`,
+  publicCompareVersions: (token: string, opts: { baseVersionId: number; compareVersionId: number; startMs: number; endMs?: number | null; levelMatch?: string }) =>
+    request<VersionComparison>(`/api/sessions/public/${token}/compare`, {
+      method: "POST",
+      body: JSON.stringify({
+        base_version_id: opts.baseVersionId,
+        compare_version_id: opts.compareVersionId,
+        start_ms: opts.startMs,
+        end_ms: opts.endMs ?? null,
+        level_match: opts.levelMatch ?? "short_term_lufs",
+      }),
+    }),
   publicAddApproval: (
     token: string,
     versionId: number,
@@ -462,6 +502,7 @@ export const api = {
       session_manifest?: Record<string, unknown>;
       consolidate_audio?: boolean;
       archive_expires_at?: string | null;
+      last_verified_opened_at?: string | null;
     }
   ) =>
     request<ReleasePackage>(`/api/release-packages/${packageId}/handoff`, {
@@ -489,10 +530,10 @@ export const api = {
         return fd;
       })(),
     }),
-  lockReleasePackage: (packageId: number, approvalScope: string, note: string, force = false) =>
+  lockReleasePackage: (packageId: number, approvalScope: string, note: string, force = false, forceReason = "") =>
     request<ReleasePackage>(`/api/release-packages/${packageId}/lock`, {
       method: "POST",
-      body: JSON.stringify({ approval_scope: approvalScope, note, force }),
+      body: JSON.stringify({ approval_scope: approvalScope, note, force, force_reason: forceReason }),
     }),
   getReleaseManifest: (packageId: number) =>
     request<{ package: ReleasePackage; manifest_json: Record<string, unknown>; manifest_hash: string }>(

@@ -124,6 +124,9 @@ export interface ReviewComment {
   status: string;
   fixed_in: number | null;
   verified_at: string | null;
+  voice_format: string;
+  voice_duration_s: number;
+  transcript: string;
 }
 
 export interface ReviewVersion {
@@ -289,6 +292,9 @@ export interface ReleasePackage {
   consolidate_audio: boolean;
   archive_expires_at: string | null;
   archive_status: string;
+  last_verified_opened_at: string | null;
+  force_locked_reason: string;
+  force_locked_by: string;
   deliverables: Deliverable[];
   events: DeliveryEvent[];
 }
@@ -329,6 +335,8 @@ export interface ChangeOrder {
   deadline_at: string | null;
   target_round: number;
   round_granted: boolean;
+  quote_version: number;
+  quote_expires_at: string | null;
   quoted_at: string | null;
   accepted_at: string | null;
   paid_at: string | null;
@@ -353,6 +361,7 @@ export interface DeliveryPage {
   template: string;
   archive_status: string;
   archive_expires_at: string | null;
+  last_verified_opened_at: string | null;
   retention_until: string | null;
   share_token: string;
   deliverables: Deliverable[];
