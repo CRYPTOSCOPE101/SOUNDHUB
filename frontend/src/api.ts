@@ -202,6 +202,10 @@ export const api = {
       share_expires_at?: string | null;
       share_permission?: string;
       share_allowlist?: string;
+      feedback_owner?: string;
+      included_rounds?: number;
+      rounds_open?: boolean;
+      feedback_due_at?: string | null;
     }
   ) =>
     request<ReviewSession>(`/api/sessions/${id}/share`, {
@@ -212,6 +216,21 @@ export const api = {
     request<ReviewVersion>(`/api/sessions/${id}/versions/${versionId}/carry`, {
       method: "POST",
     }),
+  submitFeedback: (id: number, note: string) =>
+    request<ReviewSession>(`/api/sessions/${id}/submit-feedback`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    }),
+  setRequestStatus: (id: number, versionId: number, commentId: number, status: string) =>
+    request<ReviewComment>(`/api/sessions/${id}/versions/${versionId}/requests/${commentId}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
+    }),
+  publicSubmitFeedback: (token: string, note: string, actor: string) =>
+    request<ReviewSession>(
+      `/api/sessions/public/${token}/submit-feedback?actor=${encodeURIComponent(actor)}`,
+      { method: "POST", body: JSON.stringify({ note }) }
+    ),
   // public share endpoints (no auth)
   publicSession: (token: string, opts: { actor?: string; password?: string } = {}) => {
     const q = new URLSearchParams();

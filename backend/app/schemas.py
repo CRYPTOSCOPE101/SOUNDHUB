@@ -144,12 +144,16 @@ class ReviewCommentOut(BaseModel):
     author_name: str = ""
     parent_id: int | None = None
     created_at: datetime
+    status: str = "open"
+    fixed_in: int | None = None
+    verified_at: datetime | None = None
 
 
 class ReviewCommentCreate(BaseModel):
     time_s: float = Field(default=0, ge=0)
     body: str = Field(min_length=1, max_length=4000)
     parent_id: int | None = None
+    status: str = Field(default="open", pattern=r"^(draft|open)$")
 
 
 class GuestReviewCommentCreate(ReviewCommentCreate):
@@ -168,6 +172,7 @@ class ReviewVersionOut(BaseModel):
     duration_s: float
     audio_format: str
     created_at: datetime
+    round_number: int = 1
     waveform: list[float] = []
     waveform_synthetic: bool = False
     comments: list[ReviewCommentOut] = []
@@ -203,6 +208,10 @@ class ShareSettingsUpdate(BaseModel):
     share_expires_at: datetime | None = None
     share_permission: str = Field(default="comment", pattern=r"^(comment|view|download)$")
     share_allowlist: str = Field(default="", max_length=2000)
+    feedback_owner: str = Field(default="", max_length=128)
+    included_rounds: int | None = Field(default=None, ge=0, le=50)
+    rounds_open: bool | None = None
+    feedback_due_at: datetime | None = None
 
 
 class ReviewApprovalCreate(BaseModel):
@@ -231,14 +240,40 @@ class ShareAccessEventOut(BaseModel):
     created_at: datetime
 
 
+class ReviewRoundOut(BaseModel):
+    id: int
+    number: int
+    status: str
+    submitted_at: datetime | None = None
+    due_at: datetime | None = None
+    note: str = ""
+    request_count: int = 0
+
+
+class ReviewRequestStatusUpdate(BaseModel):
+    status: str = Field(pattern=r"^(open|acknowledged|in_progress|fixed|verified|approved)$")
+    fixed_in_version_id: int | None = None
+
+
+class ReviewRoundSubmit(BaseModel):
+    note: str = Field(default="", max_length=2000)
+    due_at: datetime | None = None
+
+
 class ReviewSessionDetailOut(ReviewSessionOut):
     versions: list[ReviewVersionOut] = []
     approvals: list[ReviewApprovalOut] = []
     access_events: list[ShareAccessEventOut] = []
+    rounds: list[ReviewRoundOut] = []
     share_expires_at: datetime | None = None
     share_permission: str = "comment"
     share_has_password: bool = False
     share_allowlist: str = ""
+    round_number: int = 1
+    feedback_due_at: datetime | None = None
+    feedback_owner: str = ""
+    included_rounds: int = 1
+    rounds_open: bool = True
 
 
 # ---------- Diff ----------

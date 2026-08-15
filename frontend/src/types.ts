@@ -121,6 +121,9 @@ export interface ReviewComment {
   author_name: string;
   parent_id: number | null;
   created_at: string;
+  status: string;
+  fixed_in: number | null;
+  verified_at: string | null;
 }
 
 export interface ReviewVersion {
@@ -135,10 +138,24 @@ export interface ReviewVersion {
   duration_s: number;
   audio_format: string;
   created_at: string;
+  round_number: number;
   waveform: number[];
   waveform_synthetic: boolean;
   comments: ReviewComment[];
 }
+
+export interface ReviewRound {
+  id: number;
+  number: number;
+  status: string;
+  submitted_at: string | null;
+  due_at: string | null;
+  note: string;
+  request_count: number;
+}
+
+export const REQUEST_STATUSES = ["open", "acknowledged", "in_progress", "fixed", "verified", "approved"] as const;
+export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
 export interface ReviewApproval {
   id: number;
@@ -173,10 +190,16 @@ export interface ReviewSession {
   versions?: ReviewVersion[];
   approvals?: ReviewApproval[];
   access_events?: ShareAccessEvent[];
+  rounds?: ReviewRound[];
   share_expires_at?: string | null;
   share_permission?: string;
   share_has_password?: boolean;
   share_allowlist?: string;
+  round_number?: number;
+  feedback_due_at?: string | null;
+  feedback_owner?: string;
+  included_rounds?: number;
+  rounds_open?: boolean;
 }
 
 export const APPROVAL_SCOPES = ["mix", "master", "arrangement", "release"] as const;

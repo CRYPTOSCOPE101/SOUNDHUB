@@ -22,6 +22,8 @@ export default function PublicReviewPage() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const rafRef = useRef<number | null>(null);
   const [approvals, setApprovals] = useState(session?.approvals ?? []);
+  const [submitNote, setSubmitNote] = useState("");
+  const [submitMsg, setSubmitMsg] = useState<string | null>(null);
 
   const load = useCallback(
     async (pwd?: string) => {
@@ -35,6 +37,7 @@ export default function PublicReviewPage() {
         const versions = s.versions ?? [];
         setCurrent(versions.length ? versions[0] : null);
         setNeedPassword(false);
+        setSubmitMsg(null);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Review link not found";
         if (msg.toLowerCase().includes("password")) {
@@ -110,6 +113,22 @@ export default function PublicReviewPage() {
     });
   }, [token, actor, password]);
 
+  const isFeedbackOwner = !!session?.feedback_owner && actor.toLowerCase() === session.feedback_owner.toLowerCase();
+  const allDrafts = (session?.versions ?? []).flatMap((v) => v.comments.filter((c) => c.status === "draft")) ?? [];
+
+  const submitFeedback = async () => {
+    if (!token) return;
+    setSubmitMsg(null);
+    try {
+      await api.publicSubmitFeedback(token, submitNote, actor || "Reviewer");
+      setSubmitNote("");
+      setSubmitMsg("Feedback submitted — the engineer now has one consolidated list ✓");
+      await onApprovalDone();
+    } catch (e) {
+      setSubmitMsg(e instanceof Error ? e.message : "Failed to submit");
+    }
+  };
+
   if (err) {
     return (
       <div className="session-page">
@@ -182,12 +201,21 @@ export default function PublicReviewPage() {
           Hi — <strong>{session.owner_username}</strong> shared this version for feedback. Listen and drop a comment
           at the exact moment. No account needed.
         </p>
+        <p className="public-review-note">
+          Round {session.round_number ?? 1}
+          {session.rounds_open === false ? " · this round is closed — notes reopen when the engineer ships the next version" : " · notes are private drafts until the feedback owner submits the consolidated list"}
+          {session.feedback_owner ? ` · feedback owner: ${session.feedback_owner}` : ""}
+        </p>
         {session.share_permission !== "comment" && (
           <p className="public-review-note">
             {canDownload ? "You can comment and download." : "View only — comments are disabled on this link."}
           </p>
         )}
       </div>
+
+      {session.rounds_open === false && (
+        <div className="public-review-closed">This revision round is closed — new notes will be accepted once the engineer uploads the next version.</div>
+      )}
 
       {current ? (
         <>
@@ -282,8 +310,12 @@ export default function PublicReviewPage() {
                     <div className="rs-comment-author">
                       <span className="rs-avatar">{c.author_name[0]?.toUpperCase() ?? "?"}</span>
                       <strong>{c.author_name}</strong>
+                      {c.status !== "open" && <span className={`rs-req-status st-${c.status}`}>{c.status}</span>}
                     </div>
                     <p>{c.body}</p>
+                    <div className="rs-comment-actions">
+                      {c.status === "draft" && <span className="rs-req-draft">draft note — submitted when the feedback owner closes the round</span>}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -306,6 +338,30 @@ export default function PublicReviewPage() {
                     autoFocus
                     onSubmit={(t, body, authorName) => addComment(t, body, authorName || name)}
                   />
+                  {isFeedbackOwner && allDrafts.length > 0 && (
+                    <div className="public-review-submit">
+                      <div className="public-review-form-head">You are the feedback owner</div>
+                      <div className="rs-round-drafts-head">
+                        {allDrafts.length} draft note{allDrafts.length === 1 ? "" : "s"} ready to consolidate
+                      </div>
+                      <textarea
+                        value={submitNote}
+                        onChange={(e) => setSubmitNote(e.target.value)}
+                        placeholder="Note to the engineer (optional)"
+                        className="rs-approval-note-input"
+                        rows={2}
+                      />
+                      <button type="button" className="rs-btn approve" onClick={submitFeedback}>
+                        Submit revision notes → Round {(session.round_number ?? 1) + 1}
+                      </button>
+                      {submitMsg && <div className={submitMsg.includes("✓") ? "success" : "error"}>{submitMsg}</div>}
+                    </div>
+                  )}
+                  {session.feedback_owner && !isFeedbackOwner && allDrafts.length > 0 && (
+                    <div className="public-review-note">
+                      {allDrafts.length} draft note{allDrafts.length === 1 ? "" : "s"} — {session.feedback_owner} will consolidate them into one list.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
