@@ -112,14 +112,12 @@ a:hover {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 7px;
-  overflow: hidden;
 }
 
 .logo img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -1313,8 +1311,7 @@ pre.diff-raw code {
 .landing-nav-logo {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .landing-nav-links {
