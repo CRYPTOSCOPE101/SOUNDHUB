@@ -9,6 +9,7 @@ import GitHubRepoPage from "./pages/GitHubRepoPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import MarketplacePage from "./pages/MarketplacePage";
+import ReviewSessionPage from "./pages/ReviewSessionPage";
 import ProjectPage from "./pages/ProjectPage";
 import ProjectsPage from "./pages/ProjectsPage";
 
@@ -81,6 +82,7 @@ export default function App() {
       <main className="content">
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/session" element={<ReviewSessionPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/projects"
