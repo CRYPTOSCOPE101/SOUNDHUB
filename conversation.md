@@ -267,15 +267,56 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
 | Reference tracks + mix/reference A/B (private, non-deliverable) | ✅ live |
 | Voice notes + mobile-first guest review | Next |
 | Reminder automation (email) | Next |
-| Release-package templates | Next |
 | Roles / approval chains / label mode | Next |
 | USDC / Base оплата | Next |
 | On-chain proof (anchor manifest hash) | Next (feature flag) |
 | Ableton Max for Live integration | prototype / coming next |
 | Интервью с mix/master инженерами | запланировано |
 
-**Демо:** `http://localhost:5173/sessions` (demo / demo123).
-**CI:** backend pytest · frontend tsc+vite · contracts hardhat — все зелёные.
+---
+
+## Фаза 10 — Change orders + archive handoff + QC preflight (P0-пакет)
+
+Закрывает «пришли через три месяца, поправь бесплатно», «дай stems/raw/DAW files
+после сдачи» и «форматы/структура не прошли у лейбла».
+
+**🔁 Change orders (защита от бесплатных late-правок):**
+- Клиент запрашивает изменение после approval/delivery (публичная ссылка, причины: mix revision / new stem request / format change / mastering recall).
+- Инженер цитирует: courtesy / paid round / new mastering pass — или отклоняет. Цена по умолчанию из preset-фи (recall / revision fee).
+- Клиент принимает цену + дедлайн → инвойс → оплата (Stripe webhook `kind=change_order` или manual mark paid) → раунд переоткрывается (`change_rounds_granted`, идемпотентно).
+- Ledger: `change_order.created / quoted / accepted / declined / paid / round_opened`.
+
+**🗄 Archive & session handoff:**
+- Retention policy на сессии (`retention_until`) + recall/revision fees в Money-настройках.
+- 6 шаблонов пакета (streaming master, label/sync, DJ promo, stem handoff, archive handoff, post-production) — name + обязательные deliverables.
+- Handoff: plugin manifest, session manifest (JSON), consolidate audio, archive expires; статусы available_now / needs_preparation / archived / permanently_deleted.
+
+**✅ QC preflight перед lock:**
+- Проверки: обязательные deliverables (по шаблону), empty/corrupt audio, дубликаты, naming, lossy master, hot master (warning, не block).
+- `POST /{pkg}/preflight` → чек-лист; lock блокируется при blocking (400) или проходит с `force` («Lock anyway»).
+
+**Сайт:** hero-строка «Set the brief. Review with context. Lock the approved master. Deliver with proof.», CTA «Open a sample review» (сид demo-сессии при старте, `/r/:token` без логина), roadmap обновлён (templates/preflight/change orders — Now), marketplace остаётся вторым слоем.
+
+**Тесты:** 54 backend (change order full flow, courtesy/decline, preflight+force, шаблоны, archive/retention, webhook change_order, идемпотентность) + frontend build.
+
+---
+
+## Запуск
+
+```bash
+# backend
+cd backend && .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# frontend
+cd frontend && npm run dev   # http://localhost:5173
+
+# тесты
+cd backend && .venv/bin/python -m pytest tests/ -q
+cd frontend && npm run build
+```
+
+Переменные окружения (backend): `SOUNDHUB_DATABASE_URL`, `SOUNDHUB_SECRET_KEY`,
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CURRENCY`.
 
 ---
 

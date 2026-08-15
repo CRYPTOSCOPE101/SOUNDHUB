@@ -197,6 +197,10 @@ def _session_detail(db: Session, s: ReviewSession, with_comments: bool = True) -
         rounds_paid=s.rounds_paid,
         portfolio_public=s.portfolio_public,
         watermark_enabled=s.watermark_enabled,
+        retention_until=s.retention_until,
+        recall_fee_cents=s.recall_fee_cents,
+        revision_fee_cents=s.revision_fee_cents,
+        change_rounds_granted=s.change_rounds_granted,
         service_type=s.service_type,
         genre=s.genre,
         goal=s.goal,
@@ -249,7 +253,7 @@ def _check_round_budget(session: ReviewSession) -> None:
     """
     included = session.included_rounds if session.included_rounds is not None else 1
     free = 1 + included
-    budget = free + (session.rounds_paid or 0)
+    budget = free + (session.rounds_paid or 0) + (session.change_rounds_granted or 0)
     if session.round_number + 1 <= budget:
         return
     if session.extra_round_price_cents:
@@ -600,6 +604,13 @@ def update_share_settings(
         session.portfolio_public = payload.portfolio_public
     if payload.watermark_enabled is not None:
         session.watermark_enabled = payload.watermark_enabled
+    # retention + late-change fees
+    if payload.retention_until is not None:
+        session.retention_until = payload.retention_until
+    if payload.recall_fee_cents is not None:
+        session.recall_fee_cents = payload.recall_fee_cents
+    if payload.revision_fee_cents is not None:
+        session.revision_fee_cents = payload.revision_fee_cents
     db.commit()
     return _session_detail(db, session)
 

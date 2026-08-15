@@ -1,6 +1,7 @@
 import type {
   AudioAnalysis,
   Branch,
+  ChangeOrder,
   CheckoutOut,
   Commit,
   CommitDetail,
@@ -10,13 +11,15 @@ import type {
   LedgerResponse,
   LedgerVerify,
   Portfolio,
+  PreflightResult,
   ReferenceComparison,
   ReferenceTrack,
+  ReleasePackage,
+  ReleaseTemplate,
   VersionComparison,
   GhBranch,
   GhCommit,
   Project,
-  ReleasePackage,
   ReviewApproval,
   ReviewComment,
   ReviewSession,
@@ -224,6 +227,9 @@ export const api = {
       rounds_paid?: number;
       portfolio_public?: boolean;
       watermark_enabled?: boolean;
+      retention_until?: string | null;
+      recall_fee_cents?: number | null;
+      revision_fee_cents?: number | null;
     }
   ) =>
     request<ReviewSession>(`/api/sessions/${id}/share`, {
@@ -408,15 +414,64 @@ export const api = {
   publicAudioUrl: (token: string, versionId: number) =>
     `/api/sessions/public/${token}/versions/${versionId}/audio`,
   audioUrl: (path: string) => `${API_ORIGIN}${path}`,
+  // change orders — late changes after approval/delivery
+  listChangeOrders: (sessionId: number) => request<ChangeOrder[]>(`/api/sessions/${sessionId}/change-orders`),
+  publicChangeOrders: (token: string) => request<ChangeOrder[]>(`/api/sessions/public/${token}/change-orders`),
+  createChangeOrder: (token: string, reason: string, description: string, actor: string) =>
+    request<ChangeOrder>(
+      `/api/sessions/public/${token}/change-orders?actor=${encodeURIComponent(actor)}`,
+      { method: "POST", body: JSON.stringify({ reason, description }) }
+    ),
+  quoteChangeOrder: (sessionId: number, coId: number, decision: string, priceCents?: number | null, deadlineAt?: string | null) =>
+    request<ChangeOrder>(`/api/sessions/${sessionId}/change-orders/${coId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ decision, price_cents: priceCents ?? null, deadline_at: deadlineAt ?? null }),
+    }),
+  declineChangeOrder: (sessionId: number, coId: number) =>
+    request<ChangeOrder>(`/api/sessions/${sessionId}/change-orders/${coId}/decline`, { method: "POST" }),
+  acceptChangeOrder: (token: string, coId: number, actor: string) =>
+    request<ChangeOrder>(
+      `/api/sessions/public/${token}/change-orders/${coId}/accept?actor=${encodeURIComponent(actor)}`,
+      { method: "POST" }
+    ),
+  markChangeOrderPaid: (sessionId: number, coId: number) =>
+    request<ChangeOrder>(`/api/sessions/${sessionId}/change-orders/${coId}/mark-paid`, { method: "POST" }),
+  changeOrderCheckout: (sessionId: number, coId: number) =>
+    request<CheckoutOut>(`/api/sessions/${sessionId}/change-orders/${coId}/checkout`, { method: "POST" }),
+  publicChangeOrderCheckout: (token: string, coId: number) => {
+    const fd = new FormData();
+    return request<CheckoutOut>(`/api/sessions/public/${token}/change-orders/${coId}/checkout`, { method: "POST", body: fd });
+  },
   // Release packages — final delivery
   listReleasePackages: (sessionId?: number) =>
     request<ReleasePackage[]>(
       `/api/release-packages${sessionId ? `?session_id=${sessionId}` : ""}`
     ),
-  createReleasePackage: (sessionId: number, approvedVersionId: number, name: string) =>
+  listReleaseTemplates: () => request<ReleaseTemplate[]>("/api/release-packages/templates"),
+  createReleasePackage: (sessionId: number, approvedVersionId: number, name: string, template: string) =>
     request<ReleasePackage>("/api/release-packages", {
       method: "POST",
-      body: JSON.stringify({ session_id: sessionId, approved_version_id: approvedVersionId, name }),
+      body: JSON.stringify({ session_id: sessionId, approved_version_id: approvedVersionId, name, template }),
+    }),
+  runPreflight: (packageId: number) =>
+    request<PreflightResult>(`/api/release-packages/${packageId}/preflight`, { method: "POST" }),
+  updateHandoff: (
+    packageId: number,
+    opts: {
+      plugin_manifest?: string;
+      session_manifest?: Record<string, unknown>;
+      consolidate_audio?: boolean;
+      archive_expires_at?: string | null;
+    }
+  ) =>
+    request<ReleasePackage>(`/api/release-packages/${packageId}/handoff`, {
+      method: "PATCH",
+      body: JSON.stringify(opts),
+    }),
+  setArchiveStatus: (packageId: number, archiveStatus: string, archiveExpiresAt?: string | null) =>
+    request<ReleasePackage>(`/api/release-packages/${packageId}/archive`, {
+      method: "POST",
+      body: JSON.stringify({ archive_status: archiveStatus, archive_expires_at: archiveExpiresAt ?? null }),
     }),
   addDeliverableFromVersion: (packageId: number, type: string, fromVersionId: number) =>
     request<Deliverable>(`/api/release-packages/${packageId}/deliverables/from-version`, {
@@ -434,10 +489,10 @@ export const api = {
         return fd;
       })(),
     }),
-  lockReleasePackage: (packageId: number, approvalScope: string, note: string) =>
+  lockReleasePackage: (packageId: number, approvalScope: string, note: string, force = false) =>
     request<ReleasePackage>(`/api/release-packages/${packageId}/lock`, {
       method: "POST",
-      body: JSON.stringify({ approval_scope: approvalScope, note }),
+      body: JSON.stringify({ approval_scope: approvalScope, note, force }),
     }),
   getReleaseManifest: (packageId: number) =>
     request<{ package: ReleasePackage; manifest_json: Record<string, unknown>; manifest_hash: string }>(
@@ -470,6 +525,9 @@ export const api = {
     request<Blob>(`/api/release-packages/public/${token}/files/${deliverableId}`, {
       headers: { Accept: "application/octet-stream" },
     }),
+  // demo sample review (landing CTA)
+  demoReview: () =>
+    request<{ share_token: string; name: string; url: string; version_count: number }>("/api/demo/review"),
   // GitHub API (public, unauthenticated) — the SoundHub code repo itself
   ghBranches: () =>
     fetch("https://api.github.com/repos/CRYPTOSCOPE101/SOUNDHUB/branches").then((r) =>

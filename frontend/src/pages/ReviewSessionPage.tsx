@@ -9,11 +9,15 @@ import {
   shortDate,
   DELIVERABLE_TYPES,
   STEM_LOGICAL_NAMES,
+  CHANGE_ORDER_DECISIONS,
+  type ChangeOrder,
   type LedgerEntry,
   type LedgerVerify,
+  type PreflightResult,
   type ReferenceComparison,
   type ReferenceTrack,
   type ReleasePackage,
+  type ReleaseTemplate,
   type ReviewApproval,
   type ReviewComment,
   type ReviewSession,
@@ -70,6 +74,18 @@ function ledgerText(e: LedgerEntry): string {
       return `paid the booking deposit (${p.method}) — delivery unlocked`;
     case "round.extra_paid":
       return `paid for an extra revision round (${p.method})`;
+    case "change_order.created":
+      return `received a change request — ${String(p.reason).replace(/_/g, " ")}${p.description ? ` · “${p.description}”` : ""}`;
+    case "change_order.quoted":
+      return `quoted the change — ${String(p.decision).replace(/_/g, " ")}${p.price_cents ? ` · $${(Number(p.price_cents) / 100).toFixed(2)}` : " (courtesy)"}`;
+    case "change_order.accepted":
+      return `client accepted the change quote${p.price_cents ? ` · $${(Number(p.price_cents) / 100).toFixed(2)}` : " (courtesy)"}`;
+    case "change_order.declined":
+      return `declined the change request — ${String(p.reason).replace(/_/g, " ")}`;
+    case "change_order.paid":
+      return `paid for the change order${p.price_cents ? ` · $${(Number(p.price_cents) / 100).toFixed(2)}` : ""} — revision round granted`;
+    case "change_order.round_opened":
+      return `reopened Round ${p.round} for the change order (${String(p.reason).replace(/_/g, " ")})`;
     case "brief.updated":
       return `updated the client brief — ${p.service_type}${p.genre ? ` · ${p.genre}` : ""}${p.deadline ? ` · deadline ${String(p.deadline).slice(0, 10)}` : ""}`;
     case "reference.created":
@@ -91,6 +107,8 @@ function ledgerIcon(e: LedgerEntry): string {
   if (e.event.startsWith("approval")) return "✅";
   if (e.event.startsWith("round")) return "🗂";
   if (e.event.startsWith("version")) return "⬆";
+  if (e.event.startsWith("change_order")) return "🔄";
+  if (e.event.startsWith("deposit")) return "💰";
   return "✎";
 }
 
@@ -176,6 +194,14 @@ function ReleasePackagePanel({
   const [showManifest, setShowManifest] = useState(false);
   const [manifest, setManifest] = useState<{ manifest_json: Record<string, unknown>; manifest_hash: string } | null>(null);
   const [invoiceAmountCents, setInvoiceAmountCents] = useState<number | null>(null);
+  const [templates, setTemplates] = useState<ReleaseTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState("final_master");
+  const [preflight, setPreflight] = useState<PreflightResult | null>(null);
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const [pluginManifest, setPluginManifest] = useState("");
+  const [sessionManifest, setSessionManifest] = useState("");
+  const [consolidate, setConsolidate] = useState(false);
+  const [archiveExpires, setArchiveExpires] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -183,6 +209,11 @@ function ReleasePackagePanel({
       const p = list.find((p) => p.approved_version_id === version.id) ?? list[0] ?? null;
       setPkg(p);
       setInvoiceAmountCents(p?.amount_due_cents ?? null);
+      setPluginManifest(p?.plugin_manifest ?? "");
+      setSessionManifest(JSON.stringify(p?.session_manifest ?? {}, null, 2));
+      setConsolidate(p?.consolidate_audio ?? false);
+      setArchiveExpires(p?.archive_expires_at ? p.archive_expires_at.slice(0, 10) : "");
+      setPreflight(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load packages");
     }
@@ -190,6 +221,10 @@ function ReleasePackagePanel({
 
   useEffect(() => {
     void load();
+    void api.listReleaseTemplates().then((t) => {
+      setTemplates(t);
+      setSelectedTemplate(t.some((x) => x.id === "final_master") ? "final_master" : (t[0]?.id ?? "custom"));
+    }).catch(() => undefined);
   }, [load]);
 
   const create = async () => {
@@ -197,15 +232,26 @@ function ReleasePackagePanel({
     setErr(null);
     setInfo(null);
     try {
-      const p = await api.createReleasePackage(sessionId, version.id, "Final delivery");
+      const tpl = templates.find((t) => t.id === selectedTemplate);
+      const p = await api.createReleasePackage(sessionId, version.id, tpl?.name ?? "Final delivery", selectedTemplate);
       // pre-add the approved master as the required master deliverable
       await api.addDeliverableFromVersion(p.id, "master", version.id);
       await load();
-      setInfo("Package created — approved master added ✓");
+      setInfo(`Package created from “${tpl?.name ?? selectedTemplate}” — approved master added ✓`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to create package");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const runPreflight = async () => {
+    if (!pkg) return;
+    setErr(null);
+    try {
+      setPreflight(await api.runPreflight(pkg.id));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Preflight failed");
     }
   };
 
@@ -231,19 +277,43 @@ function ReleasePackagePanel({
     }
   };
 
-  const lock = async () => {
+  const lock = async (force = false) => {
     if (!pkg) return;
     setBusy(true);
     setErr(null);
     setInfo(null);
     try {
-      await api.lockReleasePackage(pkg.id, "master", lockNote);
+      await api.lockReleasePackage(pkg.id, "master", lockNote, force);
       await load();
       setInfo("RELEASE PACKAGE LOCKED ✓ — manifest hashed, delivery link opened");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Lock failed");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const saveHandoff = async () => {
+    if (!pkg) return;
+    setErr(null);
+    try {
+      let manifest: Record<string, unknown> = {};
+      try {
+        manifest = JSON.parse(sessionManifest || "{}");
+      } catch {
+        setErr("Session manifest must be valid JSON");
+        return;
+      }
+      await api.updateHandoff(pkg.id, {
+        plugin_manifest: pluginManifest,
+        session_manifest: manifest,
+        consolidate_audio: consolidate,
+        archive_expires_at: archiveExpires ? `${archiveExpires}T23:59:59Z` : null,
+      });
+      await load();
+      setInfo("Handoff manifest saved ✓");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to save handoff");
     }
   };
 
@@ -272,7 +342,21 @@ function ReleasePackagePanel({
         <div className="rs-empty">Approve {version.label} to build the release package.</div>
       ) : !pkg ? (
         <div className="rs-release-empty">
-          <p>Master approved — assemble the release package: master, instrumental, artwork…</p>
+          <p>Master approved — pick a delivery preset, then assemble the package.</p>
+          <label className="rs-brief-preset">
+            Template
+            <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="rs-select">
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} — {t.description}
+                </option>
+              ))}
+              <option value="custom">Custom — build it manually</option>
+            </select>
+          </label>
+          {templates.find((t) => t.id === selectedTemplate)?.note && (
+            <p className="rs-brief-hint">{templates.find((t) => t.id === selectedTemplate)?.note}</p>
+          )}
           <button type="button" className="rs-btn approve" onClick={create} disabled={busy}>
             {busy ? "…" : "Create release package"}
           </button>
@@ -352,9 +436,33 @@ function ReleasePackagePanel({
                 placeholder="Note for the receipt (optional)"
                 className="rs-input"
               />
-              <button type="button" className="rs-btn approve" onClick={lock} disabled={busy || pkg.deliverables.length === 0}>
-                {busy ? "…" : "🔒 Lock approved master"}
-              </button>
+              <div className="rs-share-row">
+                <button type="button" className="rs-btn ghost" onClick={runPreflight} disabled={pkg.deliverables.length === 0}>
+                  {preflight ? "↻ Re-run preflight" : "✓ QC preflight"}
+                </button>
+                <button type="button" className="rs-btn approve" onClick={() => void lock(false)} disabled={busy || pkg.deliverables.length === 0}>
+                  {busy ? "…" : "🔒 Lock approved master"}
+                </button>
+              </div>
+              {preflight && (
+                <div className="rs-preflight">
+                  <div className="rs-preflight-head">
+                    Pre-flight check{preflight.blocking ? " — blocking issues found" : preflight.checks.length ? " — clear" : ""}
+                    {preflight.blocking && !preflight.passed && (
+                      <button type="button" className="rs-btn ghost sm" onClick={() => void lock(true)} disabled={busy} title="Skip the blocking checks — you own the risk">
+                        Lock anyway (force)
+                      </button>
+                    )}
+                  </div>
+                  {preflight.checks.map((c, i) => (
+                    <div key={i} className={`rs-preflight-row ${c.status}`}>
+                      <span className="rs-preflight-icon">{c.status === "block" ? "✕" : c.status === "warn" ? "!" : "✓"}</span>
+                      <span className="rs-preflight-label">{c.label}</span>
+                      <span className="rs-preflight-detail">{c.detail}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="rs-release-delivery">
@@ -426,6 +534,63 @@ function ReleasePackagePanel({
               {JSON.stringify(manifest.manifest_json, null, 2)}
             </pre>
           )}
+
+          <details className="rs-handoff" open={handoffOpen} onToggle={(e) => setHandoffOpen((e.target as HTMLDetailsElement).open)}>
+            <summary className="rs-versions-head">Archive & session handoff</summary>
+            <p className="rs-brief-hint">
+              Stem / archive / label handoffs are a separate, often paid service. Describe what the client gets
+              and how long the archive is retained — never promise session restoration without a retention date.
+            </p>
+            <div className="rs-share-row">
+              <label>
+                Archive status
+                <select
+                  value={pkg.archive_status}
+                  onChange={(e) => void api.setArchiveStatus(pkg.id, e.target.value).then(load)}
+                  className="rs-select"
+                >
+                  <option value="available_now">Available now</option>
+                  <option value="needs_preparation">Needs preparation</option>
+                  <option value="archived">Archived</option>
+                  <option value="permanently_deleted">Permanently deleted</option>
+                </select>
+              </label>
+              <label>
+                Archive expires
+                <input type="date" value={archiveExpires} onChange={(e) => setArchiveExpires(e.target.value)} className="rs-input" />
+              </label>
+            </div>
+            <label className="rs-check">
+              <input type="checkbox" checked={consolidate} onChange={(e) => setConsolidate(e.target.checked)} />
+              Consolidate audio — all files aligned to one start point
+            </label>
+            <label>
+              Plugin manifest
+              <textarea
+                value={pluginManifest}
+                onChange={(e) => setPluginManifest(e.target.value)}
+                rows={2}
+                placeholder="Ableton 12.1 · Serum 1.36 (missing: Ozone 11 → fallback stock EQ)"
+                className="rs-approval-note-input"
+              />
+            </label>
+            <label>
+              Session manifest (JSON)
+              <textarea
+                value={sessionManifest}
+                onChange={(e) => setSessionManifest(e.target.value)}
+                rows={4}
+                placeholder={'{"sample_rate": 48000, "bit_depth": 24, "tempo": 128, "key": "F min"}'}
+                className="rs-approval-note-input"
+              />
+            </label>
+            <button type="button" className="rs-btn ghost sm" onClick={saveHandoff}>
+              Save handoff manifest
+            </button>
+            <p className="rs-brief-hint" style={{ marginTop: 6 }}>
+              {pkg.archive_expires_at ? `Archive retained until ${shortDate(pkg.archive_expires_at)}` : "No archive expiry set — add one so the retention policy is explicit."}
+            </p>
+          </details>
         </>
       )}
       {info && <div className="success">{info}</div>}
@@ -907,6 +1072,159 @@ function StemPanel({ version }: { version: ReviewVersion }) {
 
 /* ---------- session detail ---------- */
 
+/* ---------- change orders (late changes after approval/delivery) ---------- */
+
+const REASON_LABELS: Record<string, string> = {
+  mix_revision: "Mix revision",
+  new_stem_request: "New stem request",
+  format_change: "Format change",
+  mastering_recall: "Mastering recall",
+};
+
+const DECISION_LABELS: Record<string, string> = {
+  courtesy: "Included courtesy change",
+  paid_round: "Paid revision round",
+  new_mastering_pass: "New mastering pass",
+};
+
+function ChangeOrdersPanel({ sessionId }: { sessionId: number }) {
+  const [orders, setOrders] = useState<ChangeOrder[]>([]);
+  const [quote, setQuote] = useState<Record<number, { decision: string; price: string; deadline: string }>>({});
+  const [err, setErr] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const rows = await api.listChangeOrders(sessionId);
+      setOrders(rows);
+      setQuote((prev) => {
+        const next = { ...prev };
+        for (const co of rows) {
+          if (!next[co.id]) next[co.id] = { decision: "paid_round", price: "", deadline: "" };
+        }
+        return next;
+      });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to load change orders");
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setErr(null);
+    setInfo(null);
+    try {
+      await fn();
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Action failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const quoteOrder = (co: ChangeOrder) =>
+    act(() => {
+      const q = quote[co.id];
+      const price = q.price === "" ? null : Number(q.price);
+      return api.quoteChangeOrder(sessionId, co.id, q.decision, price, q.deadline ? `${q.deadline}T23:59:59Z` : null);
+    });
+
+  const money = (cents: number | null) =>
+    cents == null ? "" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+
+  if (orders.length === 0) return null;
+
+  return (
+    <div className="rs-change-orders">
+      <div className="rs-versions-head">Change orders <span className="rs-round-stat">late changes after approval</span></div>
+      <p className="rs-brief-hint">
+        “We came back after three months, fix it for free” — the client requests, you quote (courtesy / paid round /
+        new mastering pass) or decline, they accept, and the round reopens as Round {orders[0] ? `N+1` : ""}.
+      </p>
+      {orders.map((co) => (
+        <div key={co.id} className={`rs-co ${co.status}`}>
+          <div className="rs-co-head">
+            <span className="rs-co-reason">{REASON_LABELS[co.reason] ?? co.reason}</span>
+            <span className={`rs-round-stat ${co.status === "declined" ? "closed" : "open"}`}>{co.status}</span>
+            {co.round_granted && <span className="rs-round-stat open">✓ round reopened</span>}
+          </div>
+          <p className="rs-co-desc">“{co.description || "No details"}” — {co.created_by}</p>
+          <div className="rs-co-meta">
+            {co.decision && <span>{DECISION_LABELS[co.decision] ?? co.decision}</span>}
+            {co.price_cents != null && <span>{money(co.price_cents)}</span>}
+            {co.deadline_at && <span>by {new Date(co.deadline_at).toLocaleDateString()}</span>}
+            <span>reopens Round {co.target_round}</span>
+            {co.accepted_at && <span>accepted {shortDate(co.accepted_at)}</span>}
+          </div>
+          {co.status === "requested" && (
+            <div className="rs-co-actions">
+              <select
+                value={quote[co.id]?.decision ?? "paid_round"}
+                onChange={(e) => setQuote({ ...quote, [co.id]: { ...quote[co.id], decision: e.target.value } })}
+                className="rs-select"
+              >
+                {CHANGE_ORDER_DECISIONS.map((d) => (
+                  <option key={d} value={d}>{DECISION_LABELS[d]}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={0}
+                value={quote[co.id]?.price ?? ""}
+                onChange={(e) => setQuote({ ...quote, [co.id]: { ...quote[co.id], price: e.target.value } })}
+                placeholder="price (cents) — blank = preset fee"
+                className="rs-input"
+                style={{ width: 180 }}
+              />
+              <input
+                type="date"
+                value={quote[co.id]?.deadline ?? ""}
+                onChange={(e) => setQuote({ ...quote, [co.id]: { ...quote[co.id], deadline: e.target.value } })}
+                className="rs-input"
+              />
+              <button type="button" className="rs-btn approve sm" disabled={busy} onClick={() => void quoteOrder(co)}>
+                Send quote
+              </button>
+              <button type="button" className="rs-btn ghost sm" disabled={busy} onClick={() => void act(() => api.declineChangeOrder(sessionId, co.id))}>
+                Decline
+              </button>
+            </div>
+          )}
+          {co.status === "accepted" && !co.round_granted && (co.price_cents ?? 0) > 0 && (
+            <div className="rs-co-actions">
+              <span className="rs-round-stat open">Client accepted — collect the payment, then the round reopens</span>
+              <button type="button" className="rs-btn ghost sm" disabled={busy} onClick={() => void act(() => api.markChangeOrderPaid(sessionId, co.id))}>
+                ✓ Mark paid (manual)
+              </button>
+              <button
+                type="button"
+                className="rs-btn approve sm"
+                disabled={busy}
+                onClick={() =>
+                  void act(async () => {
+                    const c = await api.changeOrderCheckout(sessionId, co.id);
+                    window.location.href = c.checkout_url;
+                  })
+                }
+              >
+                💳 Open checkout
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+      {err && <div className="error">{err}</div>}
+      {info && <div className="success">{info}</div>}
+    </div>
+  );
+}
+
 function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: () => void }) {
   const [versions, setVersions] = useState<ReviewVersion[]>(session.versions ?? []);
   const [approvals, setApprovals] = useState<ReviewApproval[]>(session.approvals ?? []);
@@ -922,6 +1240,9 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
   const [roundsPaid, setRoundsPaid] = useState(session.rounds_paid ?? 0);
   const [portfolioPublic, setPortfolioPublic] = useState(session.portfolio_public ?? false);
   const [watermarkEnabled, setWatermarkEnabled] = useState(session.watermark_enabled ?? true);
+  const [retentionUntil, setRetentionUntil] = useState(session.retention_until ? session.retention_until.slice(0, 10) : "");
+  const [recallFeeCents, setRecallFeeCents] = useState<number | null>(session.recall_fee_cents ?? null);
+  const [revisionFeeCents, setRevisionFeeCents] = useState<number | null>(session.revision_fee_cents ?? null);
   const [payPrompt, setPayPrompt] = useState<"deposit" | "extra_round" | null>(null);
   const [submitNote, setSubmitNote] = useState("");
   const [share, setShare] = useState({
@@ -970,6 +1291,9 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
     setRoundsPaid(s.rounds_paid ?? 0);
     setPortfolioPublic(s.portfolio_public ?? false);
     setWatermarkEnabled(s.watermark_enabled ?? true);
+    setRetentionUntil(s.retention_until ? s.retention_until.slice(0, 10) : "");
+    setRecallFeeCents(s.recall_fee_cents ?? null);
+    setRevisionFeeCents(s.revision_fee_cents ?? null);
     setPayPrompt(null);
     setCurrentId((prev) => {
       if (prev && s.versions?.some((v) => v.id === prev)) return prev;
@@ -1131,6 +1455,9 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
         rounds_paid: roundsPaid,
         portfolio_public: portfolioPublic,
         watermark_enabled: watermarkEnabled,
+        retention_until: retentionUntil ? `${retentionUntil}T23:59:59Z` : null,
+        recall_fee_cents: recallFeeCents,
+        revision_fee_cents: revisionFeeCents,
       });
       setInfo("Payment & portfolio settings saved ✓");
       await refresh();
@@ -1619,6 +1946,8 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
 
                 <ReleasePackagePanel sessionId={session.id} version={current} />
 
+                <ChangeOrdersPanel sessionId={session.id} />
+
                 <div className="rs-share-block">
                   <div className="rs-versions-head">Review link</div>
                   <div className="rs-share">
@@ -1752,6 +2081,44 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                       />
                       Watermark unapproved previews for guests
                     </label>
+                    <div className="rs-share-row">
+                      <label>
+                        Revision fee (cents)
+                        <input
+                          type="number"
+                          min={0}
+                          value={revisionFeeCents ?? ""}
+                          onChange={(e) => setRevisionFeeCents(e.target.value === "" ? null : Number(e.target.value))}
+                          placeholder="one-off mix revision, e.g. 4500"
+                          className="rs-input"
+                        />
+                      </label>
+                      <label>
+                        Recall fee (cents)
+                        <input
+                          type="number"
+                          min={0}
+                          value={recallFeeCents ?? ""}
+                          onChange={(e) => setRecallFeeCents(e.target.value === "" ? null : Number(e.target.value))}
+                          placeholder="mastering recall / new pass, e.g. 12000"
+                          className="rs-input"
+                        />
+                      </label>
+                    </div>
+                    <label>
+                      Project archive retained until
+                      <input
+                        type="date"
+                        value={retentionUntil}
+                        onChange={(e) => setRetentionUntil(e.target.value)}
+                        className="rs-input"
+                      />
+                    </label>
+                    <p className="rs-brief-hint" style={{ marginTop: 4 }}>
+                      🛡 Late changes after approval go through a change order — the client requests, you quote
+                      (courtesy / paid round / new pass), they accept, and the round reopens. Fees above become
+                      the default quote. Retention tells the client how long the archive is kept.
+                    </p>
                     <button type="button" className="rs-btn ghost" onClick={saveCommerce}>
                       Save payment & portfolio settings
                     </button>

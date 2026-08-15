@@ -234,6 +234,10 @@ class ShareSettingsUpdate(BaseModel):
     # portfolio + preview protection
     portfolio_public: bool | None = None
     watermark_enabled: bool | None = None
+    # retention + late-change fees (change orders)
+    retention_until: datetime | None = None
+    recall_fee_cents: int | None = Field(default=None, ge=0, le=100_000_000)
+    revision_fee_cents: int | None = Field(default=None, ge=0, le=100_000_000)
 
 
 class ReviewApprovalCreate(BaseModel):
@@ -302,6 +306,11 @@ class ReviewSessionDetailOut(ReviewSessionOut):
     rounds_paid: int = 0
     portfolio_public: bool = False
     watermark_enabled: bool = True
+    # retention + late-change fees (change orders)
+    retention_until: datetime | None = None
+    recall_fee_cents: int | None = None
+    revision_fee_cents: int | None = None
+    change_rounds_granted: int = 0
     # client brief — expectations fixed before the first bounce
     service_type: str = "mix"
     genre: str = ""
@@ -437,6 +446,42 @@ class ReferenceComparisonCreate(BaseModel):
     level_match: str = Field(default="short_term_lufs", pattern=r"^(none|integrated_lufs|short_term_lufs)$")
 
 
+# ---------- Change orders (late changes after approval/delivery) ----------
+CHANGE_ORDER_REASONS = ["mix_revision", "new_stem_request", "format_change", "mastering_recall"]
+CHANGE_ORDER_DECISIONS = ["courtesy", "paid_round", "new_mastering_pass"]
+
+
+class ChangeOrderCreate(BaseModel):
+    reason: str = Field(pattern=r"^(mix_revision|new_stem_request|format_change|mastering_recall)$")
+    description: str = Field(default="", max_length=2000)
+
+
+class ChangeOrderQuote(BaseModel):
+    decision: str = Field(pattern=r"^(courtesy|paid_round|new_mastering_pass)$")
+    price_cents: int | None = Field(default=None, ge=0, le=100_000_000)
+    deadline_at: datetime | None = None
+
+
+class ChangeOrderOut(BaseModel):
+    id: int
+    session_id: int
+    created_by: str = ""
+    reason: str
+    description: str = ""
+    status: str = "requested"
+    decision: str | None = None
+    price_cents: int | None = None
+    currency: str = "usd"
+    deadline_at: datetime | None = None
+    target_round: int = 1
+    round_granted: bool = False
+    quoted_at: datetime | None = None
+    accepted_at: datetime | None = None
+    paid_at: datetime | None = None
+    declined_at: datetime | None = None
+    created_at: datetime
+
+
 class ReferenceComparisonOut(BaseModel):
     id: int
     session_id: int
@@ -460,7 +505,8 @@ class ReferenceComparisonOut(BaseModel):
 class ReleasePackageCreate(BaseModel):
     session_id: int
     approved_version_id: int
-    name: str = Field(default="Final delivery", max_length=160)
+    name: str = Field(default="", max_length=160)  # empty → template preset name
+    template: str = Field(default="custom", max_length=32)
 
 
 class DeliverableType(str):
@@ -486,6 +532,7 @@ class DeliverableOut(BaseModel):
     format: str
     sample_rate: int | None = None
     bit_depth: int | None = None
+    channels: int | None = None
     integrated_lufs: float | None = None
     true_peak: float | None = None
     is_required: bool
@@ -507,13 +554,55 @@ class ReleasePackageOut(BaseModel):
     delivery_token: str | None = None
     created_at: datetime
     locked_by: str = ""
+    template: str = "custom"
+    plugin_manifest: str = ""
+    session_manifest: dict = {}
+    consolidate_audio: bool = False
+    archive_expires_at: datetime | None = None
+    archive_status: str = "available_now"
     deliverables: list[DeliverableOut] = []
     events: list[dict] = []
+
+
+class PackageTemplateOut(BaseModel):
+    id: str
+    name: str
+    description: str
+    deliverable_types: list[str] = []
+    note: str = ""
 
 
 class ReleaseLockIn(BaseModel):
     approval_scope: str = Field(default="master", pattern=r"^(arrangement|mix|master|release)$")
     note: str = Field(default="", max_length=1000)
+    force: bool = False  # skip blocking preflight issues ("lock anyway")
+
+
+class PreflightCheckOut(BaseModel):
+    status: str  # ok | warn | block
+    label: str
+    detail: str = ""
+
+
+class PreflightOut(BaseModel):
+    passed: bool
+    blocking: bool
+    checks: list[PreflightCheckOut] = []
+
+
+class HandoffUpdate(BaseModel):
+    plugin_manifest: str | None = Field(default=None, max_length=8000)
+    session_manifest: dict | None = None
+    consolidate_audio: bool | None = None
+    archive_expires_at: datetime | None = None
+
+
+class ArchiveUpdate(BaseModel):
+    archive_status: str = Field(
+        default="available_now",
+        pattern=r"^(available_now|needs_preparation|archived|permanently_deleted)$",
+    )
+    archive_expires_at: datetime | None = None
 
 
 class DeliveryManifestOut(BaseModel):
@@ -536,6 +625,11 @@ class DeliveryPageOut(BaseModel):
     manifest_hash: str | None = None
     approved_label: str = ""
     approved_filename: str = ""
+    template: str = "custom"
+    archive_status: str = "available_now"
+    archive_expires_at: datetime | None = None
+    retention_until: datetime | None = None
+    share_token: str = ""
     deliverables: list[DeliverableOut] = []
 
 

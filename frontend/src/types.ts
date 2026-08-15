@@ -207,6 +207,10 @@ export interface ReviewSession {
   rounds_paid?: number;
   portfolio_public?: boolean;
   watermark_enabled?: boolean;
+  retention_until?: string | null;
+  recall_fee_cents?: number | null;
+  revision_fee_cents?: number | null;
+  change_rounds_granted?: number;
   service_type?: string;
   genre?: string;
   goal?: string;
@@ -250,6 +254,7 @@ export interface Deliverable {
   format: string;
   sample_rate: number | null;
   bit_depth: number | null;
+  channels: number | null;
   integrated_lufs: number | null;
   true_peak: number | null;
   is_required: boolean;
@@ -278,8 +283,57 @@ export interface ReleasePackage {
   delivery_token: string | null;
   created_at: string;
   locked_by: string;
+  template: string;
+  plugin_manifest: string;
+  session_manifest: Record<string, unknown>;
+  consolidate_audio: boolean;
+  archive_expires_at: string | null;
+  archive_status: string;
   deliverables: Deliverable[];
   events: DeliveryEvent[];
+}
+
+export interface ReleaseTemplate {
+  id: string;
+  name: string;
+  description: string;
+  deliverable_types: string[];
+  note: string;
+}
+
+export interface PreflightCheck {
+  status: "ok" | "warn" | "block";
+  label: string;
+  detail: string;
+}
+
+export interface PreflightResult {
+  passed: boolean;
+  blocking: boolean;
+  checks: PreflightCheck[];
+}
+
+export const CHANGE_ORDER_REASONS = ["mix_revision", "new_stem_request", "format_change", "mastering_recall"] as const;
+export const CHANGE_ORDER_DECISIONS = ["courtesy", "paid_round", "new_mastering_pass"] as const;
+
+export interface ChangeOrder {
+  id: number;
+  session_id: number;
+  created_by: string;
+  reason: string;
+  description: string;
+  status: string;
+  decision: string | null;
+  price_cents: number | null;
+  currency: string;
+  deadline_at: string | null;
+  target_round: number;
+  round_granted: boolean;
+  quoted_at: string | null;
+  accepted_at: string | null;
+  paid_at: string | null;
+  declined_at: string | null;
+  created_at: string;
 }
 
 export interface DeliveryPage {
@@ -296,6 +350,11 @@ export interface DeliveryPage {
   manifest_hash: string | null;
   approved_label: string;
   approved_filename: string;
+  template: string;
+  archive_status: string;
+  archive_expires_at: string | null;
+  retention_until: string | null;
+  share_token: string;
   deliverables: Deliverable[];
 }
 

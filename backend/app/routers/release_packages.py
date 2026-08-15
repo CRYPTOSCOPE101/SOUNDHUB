@@ -27,12 +27,16 @@ from ..models import (
     utcnow,
 )
 from ..schemas import (
+    ArchiveUpdate,
     CheckoutOut,
     DeliverableCreate,
     DeliverableOut,
     DeliveryInvoiceUpdate,
     DeliveryManifestOut,
     DeliveryPageOut,
+    HandoffUpdate,
+    PackageTemplateOut,
+    PreflightOut,
     ReleaseLockIn,
     ReleasePackageCreate,
     ReleasePackageOut,
@@ -44,6 +48,50 @@ router = APIRouter(prefix="/api/release-packages", tags=["release packages"])
 
 ALLOWED_FILES = {"wav", "mp3", "flac", "aif", "aiff", "m4a", "ogg", "png", "jpg", "jpeg", "pdf", "zip"}
 
+AUDIO_TYPES = {"master", "instrumental", "acapella", "clean_edit", "stems"}
+
+# Release-package templates: ready-made deliverable checklists so the engineer
+# doesn't rebuild every package by hand. The template pins which deliverables
+# are REQUIRED for the lock preflight (label/sync presets have real spec).
+PACKAGE_TEMPLATES: dict[str, dict] = {
+    "final_master": {
+        "name": "Streaming master",
+        "description": "Main master + instrumental + metadata",
+        "deliverable_types": ["master", "instrumental"],
+        "note": "Add artwork + ISRC/UPC metadata when the distributor requires it.",
+    },
+    "label_sync": {
+        "name": "Label / sync delivery",
+        "description": "Masters, alternates, stems, metadata, artwork, approval receipt",
+        "deliverable_types": ["master", "instrumental", "acapella", "clean_edit", "stems", "artwork"],
+        "note": "Label presets often require 3000×3000 artwork and named folders — check the preflight.",
+    },
+    "dj_promo": {
+        "name": "DJ promo",
+        "description": "WAV, extended mix, radio edit, instrumental",
+        "deliverable_types": ["master", "clean_edit", "instrumental"],
+        "note": "Add BPM + key in the session manifest for DJ pools.",
+    },
+    "stem_handoff": {
+        "name": "Stem handoff",
+        "description": "Stereo stems, tempo, key, README",
+        "deliverable_types": ["stems"],
+        "note": "Optional paid service — consolidate audio + session manifest recommended.",
+    },
+    "archive_handoff": {
+        "name": "Archive handoff",
+        "description": "DAW session, media, plugin manifest, frozen/rendered tracks",
+        "deliverable_types": ["master", "other"],
+        "note": "Paid, on request — never promises session restoration without a retention policy.",
+    },
+    "post_production": {
+        "name": "Post-production",
+        "description": "Full mix, DX/MX/FX stems, alternate mix, cue sheet",
+        "deliverable_types": ["master", "stems", "clean_edit"],
+        "note": "Cue sheet notes go in the session manifest.",
+    },
+}
+
 
 def _event(db: Session, package: ReleasePackage, event: str, actor: str, detail: str = "") -> None:
     db.add(DeliveryEvent(package_id=package.id, event=event, actor=actor, detail=detail))
@@ -54,34 +102,34 @@ def _sha256(data: bytes) -> str:
 
 
 def _riff_meta(data: bytes) -> dict:
-    """sample_rate / bit_depth from a WAV header; loudness placeholders are None."""
-    info = waveform._riff_wave_info(data) if data[:4] == b"RIFF" else None
-    if not info:
-        return {"sample_rate": None, "bit_depth": None, "integrated_lufs": None, "true_peak": None}
-    # sample_rate from fmt is not exposed by _riff_wave_info; re-derive cheaply
+    """sample_rate / bit_depth / channels from a WAV header."""
     import struct as _struct
     from io import BytesIO as _BytesIO
 
-    buf = _BytesIO(data)
-    buf.seek(12)
     sr = None
     bits = None
-    while True:
-        header = buf.read(8)
-        if len(header) < 8:
-            break
-        cid, csize = _struct.unpack("<4sI", header)
-        if cid == b"fmt ":
-            chunk = buf.read(csize)
-            if len(chunk) >= 16:
-                sr = _struct.unpack("<I", chunk[4:8])[0]
-                bits = _struct.unpack("<H", chunk[14:16])[0]
-            break
-        buf.seek(csize + (csize % 2), 1)
+    ch = None
+    if data[:4] == b"RIFF":
+        buf = _BytesIO(data)
+        buf.seek(12)
+        while True:
+            header = buf.read(8)
+            if len(header) < 8:
+                break
+            cid, csize = _struct.unpack("<4sI", header)
+            if cid == b"fmt ":
+                chunk = buf.read(csize)
+                if len(chunk) >= 16:
+                    ch = _struct.unpack("<H", chunk[2:4])[0]
+                    sr = _struct.unpack("<I", chunk[4:8])[0]
+                    bits = _struct.unpack("<H", chunk[14:16])[0]
+                break
+            buf.seek(csize + (csize % 2), 1)
     return {
         "sample_rate": sr,
         "bit_depth": bits,
-        "integrated_lufs": None,  # real loudness analysis is a later milestone
+        "channels": ch,
+        "integrated_lufs": None,  # loudness lives on the source version's analysis
         "true_peak": None,
     }
 
@@ -97,6 +145,7 @@ def _deliverable_out(d: Deliverable) -> DeliverableOut:
         format=d.format,
         sample_rate=d.sample_rate,
         bit_depth=d.bit_depth,
+        channels=d.channels,
         integrated_lufs=d.integrated_lufs,
         true_peak=d.true_peak,
         is_required=d.is_required,
@@ -126,6 +175,12 @@ def _package_out(db: Session, p: ReleasePackage) -> ReleasePackageOut:
         delivery_token=p.delivery_token,
         created_at=p.created_at,
         locked_by=p.locked_by,
+        template=p.template or "custom",
+        plugin_manifest=p.plugin_manifest or "",
+        session_manifest=p.session_manifest or {},
+        consolidate_audio=p.consolidate_audio or False,
+        archive_expires_at=p.archive_expires_at,
+        archive_status=p.archive_status or "available_now",
         deliverables=[_deliverable_out(d) for d in delivs],
         events=[
             {"event": e.event, "actor": e.actor, "detail": e.detail, "created_at": e.created_at.isoformat()}
@@ -134,9 +189,77 @@ def _package_out(db: Session, p: ReleasePackage) -> ReleasePackageOut:
     )
 
 
+def _run_preflight(db: Session, package: ReleasePackage) -> PreflightOut:
+    """QC preflight before the lock: required deliverables, file integrity,
+    duplicates, naming, lossy masters. Loudness is a warning, never a block —
+    we show neutral measurements, not a quality verdict."""
+    from ..models import AudioAnalysis
+
+    delivs = db.scalars(
+        select(Deliverable).where(Deliverable.package_id == package.id)
+    ).all()
+    checks: list[dict] = []
+    tpl = PACKAGE_TEMPLATES.get(package.template or "custom")
+    required = tpl["deliverable_types"] if tpl else [d.type for d in delivs if d.is_required]
+    present = {d.type for d in delivs}
+    for rt in required:
+        if rt not in present:
+            checks.append({"status": "block", "label": "Required deliverable missing", "detail": rt})
+    if not delivs:
+        checks.append({"status": "block", "label": "No deliverables", "detail": "Add at least one file before locking"})
+    seen: set[str] = set()
+    for d in delivs:
+        if d.size == 0:
+            checks.append({"status": "block", "label": "Empty file", "detail": d.filename})
+        if d.type in AUDIO_TYPES and d.format in ("wav", "aif", "aiff"):
+            data = storage.read_blob(d.blob_sha)
+            magic_ok = data[:4] == b"RIFF" if d.format == "wav" else data[:4] == b"FORM"
+            if not magic_ok:
+                checks.append({"status": "block", "label": "Corrupt audio", "detail": f"{d.filename} is not a valid {d.format}"})
+        if d.sha256 in seen:
+            checks.append({"status": "block", "label": "Duplicate file", "detail": f"{d.filename} duplicates another deliverable"})
+        seen.add(d.sha256)
+        if " " in d.filename:
+            checks.append({"status": "warn", "label": "Naming", "detail": f"{d.filename} contains spaces — most delivery presets expect snake_case"})
+        if d.type == "master" and d.format in ("mp3", "ogg", "m4a"):
+            checks.append({"status": "warn", "label": "Lossy master", "detail": f"{d.filename} is {d.format} — labels usually want WAV for the master"})
+        if d.source_version_id:
+            a = db.scalar(select(AudioAnalysis).where(AudioAnalysis.version_id == d.source_version_id))
+            if a and a.integrated_lufs is not None and a.integrated_lufs > -7:
+                checks.append({
+                    "status": "warn",
+                    "label": "Hot master",
+                    "detail": f"{d.filename}: {a.integrated_lufs:.1f} LUFS integrated — loudness warning, not a block",
+                })
+    blocking = any(c["status"] == "block" for c in checks)
+    return PreflightOut(
+        passed=not blocking,
+        blocking=blocking,
+        checks=[{"status": c["status"], "label": c["label"], "detail": c["detail"]} for c in checks],
+    )
+
+
 def _require_owner(package: ReleasePackage, user: User) -> None:
     if package.session.owner_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Package not found")
+
+
+# ---------- templates ----------
+
+
+@router.get("/templates", response_model=list[PackageTemplateOut])
+def list_package_templates():
+    """Ready-made package presets for the release UI."""
+    return [
+        PackageTemplateOut(
+            id=tid,
+            name=meta["name"],
+            description=meta["description"],
+            deliverable_types=meta["deliverable_types"],
+            note=meta["note"],
+        )
+        for tid, meta in PACKAGE_TEMPLATES.items()
+    ]
 
 
 # ---------- owner endpoints ----------
@@ -172,14 +295,20 @@ def create_package(
             status.HTTP_400_BAD_REQUEST,
             f"Version {version.label} is not approved — lock the approval before creating a release package",
         )
+    template = payload.template or "custom"
+    if template not in PACKAGE_TEMPLATES and template != "custom":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown package template '{template}'")
+    tpl = PACKAGE_TEMPLATES.get(template)
+    name = payload.name.strip() or (tpl["name"] if tpl else "Final delivery")
     package = ReleasePackage(
         session_id=session.id,
         approved_version_id=version.id,
-        name=payload.name.strip() or "Final delivery",
+        name=name,
+        template=template,
     )
     db.add(package)
     db.flush()
-    _event(db, package, "package.created", user.username, f"approved {version.label}")
+    _event(db, package, "package.created", user.username, f"approved {version.label} · {template}")
     ledger.append(
         db,
         "package.created",
@@ -188,7 +317,7 @@ def create_package(
         actor=user.username,
         entity_type="package",
         entity_id=package.id,
-        payload={"approved_version": version.label, "name": package.name},
+        payload={"approved_version": version.label, "name": package.name, "template": template},
     )
     db.commit()
     return _package_out(db, package)
@@ -219,7 +348,7 @@ def upload_deliverable(
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, str(exc))
     blob_sha = storage.put_blob(data)
     meta = _riff_meta(data) if ext in ("wav", "aif", "aiff") else {
-        "sample_rate": None, "bit_depth": None, "integrated_lufs": None, "true_peak": None
+        "sample_rate": None, "bit_depth": None, "channels": None, "integrated_lufs": None, "true_peak": None
     }
     d = Deliverable(
         package_id=package.id,
@@ -231,6 +360,7 @@ def upload_deliverable(
         format=ext,
         sample_rate=meta["sample_rate"],
         bit_depth=meta["bit_depth"],
+        channels=meta["channels"],
         integrated_lufs=meta["integrated_lufs"],
         true_peak=meta["true_peak"],
         is_required=is_required,
@@ -271,7 +401,7 @@ def add_deliverable_from_version(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Source version not found")
     data = storage.read_blob(source.blob_sha)
     meta = _riff_meta(data) if source.audio_format in ("wav", "aif", "aiff") else {
-        "sample_rate": None, "bit_depth": None, "integrated_lufs": None, "true_peak": None
+        "sample_rate": None, "bit_depth": None, "channels": None, "integrated_lufs": None, "true_peak": None
     }
     d = Deliverable(
         package_id=package.id,
@@ -283,6 +413,7 @@ def add_deliverable_from_version(
         format=source.audio_format,
         sample_rate=meta["sample_rate"],
         bit_depth=meta["bit_depth"],
+        channels=meta["channels"],
         integrated_lufs=meta["integrated_lufs"],
         true_peak=meta["true_peak"],
         is_required=payload.is_required,
@@ -323,6 +454,12 @@ def lock_package(
         raise HTTPException(
             status.HTTP_402_PAYMENT_REQUIRED,
             "Booking deposit due — collect the deposit before locking the final delivery",
+        )
+    preflight = _run_preflight(db, package)
+    if preflight.blocking and not payload.force:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Preflight found blocking issues — fix them, or lock anyway with force",
         )
     delivs = db.scalars(
         select(Deliverable).where(Deliverable.package_id == package.id)
@@ -365,6 +502,95 @@ def lock_package(
         entity_type="package",
         entity_id=package.id,
         payload={"approved_version": package.approved_version.label, "manifest_sha256": manifest_hash, "approval_scope": payload.approval_scope},
+    )
+    db.commit()
+    return _package_out(db, package)
+
+
+@router.post("/{package_id}/preflight", response_model=PreflightOut)
+def package_preflight(
+    package_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Run the QC preflight without locking — the UI shows the checklist first."""
+    package = db.get(ReleasePackage, package_id)
+    if package is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Package not found")
+    _require_owner(package, user)
+    return _run_preflight(db, package)
+
+
+@router.patch("/{package_id}/handoff", response_model=ReleasePackageOut)
+def update_handoff(
+    package_id: int,
+    payload: HandoffUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Session-file handoff metadata: plugin manifest, session manifest,
+    consolidate-audio flag and archive expiry."""
+    package = db.get(ReleasePackage, package_id)
+    if package is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Package not found")
+    _require_owner(package, user)
+    if payload.plugin_manifest is not None:
+        package.plugin_manifest = payload.plugin_manifest
+    if payload.session_manifest is not None:
+        package.session_manifest = payload.session_manifest
+    if payload.consolidate_audio is not None:
+        package.consolidate_audio = payload.consolidate_audio
+    if payload.archive_expires_at is not None:
+        package.archive_expires_at = payload.archive_expires_at
+    _event(db, package, "package.handoff_updated", user.username, "session/plugin manifest")
+    ledger.append(
+        db,
+        "package.handoff_updated",
+        session_id=package.session_id,
+        package_id=package.id,
+        actor=user.username,
+        entity_type="package",
+        entity_id=package.id,
+        payload={
+            "package": package.name,
+            "consolidate_audio": package.consolidate_audio,
+            "archive_expires_at": package.archive_expires_at.isoformat() if package.archive_expires_at else "",
+        },
+    )
+    db.commit()
+    return _package_out(db, package)
+
+
+@router.post("/{package_id}/archive", response_model=ReleasePackageOut)
+def set_archive_status(
+    package_id: int,
+    payload: ArchiveUpdate = ArchiveUpdate(),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Move the package through its archive lifecycle. Archived projects keep
+    their retention date; nothing promises session restoration without it."""
+    package = db.get(ReleasePackage, package_id)
+    if package is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Package not found")
+    _require_owner(package, user)
+    from datetime import timedelta
+
+    package.archive_status = payload.archive_status
+    if payload.archive_expires_at is not None:
+        package.archive_expires_at = payload.archive_expires_at
+    elif payload.archive_status == "archived" and not package.archive_expires_at:
+        package.archive_expires_at = utcnow() + timedelta(days=90)
+    _event(db, package, f"package.{payload.archive_status}", user.username, "archive status")
+    ledger.append(
+        db,
+        "package.archived" if payload.archive_status == "archived" else "package.handoff_updated",
+        session_id=package.session_id,
+        package_id=package.id,
+        actor=user.username,
+        entity_type="package",
+        entity_id=package.id,
+        payload={"package": package.name, "archive_status": package.archive_status},
     )
     db.commit()
     return _package_out(db, package)
@@ -507,6 +733,11 @@ def public_delivery_page(
         manifest_hash=package.manifest_hash,
         approved_label=package.approved_version.label,
         approved_filename=package.approved_version.filename,
+        template=package.template or "custom",
+        archive_status=package.archive_status or "available_now",
+        archive_expires_at=package.archive_expires_at,
+        retention_until=package.session.retention_until,
+        share_token=package.session.share_token,
         deliverables=[_deliverable_out(d) for d in delivs],
     )
 
@@ -700,6 +931,15 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     # paid through the same webhook, identified by metadata `kind`.
     kind = metadata.get("kind")
     session_id = metadata.get("session_id")
+    if kind == "change_order":
+        co_id = metadata.get("change_order_id")
+        if not co_id:
+            return {"received": True, "handled": False}
+        from .change_orders import grant_change_order_round
+
+        granted = grant_change_order_round(db, int(co_id), actor="stripe")
+        db.commit()
+        return {"received": True, "handled": granted}
     if kind in ("deposit", "extra_round") and session_id:
         session = db.get(ReviewSession, int(session_id))
         if session is None:

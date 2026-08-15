@@ -74,6 +74,10 @@ def _migrate() -> None:
                 ("reference_links", "TEXT DEFAULT ''"),
                 ("do_not_change", "TEXT DEFAULT ''"),
                 ("required_deliverables", "TEXT DEFAULT ''"),
+                ("retention_until", "DATETIME"),
+                ("recall_fee_cents", "INTEGER"),
+                ("revision_fee_cents", "INTEGER"),
+                ("change_rounds_granted", "INTEGER DEFAULT 0"),
             ):
                 if col not in review_cols:
                     conn.execute(text(f"ALTER TABLE review_sessions ADD COLUMN {col} {ddl}"))
@@ -104,9 +108,19 @@ def _migrate() -> None:
                 ("amount_due_cents", "INTEGER"),
                 ("currency", "VARCHAR(8) DEFAULT 'usd'"),
                 ("stripe_session_id", "VARCHAR(128)"),
+                ("template", "VARCHAR(32) DEFAULT 'custom'"),
+                ("plugin_manifest", "TEXT DEFAULT ''"),
+                ("session_manifest", "JSON DEFAULT '{}'"),
+                ("consolidate_audio", "BOOLEAN DEFAULT 0"),
+                ("archive_expires_at", "DATETIME"),
+                ("archive_status", "VARCHAR(32) DEFAULT 'available_now'"),
             ):
                 if col not in pkg_cols:
                     conn.execute(text(f"ALTER TABLE release_packages ADD COLUMN {col} {ddl}"))
+        if inspector.has_table("release_deliverables"):
+            del_cols = {c["name"] for c in inspector.get_columns("release_deliverables")}
+            if "channels" not in del_cols:
+                conn.execute(text("ALTER TABLE release_deliverables ADD COLUMN channels INTEGER"))
         if "password_hash" in users_cols and not inspector.get_columns("users"):
             pass  # no-op guard
 

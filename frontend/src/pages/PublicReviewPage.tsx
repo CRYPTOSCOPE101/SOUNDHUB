@@ -6,11 +6,20 @@ import { fmtClock, WaveformCanvas, CommentComposer, ApprovalPanel } from "../com
 import {
   fmtTime,
   humanSize,
+  CHANGE_ORDER_REASONS,
+  type ChangeOrder,
   type ReferenceComparison,
   type ReferenceTrack,
   type ReviewSession,
   type ReviewVersion,
 } from "../types";
+
+const REASON_LABELS: Record<string, string> = {
+  mix_revision: "Mix revision",
+  new_stem_request: "New stem request",
+  format_change: "Format change",
+  mastering_recall: "Mastering recall",
+};
 
 const SERVICE_LABELS: Record<string, string> = {
   mix: "Mix",
@@ -46,6 +55,12 @@ export default function PublicReviewPage() {
   const [refCompare, setRefCompare] = useState<{ ref: ReferenceTrack; comp: ReferenceComparison } | null>(null);
   const [refErr, setRefErr] = useState<string | null>(null);
   const [refBusy, setRefBusy] = useState<number | null>(null);
+  const [changeOrders, setChangeOrders] = useState<ChangeOrder[]>([]);
+  const [changeReason, setChangeReason] = useState("mix_revision");
+  const [changeDesc, setChangeDesc] = useState("");
+  const [changeMsg, setChangeMsg] = useState<string | null>(null);
+  const [showChangeForm, setShowChangeForm] = useState(false);
+  const [coBusy, setCoBusy] = useState(false);
 
   const load = useCallback(
     async (pwd?: string) => {
@@ -60,6 +75,12 @@ export default function PublicReviewPage() {
         setCurrent(versions.length ? versions[0] : null);
         setNeedPassword(false);
         setSubmitMsg(null);
+        if (s.status === "approved") {
+          api
+            .publicChangeOrders(token)
+            .then(setChangeOrders)
+            .catch(() => setChangeOrders([]));
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Review link not found";
         if (msg.toLowerCase().includes("password")) {
@@ -555,6 +576,151 @@ export default function PublicReviewPage() {
               </div>
             )}
           </div>
+
+          {session.status === "approved" && (
+            <div className="public-change">
+              <div className="public-change-head">🔁 Request a change after approval</div>
+              <p className="public-review-note">
+                The project is approved and delivered. Want something different now? Request a change — the
+                engineer quotes it (included courtesy change, paid revision round or a new mastering pass) or
+                declines, you accept the price + deadline, and the revision round reopens.
+              </p>
+              {changeOrders.length > 0 && (
+                <div className="public-change-list">
+                  {changeOrders.map((co) => (
+                    <div key={co.id} className={`rs-co ${co.status}`}>
+                      <div className="rs-co-head">
+                        <span className="rs-co-reason">{REASON_LABELS[co.reason] ?? co.reason}</span>
+                        <span className={`rs-round-stat ${co.status === "declined" ? "closed" : "open"}`}>{co.status}</span>
+                        {co.round_granted && <span className="rs-round-stat open">✓ round reopened</span>}
+                      </div>
+                      <p className="rs-co-desc">“{co.description || "No details"}”</p>
+                      <div className="rs-co-meta">
+                        {co.decision && <span>{co.decision.replace(/_/g, " ")}</span>}
+                        {co.price_cents != null && (
+                          <span>
+                            {new Intl.NumberFormat("en-US", { style: "currency", currency: co.currency.toUpperCase() }).format(co.price_cents / 100)}
+                          </span>
+                        )}
+                        {co.deadline_at && <span>by {new Date(co.deadline_at).toLocaleDateString()}</span>}
+                        {co.target_round && <span>reopens Round {co.target_round}</span>}
+                      </div>
+                      {co.status === "quoted" && (
+                        <div className="rs-co-actions">
+                          <button
+                            type="button"
+                            className="rs-btn approve sm"
+                            disabled={coBusy}
+                            onClick={() =>
+                              void (async () => {
+                                setCoBusy(true);
+                                setChangeMsg(null);
+                                try {
+                                  await api.acceptChangeOrder(token!, co.id, name || "Client");
+                                  setChangeMsg("✓ Change quote accepted — the engineer will reopen the round after payment.");
+                                  setChangeOrders(await api.publicChangeOrders(token!));
+                                } catch (e2) {
+                                  setChangeMsg(e2 instanceof Error ? e2.message : "Accept failed");
+                                } finally {
+                                  setCoBusy(false);
+                                }
+                              })()
+                            }
+                          >
+                            Accept quote
+                          </button>
+                        </div>
+                      )}
+                      {co.status === "accepted" && !co.round_granted && (co.price_cents ?? 0) > 0 && (
+                        <div className="rs-co-actions">
+                          <span className="rs-round-stat open">Quote accepted — pay to reopen the round</span>
+                          <button
+                            type="button"
+                            className="rs-btn approve sm"
+                            disabled={coBusy}
+                            onClick={() =>
+                              void (async () => {
+                                setCoBusy(true);
+                                setChangeMsg(null);
+                                try {
+                                  const c = await api.publicChangeOrderCheckout(token!, co.id);
+                                  window.location.href = c.checkout_url;
+                                } catch (e2) {
+                                  setChangeMsg(e2 instanceof Error ? e2.message : "Checkout failed");
+                                  setCoBusy(false);
+                                }
+                              })()
+                            }
+                          >
+                            💳 Pay {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((co.price_cents ?? 0) / 100)}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!showChangeForm ? (
+                <button type="button" className="rs-btn ghost" onClick={() => setShowChangeForm(true)} disabled={changeOrders.some((c) => ["requested", "quoted", "accepted"].includes(c.status))}>
+                  {changeOrders.some((c) => ["requested", "quoted", "accepted"].includes(c.status)) ? "Change request pending…" : "Request a change"}
+                </button>
+              ) : (
+                <div className="public-change-form">
+                  <div className="rs-share-row">
+                    <label>
+                      What changed?
+                      <select value={changeReason} onChange={(e) => setChangeReason(e.target.value)} className="rs-select">
+                        {CHANGE_ORDER_REASONS.map((r) => (
+                          <option key={r} value={r}>{REASON_LABELS[r]}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Your name / email
+                      <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="optional" className="rs-input" />
+                    </label>
+                  </div>
+                  <textarea
+                    value={changeDesc}
+                    onChange={(e) => setChangeDesc(e.target.value)}
+                    rows={2}
+                    placeholder="e.g. We need a new mix — the vocal sits too far back now…"
+                    className="rs-approval-note-input"
+                  />
+                  <div className="rs-share-row">
+                    <button
+                      type="button"
+                      className="rs-btn approve sm"
+                      disabled={coBusy || !changeDesc.trim()}
+                      onClick={() =>
+                        void (async () => {
+                          setCoBusy(true);
+                          setChangeMsg(null);
+                          try {
+                            const co = await api.createChangeOrder(token!, changeReason, changeDesc.trim(), name || "Client");
+                            setChangeDesc("");
+                            setShowChangeForm(false);
+                            setChangeMsg(`✓ Change request sent — the engineer will quote it shortly (Round ${co.target_round}).`);
+                            setChangeOrders(await api.publicChangeOrders(token!));
+                          } catch (e2) {
+                            setChangeMsg(e2 instanceof Error ? e2.message : "Request failed");
+                          } finally {
+                            setCoBusy(false);
+                          }
+                        })()
+                      }
+                    >
+                      Send change request
+                    </button>
+                    <button type="button" className="rs-btn ghost sm" onClick={() => setShowChangeForm(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              {changeMsg && <div className={changeMsg.includes("✓") ? "success" : "error"} style={{ marginTop: 8 }}>{changeMsg}</div>}
+            </div>
+          )}
         </>
       ) : (
         <div className="card muted">No versions shared yet.</div>

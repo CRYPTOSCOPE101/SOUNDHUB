@@ -1420,3 +1420,368 @@ def test_stem_missing_in_one_version_returns_clear_error(client):
         headers=_auth(token),
     )
     assert r.status_code == 400
+
+
+# ---------- change orders (late changes after approval/delivery) ----------
+
+
+def test_change_order_full_flow(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "approved master")
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    share = s["share_token"]
+
+    # engineer sets the service preset fees (recall + revision)
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"recall_fee_cents": 12000, "revision_fee_cents": 4500},
+        headers=_auth(token),
+    )
+
+    # client requests a change through the share link
+    r = client.post(
+        f"/api/sessions/public/{share}/change-orders",
+        json={"reason": "mix_revision", "description": "We came back after 3 months — rebalance the low end"},
+        params={"actor": "client@label.com"},
+    )
+    assert r.status_code == 201
+    co = r.json()
+    assert co["status"] == "requested"
+    assert co["target_round"] == 1
+
+    # a second active request is rejected (one at a time)
+    r = client.post(
+        f"/api/sessions/public/{share}/change-orders",
+        json={"reason": "format_change", "description": "also need mp3s"},
+        params={"actor": "client@label.com"},
+    )
+    assert r.status_code == 400
+
+    # owner quotes: paid_round, price defaults to revision_fee_cents
+    r = client.patch(
+        f"/api/sessions/{s['id']}/change-orders/{co['id']}",
+        json={"decision": "paid_round", "deadline_at": "2026-09-01T12:00:00Z"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    co = r.json()
+    assert co["status"] == "quoted"
+    assert co["decision"] == "paid_round"
+    assert co["price_cents"] == 4500
+
+    # client accepts the price + deadline
+    r = client.post(
+        f"/api/sessions/public/{share}/change-orders/{co['id']}/accept",
+        params={"actor": "client@label.com"},
+    )
+    assert r.status_code == 200
+    co = r.json()
+    assert co["status"] == "accepted"
+    assert co["round_granted"] is False
+
+    # invoice paid (manual Stripe-less mode) → round granted + reopened
+    r = client.post(
+        f"/api/sessions/{s['id']}/change-orders/{co['id']}/mark-paid",
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    co = r.json()
+    assert co["status"] == "paid"
+    assert co["round_granted"] is True
+    assert co["paid_at"]
+
+    detail = client.get(f"/api/sessions/{s['id']}", headers=_auth(token)).json()
+    assert detail["change_rounds_granted"] == 1
+    assert detail["rounds_open"] is True
+    assert detail["status"] == "in_review"
+
+    # the reopened round accepts new notes and a new version can ship
+    client.post(
+        f"/api/sessions/public/{share}/versions/{v['id']}/comments",
+        json={"time_s": 0.2, "body": "low end rebalance notes", "author_name": "client@label.com"},
+    )
+    r = client.post(
+        f"/api/sessions/{s['id']}/submit-feedback",
+        json={"note": "change-order round"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    assert r.json()["round_number"] == 2
+
+    # ledger records the whole change-order trail
+    r = client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token))
+    kinds = {e["event"] for e in r.json()["events"]}
+    assert "change_order.created" in kinds
+    assert "change_order.quoted" in kinds
+    assert "change_order.accepted" in kinds
+    assert "change_order.paid" in kinds
+    assert "change_order.round_opened" in kinds
+
+    # re-grant is idempotent (webhook replay protection)
+    r = client.post(
+        f"/api/sessions/{s['id']}/change-orders/{co['id']}/mark-paid",
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+
+
+def test_change_order_courtesy_and_decline(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    share = s["share_token"]
+
+    # courtesy change: accept grants the round immediately, price 0
+    co = client.post(
+        f"/api/sessions/public/{share}/change-orders",
+        json={"reason": "format_change", "description": "please add mp3 too"},
+        params={"actor": "artist@mail.com"},
+    ).json()
+    r = client.patch(
+        f"/api/sessions/{s['id']}/change-orders/{co['id']}",
+        json={"decision": "courtesy"},
+        headers=_auth(token),
+    )
+    assert r.json()["price_cents"] == 0
+    r = client.post(
+        f"/api/sessions/public/{share}/change-orders/{co['id']}/accept",
+        params={"actor": "artist@mail.com"},
+    )
+    assert r.status_code == 200
+    co = r.json()
+    assert co["round_granted"] is True
+    assert co["status"] == "paid"
+
+    # a mastering recall quoted with no price falls back to the recall fee
+    s2 = _create_session(client, token)
+    v2 = _upload(client, token, s2["id"], make_wav(1.0), "v1")
+    client.post(
+        f"/api/sessions/{s2['id']}/versions/{v2['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    client.patch(
+        f"/api/sessions/{s2['id']}/share",
+        json={"recall_fee_cents": 15000},
+        headers=_auth(token),
+    )
+    co2 = client.post(
+        f"/api/sessions/public/{s2['share_token']}/change-orders",
+        json={"reason": "mastering_recall", "description": "re-master for the vinyl cut"},
+        params={"actor": "client@label.com"},
+    ).json()
+    r = client.patch(
+        f"/api/sessions/{s2['id']}/change-orders/{co2['id']}",
+        json={"decision": "new_mastering_pass"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    assert r.json()["price_cents"] == 15000
+
+    # engineer declines → status declined, no round granted
+    r = client.post(
+        f"/api/sessions/{s2['id']}/change-orders/{co2['id']}/decline",
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "declined"
+    detail = client.get(f"/api/sessions/{s2['id']}", headers=_auth(token)).json()
+    assert detail["change_rounds_granted"] == 0
+
+    # change orders are only for approved projects
+    s3 = _create_session(client, token)
+    v3 = _upload(client, token, s3["id"], make_wav(1.0), "v1")
+    r = client.post(
+        f"/api/sessions/public/{s3['share_token']}/change-orders",
+        json={"reason": "mix_revision", "description": "too early"},
+        params={"actor": "client@x.com"},
+    )
+    assert r.status_code == 400
+
+    # guests see the change-order list (statuses only, no payment plumbing)
+    r = client.get(f"/api/sessions/public/{share}/change-orders")
+    assert r.status_code == 200
+    assert any(c["id"] == co["id"] for c in r.json())
+
+
+# ---------- release templates, QC preflight, archive handoff ----------
+
+
+def test_release_templates_and_preflight(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+
+    # template catalog is exposed for the UI
+    r = client.get("/api/release-packages/templates")
+    assert r.status_code == 200
+    tpl_ids = {t["id"] for t in r.json()}
+    assert {"final_master", "label_sync", "archive_handoff", "stem_handoff", "dj_promo", "post_production"} <= tpl_ids
+
+    # label_sync template: name comes from the preset, requirements are pinned
+    r = client.post(
+        "/api/release-packages",
+        json={"session_id": s["id"], "approved_version_id": v["id"], "template": "label_sync"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 201
+    pkg = r.json()
+    assert pkg["template"] == "label_sync"
+    assert pkg["name"] == "Label / sync delivery"
+
+    # preflight: required deliverables are missing → blocking
+    r = client.post(f"/api/release-packages/{pkg['id']}/preflight", headers=_auth(token))
+    assert r.status_code == 200
+    pre = r.json()
+    assert pre["blocking"] is True
+    assert any(c["label"] == "Required deliverable missing" and c["detail"] == "acapella" for c in pre["checks"])
+
+    # add just the master → still blocking
+    client.post(
+        f"/api/release-packages/{pkg['id']}/deliverables/from-version",
+        json={"type": "master", "from_version_id": v["id"]},
+        headers=_auth(token),
+    )
+    pre = client.post(f"/api/release-packages/{pkg['id']}/preflight", headers=_auth(token)).json()
+    assert pre["blocking"] is True
+    assert len([c for c in pre["checks"] if c["status"] == "block"]) >= 5
+
+    # lock without force → 400; with force → ready
+    r = client.post(
+        f"/api/release-packages/{pkg['id']}/lock",
+        json={"approval_scope": "master", "force": False},
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+    assert "preflight" in r.json()["detail"].lower()
+    r = client.post(
+        f"/api/release-packages/{pkg['id']}/lock",
+        json={"approval_scope": "master", "force": True},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "ready"
+
+    # empty upload is caught by preflight on a fresh custom package
+    s2 = _create_session(client, token)
+    v2 = _upload(client, token, s2["id"], make_wav(1.0), "v1")
+    client.post(
+        f"/api/sessions/{s2['id']}/versions/{v2['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    pkg2 = client.post(
+        "/api/release-packages",
+        json={"session_id": s2["id"], "approved_version_id": v2["id"]},
+        headers=_auth(token),
+    ).json()
+    client.post(
+        f"/api/release-packages/{pkg2['id']}/deliverables/upload",
+        headers=_auth(token),
+        data={"type": "master"},
+        files=[("file", ("empty.wav", b"", "audio/wav"))],
+    )
+    pre = client.post(f"/api/release-packages/{pkg2['id']}/preflight", headers=_auth(token)).json()
+    assert any(c["status"] == "block" and c["label"] == "Empty file" for c in pre["checks"])
+    r = client.post(
+        f"/api/release-packages/{pkg2['id']}/lock",
+        json={"approval_scope": "master"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+
+
+def test_archive_handoff_and_retention(client):
+    token = _register(client)
+    s = _create_session(client, token)
+
+    # project retention + late-change fees on the session
+    r = client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={
+            "retention_until": "2026-11-15T12:00:00Z",
+            "recall_fee_cents": 12000,
+            "revision_fee_cents": 4500,
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    detail = r.json()
+    assert detail["retention_until"].startswith("2026-11-15")
+    assert detail["recall_fee_cents"] == 12000
+    assert detail["revision_fee_cents"] == 4500
+
+    v = _upload(client, token, s["id"], make_wav(1.0), "v1")
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    pkg = client.post(
+        "/api/release-packages",
+        json={"session_id": s["id"], "approved_version_id": v["id"], "template": "archive_handoff"},
+        headers=_auth(token),
+    ).json()
+    assert pkg["name"] == "Archive handoff"
+
+    # handoff metadata: plugin manifest, session manifest, consolidate option
+    r = client.patch(
+        f"/api/release-packages/{pkg['id']}/handoff",
+        json={
+            "plugin_manifest": "Ableton 12.1 · Serum 1.36 (missing: Ozone 11 → fallback stock EQ)",
+            "session_manifest": {"sample_rate": 48000, "bit_depth": 24, "tempo": 128, "key": "F min", "start_time": "00:00:00:00"},
+            "consolidate_audio": True,
+            "archive_expires_at": "2027-01-01T00:00:00Z",
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    assert r.json()["consolidate_audio"] is True
+    assert r.json()["session_manifest"]["tempo"] == 128
+    assert "Ozone" in r.json()["plugin_manifest"]
+
+    client.post(
+        f"/api/release-packages/{pkg['id']}/deliverables/from-version",
+        json={"type": "master", "from_version_id": v["id"]},
+        headers=_auth(token),
+    )
+    locked = client.post(
+        f"/api/release-packages/{pkg['id']}/lock",
+        json={"approval_scope": "master", "force": True},
+        headers=_auth(token),
+    ).json()
+
+    # archive lifecycle: archived → expiry set (90 days when unspecified)
+    r = client.post(
+        f"/api/release-packages/{pkg['id']}/archive",
+        json={"archive_status": "archived"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    assert r.json()["archive_status"] == "archived"
+    assert r.json()["archive_expires_at"]
+
+    # the delivery page shows retention + a link back to the review
+    tok = locked["delivery_token"]
+    r = client.get(f"/api/release-packages/public/{tok}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["retention_until"].startswith("2026-11-15")
+    assert body["share_token"] == s["share_token"]
+    assert body["archive_status"] == "archived"
+    assert body["template"] == "archive_handoff"
