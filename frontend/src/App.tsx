@@ -44,7 +44,7 @@ export default function App() {
             <img src="/logo.png" alt="SoundHub" />
           </Link>
           <Link to="/">SoundHub</Link>
-          {!user && <span className="tagline">buy finished sound</span>}
+          {!user && <span className="tagline">Marketplace</span>}
           {user && <span className="tagline">version control for music</span>}
         </div>
         {user && (

@@ -1,122 +1,210 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
-const FEATURES = [
-  {
-    icon: "🧠",
-    title: "Your DAW, understood",
-    text: "SoundHub parses .als, .cpr, .rpp and .flp — so a commit shows “BPM 128 → 132, + track Pad, + plugin Vital”, not “binary file changed”.",
-  },
-  {
-    icon: "🔒",
-    title: "Escrow on-chain",
-    text: "Every purchase goes through the SoundHubMarket escrow on Base Sepolia. No trust-me selling — funds release when you confirm receipt.",
-  },
-  {
-    icon: "🎛",
-    title: "Inside your DAW",
-    text: "A Max for Live device embeds the marketplace in Ableton Live. Prototypes for FL Studio and Cubase ship in the repo. Buy where you make music.",
-  },
-  {
-    icon: "🪙",
-    title: "Tokenized platform",
-    text: "SND token, Release NFTs with royalties and collaborator splits, a DAO with a timelock. Creators get paid automatically when buyers confirm.",
-  },
-  {
-    icon: "✨",
-    title: "BPM-aware suggestions",
-    text: "The recommendation engine scores assets by genre, BPM proximity, key and device overlap — so a 128 BPM techno set surfaces bass presets that fit.",
-  },
-  {
-    icon: "🗂",
-    title: "Version control for tracks",
-    text: "Branches, commits, smart diffs. Content-addressed storage deduplicates by SHA-256, so full-snapshot commits cost almost nothing.",
-  },
+const NAV_LINKS = [
+  { href: "#demo", label: "Demo" },
+  { href: "#diff", label: "Smart diff" },
+  { href: "#trust", label: "Trust" },
+  { href: "#pricing", label: "Licenses" },
+  { href: "#faq", label: "FAQ" },
 ];
 
-const SHOWCASES = [
-  {
-    img: "/screenshot-main.png",
-    alt: "SoundHub marketplace",
-    eyebrow: "Marketplace",
-    title: "Browse. Verify. Buy.",
-    text: "Presets, loops, stems and packs with DAW-verified metadata — you see the BPM, the key, the devices and the license tier before you spend a single SND.",
-    bullets: ["DAW-verified contents", "4 license tiers, bound on-chain", "escrow + 2-day dispute window"],
-  },
-  {
-    img: "/screenshot-repo.png",
-    alt: "SoundHub version control",
-    eyebrow: "Version control",
-    title: "Git, but for your tracks",
-    text: "Commit snapshots of your Ableton, Cubase, REAPER or FL Studio project. Branches, history and diffs that read like music, not bytes.",
-    bullets: ["smart diffs: tempo, tracks, plugins, samples", "branches & per-branch history", "SHA-256 content-addressed storage"],
-  },
+// ---------------------------------------------------------------------------
+// Interactive product demo — Project Context Marketplace
+// ---------------------------------------------------------------------------
+
+const PROJECT_PLUGINS = ["Serum", "Vital", "FabFilter"];
+
+const ASSETS = [
+  { name: "Dark Bass Patch", plugin: "Serum", bpm: 128, key: "F minor", price: 50, license: "Commercial" },
+  { name: "Warehouse Stab", plugin: "Vital", bpm: 128, key: "F minor", price: 35, license: "Commercial" },
+  { name: "Subby Reese", plugin: "Serum", bpm: 126, key: "E minor", price: 45, license: "Sync" },
+  { name: "Airy Pad Stack", plugin: "Vital", bpm: 132, key: "F minor", price: 40, license: "Commercial" },
+  { name: "Driving Hats Loop", plugin: "none", bpm: 128, key: "any", price: 15, license: "Personal" },
 ];
 
-const STATS = [
-  { value: "4", label: "DAW formats parsed" },
-  { value: "1M", label: "SND fixed supply" },
-  { value: "2d", label: "escrow dispute window" },
-  { value: "12", label: "contract tests, all green" },
+function scoreAsset(a: (typeof ASSETS)[number], bpm: number): number {
+  let s = 100 - Math.abs(a.bpm - bpm) * 3;
+  if (a.key === "F minor") s += 12;
+  if (a.key === "any") s += 6;
+  if (PROJECT_PLUGINS.includes(a.plugin)) s += 10;
+  return Math.min(99, Math.round(s));
+}
+
+function DemoPanel() {
+  const [bpm, setBpm] = useState(128);
+  const [playing, setPlaying] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState<Record<string, boolean>>({});
+  const [flash, setFlash] = useState<string | null>(null);
+
+  const ranked = useMemo(() => {
+    return [...ASSETS]
+      .map((a) => ({ ...a, match: scoreAsset(a, bpm) }))
+      .sort((a, b) => b.match - a.match);
+  }, [bpm]);
+
+  const matchCount = ranked.filter((a) => a.match >= 55).length;
+
+  const buyLoad = (name: string) => {
+    setLoaded((l) => ({ ...l, [name]: true }));
+    setFlash(name);
+    setTimeout(() => setFlash(null), 1200);
+  };
+
+  return (
+    <div className="demo">
+      {/* project context header */}
+      <div className="demo-project">
+        <div className="demo-project-title">
+          <span className="demo-project-icon">🎚</span>
+          <div>
+            <div className="demo-project-name">Neon Warehouse v12</div>
+            <div className="demo-project-meta">
+              {bpm} BPM · F minor · Techno · Ableton 12
+            </div>
+          </div>
+        </div>
+        <div className="demo-plugins">
+          {PROJECT_PLUGINS.map((p) => (
+            <span key={p} className="demo-chip">{p}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* BPM selector — live re-ranking */}
+      <div className="demo-bpm-row">
+        <span className="demo-label">Project BPM</span>
+        <div className="demo-bpm-buttons">
+          {[124, 126, 128, 130, 132].map((b) => (
+            <button
+              key={b}
+              type="button"
+              className={`demo-bpm-btn ${b === bpm ? "active" : ""}`}
+              onClick={() => setBpm(b)}
+            >
+              {b}
+            </button>
+          ))}
+        </div>
+        <span className="demo-count">{matchCount} matching sounds</span>
+      </div>
+
+      {/* recommended list */}
+      <div className="demo-list">
+        {ranked.slice(0, 4).map((a, i) => (
+          <div key={a.name} className={`demo-item ${i === 0 ? "top" : ""}`}>
+            <div className="demo-item-main">
+              <button
+                type="button"
+                className={`demo-play ${playing === a.name ? "on" : ""}`}
+                onClick={() => setPlaying(playing === a.name ? null : a.name)}
+                title="Preview in mix"
+              >
+                {playing === a.name ? "❚❚" : "▶"}
+              </button>
+              <div className="demo-item-info">
+                <div className="demo-item-name">{a.name}</div>
+                <div className="demo-item-meta">
+                  {a.bpm} BPM · {a.key} · {a.plugin !== "none" ? `${a.plugin} compatible` : "no plugins needed"}
+                </div>
+              </div>
+              <div className="demo-match">{a.match}% match</div>
+              <div className="demo-price">{a.price} SND</div>
+            </div>
+            {i === 0 && (
+              <div className="demo-reasons">
+                <span>✓ same tempo</span>
+                <span>✓ same key</span>
+                <span>✓ {a.plugin !== "none" ? "uses installed plugin" : "no plugins needed"}</span>
+                <span>✓ matches your bass bus</span>
+              </div>
+            )}
+            <div className="demo-actions">
+              <button type="button" className="demo-btn ghost">Preview in mix</button>
+              <button
+                type="button"
+                className={`demo-btn ${loaded[a.name] ? "loaded" : ""}`}
+                onClick={() => buyLoad(a.name)}
+              >
+                {loaded[a.name] ? "✓ Loaded to project" : "Buy & Load"}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {flash && (
+        <div className="demo-flash">
+          ✓ <strong>{flash}</strong> escrowed and loaded to your project
+        </div>
+      )}
+
+      <div className="demo-foot">
+        escrow protected · verified metadata · license bound on-chain · auto-payout to creator
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Static content
+// ---------------------------------------------------------------------------
+
+const DIFF_ROWS = [
+  { kind: "bpm", label: "Tempo", before: "128", after: "132" },
+  { kind: "add", label: "Track", before: "—", after: "+ Pad (midi)" },
+  { kind: "add", label: "Plugin", before: "—", after: "+ Vital" },
+  { kind: "add", label: "Sample", before: "—", after: "+ VocalChop_01.wav" },
+];
+
+const TRUST = [
+  { icon: "👂", title: "Preview before you buy", text: "Hear the asset in your own mix — dry/wet, against your current sound. No buying blind." },
+  { icon: "✅", title: "Verified metadata", text: "DAW-parsed contents: BPM, key, plugins, samples. “What am I buying?” is answered before checkout." },
+  { icon: "🔒", title: "Escrow protected", text: "Your SND sits in escrow until you confirm receipt. Dispute window, refunds, no trust-me selling." },
+  { icon: "🎧", title: "Compatible with your setup", text: "Plugin compatibility report before purchase, with audio stems as a fallback when a VST is missing." },
+];
+
+const INTEGRATIONS = [
+  { name: "Ableton Live", status: "panel live", detail: "Max for Live device — catalog, suggest, buy & load", when: "now" },
+  { name: "FL Studio", status: "prototype", detail: "MIDI scripting device + file bridge", when: "beta 2026" },
+  { name: "Cubase", status: "prototype", detail: "MIDI Remote script + web panel", when: "beta 2026" },
+  { name: "REAPER", status: "planned", detail: "ReaScript — file & HTTP access", when: "Q4 2026" },
 ];
 
 const LICENSES = [
+  { name: "Personal", price: "1×", note: "one track, one producer", features: ["single non-commercial track", "credit the creator", "no resale, no remix distribution"], featured: false },
+  { name: "Commercial", price: "5×", note: "the default for releases", features: ["commercial releases & streaming", "YouTube / TikTok / Spotify OK", "no resale of the preset itself"], featured: true },
+  { name: "Sync", price: "10×", note: "for film, ads & games", features: ["everything in Commercial", "sync placements (film/TV/ads)", "negotiable exclusivity per placement"], featured: false },
+  { name: "Exclusive", price: "custom", note: "take it off the market", features: ["asset leaves the catalog", "full ownership of the sound", "one-to-one deal, escrowed"], featured: false },
+];
+
+const FAQ = [
   {
-    name: "Personal",
-    price: "1×",
-    note: "one track, one producer",
-    features: ["use in a single non-commercial track", "credit the creator", "no resale, no remix distribution"],
-    featured: false,
+    q: "Do I need a wallet to use SoundHub?",
+    a: "No. Browsing, previews and recommendations are free and need no wallet. Buying works with an EVM wallet today; card / USDC / email checkout is on the roadmap so crypto stays invisible.",
+    open: true,
   },
   {
-    name: "Commercial",
-    price: "5×",
-    note: "the default for releases",
-    features: ["use in commercial releases", "streaming & sales income allowed", "still no resale of the preset itself"],
-    featured: true,
+    q: "What does “escrow” actually mean?",
+    a: "Your SND sits in the SoundHubMarket contract until you confirm receipt — or the 2-day dispute window passes. If the asset isn't right, you can request a refund. Sellers get paid automatically when you confirm.",
+    open: true,
   },
   {
-    name: "Sync",
-    price: "10×",
-    note: "for film, ads & games",
-    features: ["everything in Commercial", "sync placements (film/TV/ads)", "negotiable exclusivity per placement"],
-    featured: false,
+    q: "Will the preset work in my project?",
+    a: "SoundHub verifies the contents with the DAW engine and shows a plugin compatibility report before purchase. If you're missing a VST, audio stems or a rendered preview are the fallback.",
+    open: false,
   },
   {
-    name: "Exclusive",
-    price: "custom",
-    note: "take it off the market",
-    features: ["the asset leaves the catalog", "full ownership of the sound", "one-to-one deal, escrowed"],
-    featured: false,
+    q: "Is this live on mainnet?",
+    a: "Today SoundHub runs on Base Sepolia (testnet) with a faucet. Contracts are open-source with a full test suite; a security review is in progress before any mainnet deployment.",
+    open: false,
   },
 ];
 
-const TESTIMONIALS = [
-  {
-    quote:
-      "I used to lose an evening to Serum presets. Now the panel reads my 128 BPM techno set and the right bass patch is two clicks away.",
-    author: "Mara, techno producer",
-    role: "Ableton Live + SoundHub panel",
-  },
-  {
-    quote:
-      "The diff actually understands my project. “BPM 132, + plugin Vital, + sample VocalChop” — that's version control for musicians, not file hoarding.",
-    author: "Dev, session musician",
-    role: "FL Studio · 214 commits",
-  },
-  {
-    quote:
-      "Selling a pack used to mean DMs, spreadsheets and hoping. Now it's escrow, a license bound to the purchase, and the payout arrives by itself.",
-    author: "Kai, sound designer",
-    role: "seller · 3 packs listed",
-  },
-];
-
-const NAV_LINKS = [
-  { href: "#features", label: "Features" },
-  { href: "#product", label: "Product" },
-  { href: "#pricing", label: "Licenses" },
-  { href: "#faq", label: "FAQ" },
+const ROADMAP = [
+  { phase: "Now", items: ["Product demo & previews", "Private beta on Base Sepolia", "FL Studio & Cubase prototypes"], state: "live" },
+  { phase: "Next", items: ["Card / USDC checkout", "Collaboration: comments & approvals", "Plugin compatibility reports"], state: "next" },
+  { phase: "Later", items: ["REAPER integration", "Mainnet + security audit", "Seller reputation & packs"], state: "later" },
 ];
 
 function Reveal({ children }: { children: React.ReactNode }) {
@@ -173,7 +261,7 @@ export default function LandingPage() {
         <div className="landing-nav-cta">
           <Link to="/login">Sign in</Link>
           <Link to="/login" className="landing-nav-get">
-            Get started
+            Try demo project
           </Link>
         </div>
       </nav>
@@ -181,47 +269,46 @@ export default function LandingPage() {
       {/* ---------- hero ---------- */}
       <section className="landing-hero" id="top">
         <div className="landing-hero-inner">
-          <p className="landing-eyebrow">🎛 Tokenized marketplace for finished sounds</p>
+          <p className="landing-eyebrow">🎛 SoundHub — for music producers</p>
           <h1 className="landing-title">
-            Don't generate.
+            Finish tracks faster,
             <br />
-            <span className="landing-title-accent">Buy.</span>
+            with sounds that <span className="landing-title-accent">fit your project</span>.
           </h1>
           <p className="landing-subtitle">
-            You're in your DAW, the track is missing a bass — that's the moment.
-            SoundHub lives right there: verified presets, escrowed purchases, paid in SND.
-            No tab switch, no DMs, no zip files.
+            SoundHub reads your DAW project, finds compatible assets, and lets you buy
+            and load them without leaving your session.
           </p>
           <div className="landing-cta">
-            <a href="#waitlist" className="landing-btn-primary">
-              Get started free
-            </a>
-            <Link to="/login" className="landing-btn-ghost">
-              Sign in with wallet
+            <Link to="/login" className="landing-btn-primary">
+              Try demo project
             </Link>
+            <a href="#demo" className="landing-btn-ghost">
+              See the panel live ↓
+            </a>
           </div>
-          <div className="landing-daws" aria-label="Supported DAWs">
-            <span>Ableton Live</span>
-            <span>FL Studio</span>
-            <span>Cubase</span>
-            <span>REAPER</span>
+          <div className="landing-proof">
+            <span>✓ DAW-verified contents</span>
+            <span>✓ escrow protected</span>
+            <span>✓ license clear before you pay</span>
           </div>
         </div>
 
-        <div className="landing-shot">
+        {/* interactive product demo */}
+        <div className="landing-shot" id="demo">
           <div className="landing-shot-bar">
             <span className="dot" />
             <span className="dot" />
             <span className="dot" />
-            <span className="landing-shot-url">soundhub — marketplace & version control for music</span>
+            <span className="landing-shot-url">soundhub — project context marketplace</span>
           </div>
-          <img src="/screenshot-main.png" alt="SoundHub marketplace" loading="eager" />
+          <DemoPanel />
         </div>
       </section>
 
-      {/* ---------- logo strip ---------- */}
+      {/* ---------- one-liner strip ---------- */}
       <section className="landing-logos">
-        <p>Your project files. One platform.</p>
+        <p>Use AI for ideas. Use verified sound for the final take.</p>
         <div className="landing-logos-row">
           <span>.als</span>
           <span>.flp</span>
@@ -233,27 +320,22 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ---------- diff example ---------- */}
-      <section className="landing-section landing-diff" id="features">
+      {/* ---------- smart diff ---------- */}
+      <section className="landing-section landing-diff" id="diff">
         <Reveal>
           <div className="landing-diff-grid">
             <div className="landing-diff-copy">
               <p className="landing-eyebrow">Smart diff</p>
-              <h2>See what changed. Not just “file modified”.</h2>
+              <h2>Version your track like music, not bytes.</h2>
               <p>
-                GitHub shows a 40 MB binary and nothing else. SoundHub understands the
-                project file — tempo, signature, tracks, devices, plugins, samples — and
-                diffs the music, not the bytes.
+                GitHub says “binary file changed”. SoundHub reads the project file and
+                shows what actually changed — tempo, tracks, plugins, samples — so you
+                can collaborate without zip-files floating around a Discord server.
               </p>
             </div>
             <div className="landing-diff-card">
               <div className="landing-diff-head">SoundHub smart diff — track_v3.als</div>
-              {[
-                { kind: "bpm", label: "Tempo", before: "128", after: "132" },
-                { kind: "add", label: "Track", before: "—", after: "+ Pad (midi)" },
-                { kind: "add", label: "Plugin", before: "—", after: "+ Vital" },
-                { kind: "add", label: "Sample", before: "—", after: "+ VocalChop_01.wav" },
-              ].map((r) => (
+              {DIFF_ROWS.map((r) => (
                 <div key={r.label} className={`landing-diff-row ${r.kind === "add" ? "add" : r.kind === "bpm" ? "bpm" : ""}`}>
                   <span className="landing-diff-label">{r.label}</span>
                   <span className="landing-diff-before">{r.before}</span>
@@ -266,125 +348,64 @@ export default function LandingPage() {
         </Reveal>
       </section>
 
-      {/* ---------- features ---------- */}
-      <section className="landing-section">
+      {/* ---------- trust ---------- */}
+      <section className="landing-section" id="trust">
         <Reveal>
-          <p className="landing-eyebrow center">Why SoundHub</p>
-          <h2 className="landing-h2">Everything a finished sound needs</h2>
-          <div className="landing-features">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="landing-feature">
-                <div className="landing-feature-icon">{f.icon}</div>
-                <h3>{f.title}</h3>
-                <p>{f.text}</p>
+          <p className="landing-eyebrow center">Trust</p>
+          <h2 className="landing-h2">Buying sound shouldn't be a leap of faith</h2>
+          <div className="landing-trust">
+            {TRUST.map((t) => (
+              <div key={t.title} className="landing-feature">
+                <div className="landing-feature-icon">{t.icon}</div>
+                <h3>{t.title}</h3>
+                <p>{t.text}</p>
               </div>
             ))}
           </div>
         </Reveal>
       </section>
 
-      {/* ---------- alternating showcases ---------- */}
-      <section className="landing-section landing-showcases" id="product">
-        {/* The moment of intent — the core positioning, first */}
+      {/* ---------- integrations ---------- */}
+      <section className="landing-section">
         <Reveal>
-          <div className="landing-showcase">
-            <div className="landing-panel">
-              <div className="landing-panel-head">
-                <span className="landing-panel-dot" />
-                <span className="landing-panel-title">SoundHub — Ableton Live</span>
-                <span className="landing-panel-bpm">128 BPM</span>
-              </div>
-              <div className="landing-panel-buttons">
-                <button className="landing-panel-btn" type="button">refresh</button>
-                <button className="landing-panel-btn" type="button">suggest</button>
-                <button className="landing-panel-btn active" type="button">buy &amp; load</button>
-              </div>
-              <div className="landing-panel-note">matched to your 128 BPM techno set</div>
-              <div className="landing-panel-card">
-                <div className="landing-panel-card-name">Dark Bass Patch (Serum)</div>
-                <div className="landing-panel-card-meta">techno · 128 BPM · 24 Serum presets · verified</div>
-                <div className="landing-panel-card-row">
-                  <span className="landing-panel-card-price">50 SND</span>
-                  <span className="landing-panel-card-license">Commercial</span>
+          <p className="landing-eyebrow center">Integrations</p>
+          <h2 className="landing-h2">Where you make music</h2>
+          <div className="landing-integrations">
+            {INTEGRATIONS.map((i) => (
+              <div key={i.name} className="landing-integration">
+                <div className="landing-integration-head">
+                  <span className="landing-integration-name">{i.name}</span>
+                  <span className={`landing-status ${i.status.replace(/\s+/g, "-")}`}>{i.status}</span>
                 </div>
+                <p>{i.detail}</p>
+                <span className="landing-integration-when">{i.when}</span>
               </div>
-              <div className="landing-panel-foot">escrow · dispute window 2d · auto-payout to creator</div>
-            </div>
-            <div className="landing-showcase-copy">
-              <p className="landing-eyebrow">The moment of intent</p>
-              <h2>Buy where you're already making music</h2>
-              <p className="landing-showcase-text">
-                The panel reads your project — BPM, and soon key, tracks and devices —
-                and puts the right finished sounds in front of you. One click, escrowed,
-                landed in your library. The marketplace meets the producer in the DAW,
-                not on a website.
-              </p>
-              <ul className="landing-showcase-bullets">
-                <li>catalog read straight from the chain — no signup to browse</li>
-                <li>BPM-aware suggestions matched to your set</li>
-                <li>Buy &amp; Load: 1–2 clicks, web3 invisible</li>
-              </ul>
-            </div>
+            ))}
           </div>
         </Reveal>
-        {SHOWCASES.map((s, i) => (
-          <Reveal key={s.title}>
-            <div className={`landing-showcase ${i % 2 === 1 ? "reverse" : ""}`}>
-              <div className="landing-showcase-shot">
-                <div className="landing-shot-bar">
-                  <span className="dot" />
-                  <span className="dot" />
-                  <span className="dot" />
-                </div>
-                <img src={s.img} alt={s.alt} loading="lazy" />
-              </div>
-              <div className="landing-showcase-copy">
-                <p className="landing-eyebrow">{s.eyebrow}</p>
-                <h2>{s.title}</h2>
-                <p className="landing-showcase-text">{s.text}</p>
-                <ul className="landing-showcase-bullets">
-                  {s.bullets.map((b) => (
-                    <li key={b}>{b}</li>
+      </section>
+
+      {/* ---------- roadmap ---------- */}
+      <section className="landing-section">
+        <Reveal>
+          <p className="landing-eyebrow center">Roadmap</p>
+          <h2 className="landing-h2">Honest about where we are</h2>
+          <div className="landing-roadmap">
+            {ROADMAP.map((r) => (
+              <div key={r.phase} className="landing-roadmap-col">
+                <div className={`landing-roadmap-phase ${r.state}`}>{r.phase}</div>
+                <ul>
+                  {r.items.map((it) => (
+                    <li key={it}>{it}</li>
                   ))}
                 </ul>
               </div>
-            </div>
-          </Reveal>
-        ))}
-      </section>
-
-      {/* ---------- stats band ---------- */}
-      <section className="landing-stats">
-        <Reveal>
-          <div className="landing-stats-grid">
-            {STATS.map((s) => (
-              <div key={s.label} className="landing-stat">
-                <div className="landing-stat-value">{s.value}</div>
-                <div className="landing-stat-label">{s.label}</div>
-              </div>
             ))}
           </div>
-        </Reveal>
-      </section>
-
-      {/* ---------- how it works ---------- */}
-      <section className="landing-section landing-steps">
-        <Reveal>
-          <p className="landing-eyebrow center">How it works</p>
-          <h2 className="landing-h2">From project to purchase in three steps</h2>
-          <div className="landing-steps-grid">
-            {[
-              { n: "01", title: "Version your project", text: "Push a snapshot of your Ableton / Cubase / REAPER / FL Studio file. SoundHub parses it and shows what actually changed." },
-              { n: "02", title: "Find your sound", text: "Browse the catalog or let the DAW context (BPM, key, devices) rank what fits your track. Verified metadata before you pay." },
-              { n: "03", title: "Buy & load", text: "Pay with SND through escrow. The preset lands in your library — one click from the SoundHub panel in your DAW." },
-            ].map((s) => (
-              <div key={s.n} className="landing-step">
-                <span className="landing-step-n">{s.n}</span>
-                <h3>{s.title}</h3>
-                <p>{s.text}</p>
-              </div>
-            ))}
-          </div>
+          <p className="landing-status-note">
+            Status: <strong>Private beta</strong> · testnet live on Base Sepolia ·
+            open-source contracts · security review in progress · not yet audited
+          </p>
         </Reveal>
       </section>
 
@@ -411,49 +432,30 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-        </Reveal>
-      </section>
 
-      {/* ---------- testimonials ---------- */}
-      <section className="landing-section landing-quotes">
-        <Reveal>
-          <p className="landing-eyebrow center">Producers</p>
-          <h2 className="landing-h2">Loved by people who make music</h2>
-          <div className="landing-quotes-grid">
-            {TESTIMONIALS.map((t) => (
-              <figure key={t.author} className="landing-quote">
-                <blockquote>“{t.quote}”</blockquote>
-                <figcaption>
-                  <strong>{t.author}</strong>
-                  <span>{t.role}</span>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </Reveal>
-      </section>
-
-      {/* ---------- final CTA + waitlist ---------- */}
-      <section className="landing-cta-final" id="waitlist">
-        <Reveal>
-          <h2 className="landing-h2">Stop tweaking presets for two hours.</h2>
-          <p>Buy the finished sound and keep making music.</p>
-          <form className="landing-waitlist" onSubmit={joinWaitlist}>
-            <input
-              type="email"
-              placeholder="you@studio.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              aria-label="Email"
-            />
-            <button type="submit" className="landing-btn-primary">
-              Join the waitlist
-            </button>
-          </form>
-          {waitlist && <div className="landing-waitlist-msg">{waitlist}</div>}
-          <div className="landing-cta-final-alts">
-            <Link to="/login">or sign in with demo account →</Link>
-          </div>
+          <table className="landing-license-table">
+            <thead>
+              <tr>
+                <th>Use case</th>
+                <th>Personal</th>
+                <th>Commercial</th>
+                <th>Sync</th>
+                <th>Exclusive</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Non-commercial track</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+              <tr><td>Commercial release & streaming</td><td>—</td><td>✓</td><td>✓</td><td>✓</td></tr>
+              <tr><td>YouTube / TikTok / Spotify</td><td>—</td><td>✓</td><td>✓</td><td>✓</td></tr>
+              <tr><td>Film / TV / ad placements (sync)</td><td>—</td><td>—</td><td>✓</td><td>✓</td></tr>
+              <tr><td>Pass project to a client</td><td>—</td><td>✓</td><td>✓</td><td>✓</td></tr>
+              <tr><td>Resell the sound itself</td><td>—</td><td>—</td><td>—</td><td>✓</td></tr>
+            </tbody>
+          </table>
+          <p className="landing-license-note small">
+            Not legal advice — full terms live in each asset's license agreement. Disputes
+            are resolved in escrow; refunds follow the license's refund rules.
+          </p>
         </Reveal>
       </section>
 
@@ -463,17 +465,36 @@ export default function LandingPage() {
           <p className="landing-eyebrow center">FAQ</p>
           <h2 className="landing-h2">Questions, answered</h2>
           <div className="landing-faq-list">
-            {[
-              { q: "Which DAWs does SoundHub understand?", a: "Ableton Live (.als), Cubase (.cpr), REAPER (.rpp) and FL Studio (.flp) — parsed natively for smart diffs and verified asset metadata." },
-              { q: "Do I need a wallet to use it?", a: "To browse and recommend — no. To buy, you sign in with a wallet on Base Sepolia; a relayer path for fully invisible web3 is on the roadmap." },
-              { q: "What does “escrow” actually mean?", a: "Your SND sits in the SoundHubMarket contract until you confirm receipt (or a 2-day window passes). If it's not right, you can request a refund." },
-              { q: "Is this on mainnet?", a: "Today it runs on Base Sepolia with a faucet (100 SND/day). Mainnet deployment is planned once contracts are audited." },
-            ].map((f) => (
-              <details key={f.q} className="landing-faq-item">
+            {FAQ.map((f) => (
+              <details key={f.q} className="landing-faq-item" open={f.open}>
                 <summary>{f.q}</summary>
                 <p>{f.a}</p>
               </details>
             ))}
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ---------- final CTA + waitlist ---------- */}
+      <section className="landing-cta-final" id="waitlist">
+        <Reveal>
+          <h2 className="landing-h2">Stop hunting for the right sound.</h2>
+          <p>Don't generate. Buy. — verified sounds that fit your project, in your DAW.</p>
+          <form className="landing-waitlist" onSubmit={joinWaitlist}>
+            <input
+              type="email"
+              placeholder="you@studio.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              aria-label="Email"
+            />
+            <button type="submit" className="landing-btn-primary">
+              Join the beta
+            </button>
+          </form>
+          {waitlist && <div className="landing-waitlist-msg">{waitlist}</div>}
+          <div className="landing-cta-final-alts">
+            <Link to="/login">or try the demo project now →</Link>
           </div>
         </Reveal>
       </section>
@@ -483,31 +504,31 @@ export default function LandingPage() {
         <div className="landing-footer-grid">
           <div className="landing-footer-brand">
             <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" /> SoundHub
-            <p className="landing-footer-tag">Don't generate. Buy. — GitHub for sound, tokenized, inside your DAW.</p>
+            <p className="landing-footer-tag">Don't generate. Buy. — verified sounds that fit your project.</p>
           </div>
           <div className="landing-footer-col">
             <h4>Product</h4>
-            <a href="#product">Marketplace</a>
-            <a href="#features">Smart diffs</a>
+            <a href="#demo">Demo</a>
+            <a href="#diff">Smart diff</a>
             <a href="#pricing">Licenses</a>
-            <a href="#waitlist">Waitlist</a>
+            <a href="#waitlist">Beta</a>
           </div>
           <div className="landing-footer-col">
-            <h4>Inside your DAW</h4>
-            <a href="#product">Max for Live</a>
-            <a href="#product">FL Studio</a>
-            <a href="#product">Cubase</a>
-            <a href="#product">REAPER (soon)</a>
+            <h4>DAWs</h4>
+            <a href="#trust">Ableton Live</a>
+            <a href="#trust">FL Studio</a>
+            <a href="#trust">Cubase</a>
+            <a href="#trust">REAPER · Q4 2026</a>
           </div>
           <div className="landing-footer-col">
             <h4>Ecosystem</h4>
             <Link to="/market">Marketplace</Link>
-            <Link to="/dao">DAO</Link>
+            <Link to="/dao">Community / governance</Link>
             <Link to="/login">Sign in</Link>
           </div>
         </div>
         <p className="landing-footer-bottom muted">
-          SND · escrow marketplace · Release NFTs · DAO · Base Sepolia — © {new Date().getFullYear()} SoundHub
+          Private beta on Base Sepolia · open-source contracts · © {new Date().getFullYear()} SoundHub
         </p>
       </footer>
     </div>
