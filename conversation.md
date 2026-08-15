@@ -371,6 +371,26 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
 
 ---
 
+## Фаза 14 — DAW bridge MVP (CLI `soundhub`)
+
+**Честная граница обещаний сохранена:** Max for Live catalog panel — prototype, review comments in the DAW — Next; CLI bridge — live.
+
+**`backend/soundhub_cli.py` (+ исполняемый wrapper `backend/soundhub`) — чистый stdlib, без зависимостей:**
+- `soundhub login --user … --password …` → токен в `~/.soundhub.json` (или `SOUNDHUB_TOKEN`/`--token`, `--api`/`SOUNDHUB_API_URL`).
+- `soundhub push mix.wav --session neon --message "v14: kick revised"` → находит сессию по имени (точное → префикс → подстрока, или по id), загружает bounce multipart-ом; **открытые запросы автоматически линкуются как fixed** (тот же флоу, что веб-upload) и печатает «open requests now: N».
+- `soundhub requests --session neon [--format markdown|csv] [--include-drafts]` → экспорт открытых запросов.
+- `soundhub locator --session neon` → Ableton locator-хелпер: `Locator N: "bass masks the vocal" @ 1:24.500 (v12 · open · aisha@label.com)`.
+
+**Backend `GET /api/sessions/{id}/requests/export?format=markdown|csv&include_drafts`** (owner) — открытые запросы (+ опц. черновики) с таймкодом MM:SS.mmm, автором, версией, статусом; header-safe ASCII filename (ем-даш в имени сессии ломал latin-1).
+
+**UI:** кнопки «⬇ MD / ⬇ CSV» в шапке Comments (fetch с Bearer-токеном → Blob-скачивание, т.к. plain `<a>` не протащит auth). Лендинг: Ableton-строка теперь «panel prototype + `soundhub` CLI (push bounces, export requests, locator helper) — review comments in the DAW are next»; roadmap: «DAW bridge CLI» → Now.
+
+**Живой смоук CLI** (uvicorn + demo): login → requests (markdown) → locator → push настоящего wav → «✓ v2 uploaded … open requests now: 0 (fixed ones were linked automatically)».
+
+**Тесты:** 89 backend (9 новых: export markdown/csv, drafts только с флагом, owner-only, CLI login/config, find_session имя+id, requests markdown, push multipart, locator, --help) + frontend build + `make smoke`.
+
+---
+
 ## Запуск
 
 ```bash

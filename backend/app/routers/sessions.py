@@ -10,7 +10,8 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -391,6 +392,14 @@ def public_download_audio(
         media_type=f"audio/{version.audio_format}",
         headers={"Content-Disposition": f'inline; filename="{version.filename}"'},
     )
+
+
+def _ascii_filename(name: str, ext: str) -> str:
+    """Header-safe (latin-1) filename for the requests export."""
+    import re
+
+    safe = re.sub(r"[^\w .-]", "-", name).strip() or "requests"
+    return f"{safe} open requests.{ext}"
 
 
 def _approval_role_and_gate(db: Session, session: ReviewSession, scope: str, approver_name: str) -> str:
@@ -777,6 +786,59 @@ def update_brief(
     )
     db.commit()
     return _session_detail(db, session)
+
+
+@router.get("/{session_id}/requests/export")
+def export_requests(
+    session_id: int,
+    format: str = Query("markdown", pattern="^(markdown|csv)$"),
+    include_drafts: bool = Query(False),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Export open change requests as Markdown or CSV — the DAW-bridge input
+    (engineer pulls the list into the studio, pushes bounces back via CLI)."""
+    session = get_session_or_404(db, user, session_id)
+    rows = db.scalars(
+        select(ReviewComment)
+        .join(ReviewVersion, ReviewComment.version_id == ReviewVersion.id)
+        .where(ReviewVersion.session_id == session.id)
+        .order_by(ReviewComment.time_s)
+    ).all()
+    active = [
+        c
+        for c in rows
+        if c.status in ("open", "acknowledged", "in_progress") or (include_drafts and c.status == "draft")
+    ]
+
+    def _clock(ts: float) -> str:
+        m = int(ts // 60)
+        s = ts - m * 60
+        return f"{m}:{s:06.3f}"
+
+    if format == "csv":
+        import csv as _csv
+        import io as _io
+
+        buf = _io.StringIO()
+        w = _csv.writer(buf)
+        w.writerow(["version", "time_s", "clock", "author", "status", "body"])
+        for c in active:
+            w.writerow([c.version.label, f"{c.time_s:.3f}", _clock(c.time_s), c.author_name or "", c.status, c.body.replace("\n", " ")])
+        return Response(
+            content=buf.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{_ascii_filename(session.name, "csv")}"'},
+        )
+
+    lines = [f"# Open requests — {session.name}", f"Round {session.round_number} · {len(active)} active", ""]
+    for c in active:
+        lines.append(f"- [{_clock(c.time_s)}] {c.author_name or 'Reviewer'} — {c.body.strip()}  _({c.version.label} · {c.status})_")
+    return Response(
+        content="\n".join(lines) + "\n",
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{_ascii_filename(session.name, "md")}"'},
+    )
 
 
 @router.post("/{session_id}/checkout", response_model=CheckoutOut)
