@@ -186,6 +186,18 @@ class ReviewSession(Base):
         back_populates="session", cascade="all, delete-orphan"
     )
 
+    # Reminder automation — the engineer picks what to send and how often;
+    # the client can opt out of non-critical reminders (never transactional
+    # mail like payment receipts or delivery links).
+    reminders_enabled: Mapped[bool] = mapped_column(default=True)
+    reminder_categories: Mapped[str] = mapped_column(Text, default="")  # comma list; empty = all
+    reminders_client_opt_out: Mapped[bool] = mapped_column(default=False)
+    client_email: Mapped[str] = mapped_column(String(256), default="")  # where client reminders go
+
+    notifications: Mapped[list["Notification"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+
 
 class ReviewVersion(Base):
     __tablename__ = "review_versions"
@@ -546,6 +558,7 @@ class ReleasePackage(Base):
     archive_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     archive_status: Mapped[str] = mapped_column(String(32), default="available_now")  # available_now | needs_preparation | archived | permanently_deleted
     last_verified_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    invoice_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # invoice.due_7d/1d/overdue reminders
     # Forced-lock evidence: a lock that skips blocking preflight checks keeps
     # its reason + confirm-er in the manifest and ledger ("immutable proof"
     # stays trustworthy even when the engineer overrides QC).
@@ -560,6 +573,36 @@ class ReleasePackage(Base):
     events: Mapped[list["DeliveryEvent"]] = relationship(
         back_populates="package", cascade="all, delete-orphan"
     )
+
+
+class Notification(Base):
+    """One reminder email (or future channel) about a session event.
+
+    dedup_key = f"{session_id}:{kind}:{date}:{scope_id}" — the unique
+    constraint enforces "no more than one email of the same type per 24h"
+    at the database level, so a cron can re-run safely.
+
+    status: queued → sent | failed | dismissed.
+    """
+
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(48))  # e.g. feedback.deadline_48h
+    channel: Mapped[str] = mapped_column(String(16), default="email")
+    recipient: Mapped[str] = mapped_column(String(256), default="")
+    subject: Mapped[str] = mapped_column(String(256), default="")
+    body: Mapped[str] = mapped_column(Text, default="")
+    cta_url: Mapped[str] = mapped_column(String(500), default="")
+    cta_label: Mapped[str] = mapped_column(String(64), default="")
+    status: Mapped[str] = mapped_column(String(16), default="queued")  # queued | sent | failed | dismissed
+    dedup_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    error: Mapped[str] = mapped_column(Text, default="")
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    session: Mapped["ReviewSession"] = relationship(back_populates="notifications")
 
 
 class Deliverable(Base):

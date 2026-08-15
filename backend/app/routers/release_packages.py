@@ -692,6 +692,8 @@ def update_invoice(
         package.amount_due_cents = payload.amount_due_cents
     if payload.currency:
         package.currency = payload.currency
+    if payload.invoice_due_at is not None:
+        package.invoice_due_at = payload.invoice_due_at
     if payload.invoice_status == "paid":
         _event(db, package, "invoice.paid", user.username, "payment confirmed — delivery unlocked")
         ledger.append(
@@ -704,6 +706,11 @@ def update_invoice(
             entity_id=package.id,
             payload={"package": package.name, "method": "manual"},
         )
+    db.commit()
+    # queue invoice due/overdue reminders for the client
+    from ..services import reminders as reminders_svc
+
+    reminders_svc.evaluate(db)
     db.commit()
     return _package_out(db, package)
 

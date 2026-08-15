@@ -392,6 +392,11 @@ def owner_quote_change_order(
     )
     db.commit()
     db.refresh(co)
+    # queue quote-expiring reminder for the client
+    from ..services import reminders as reminders_svc
+
+    reminders_svc.evaluate(db)
+    db.commit()
     return _co_out(co)
 
 

@@ -94,6 +94,19 @@ export default function PublicReviewPage() {
   const [publicComp, setPublicComp] = useState<VersionComparison | null>(null);
   const [compareErr, setCompareErr] = useState<string | null>(null);
   const [compareBusy, setCompareBusy] = useState(false);
+  // email reminders — client can silence non-critical nudges
+  const [optMsg, setOptMsg] = useState<string | null>(null);
+
+  const doOptOut = async () => {
+    if (!token) return;
+    try {
+      await api.optOutReminders(token);
+      setSession((s) => (s ? { ...s, reminders_client_opt_out: true } : s));
+      setOptMsg("Non-critical reminders are off — payment & delivery emails still go through.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to update reminders");
+    }
+  };
 
   const load = useCallback(
     async (pwd?: string) => {
@@ -383,7 +396,21 @@ export default function PublicReviewPage() {
             <li>Watermarked previews: {session.watermark_enabled ? "on (unapproved versions)" : "off"}</li>
             <li>Included revision rounds: {session.included_rounds ?? 1}{session.change_rounds_granted ? ` + ${session.change_rounds_granted} granted by change orders` : ""}</li>
             {session.retention_until && <li>Archive retained until {new Date(session.retention_until).toLocaleDateString()}</li>}
+            <li>
+              Email reminders:{" "}
+              {session.reminders_client_opt_out
+                ? "off — you opted out"
+                : session.reminders_enabled && session.client_email
+                  ? `on — sent to ${session.client_email}`
+                  : "off — not configured by the engineer"}
+              {!session.reminders_client_opt_out && session.reminders_enabled && session.client_email && (
+                <button type="button" className="rs-btn ghost sm" style={{ marginLeft: 8 }} onClick={() => void doOptOut()}>
+                  Opt out of non-critical reminders
+                </button>
+              )}
+            </li>
           </ul>
+          {optMsg && <div className="public-review-note" style={{ marginTop: 8 }}>{optMsg}</div>}
         </details>
       </div>
 

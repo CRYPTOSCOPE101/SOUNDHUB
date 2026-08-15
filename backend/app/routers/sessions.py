@@ -904,6 +904,12 @@ def upload_version(
     db.commit()
     db.refresh(version)
 
+    # queue review reminders for the client (review.opened / approval.requested / deadlines)
+    from ..services import reminders as reminders_svc
+
+    reminders_svc.evaluate(db)
+    db.commit()
+
     # loudness analysis runs after the response — waveform is already served
     from ..services.analysis import analyse_version
 

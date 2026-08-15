@@ -54,9 +54,6 @@ export default function App() {
         </div>
         {user && (
           <div className="userbox">
-            <Link to="/kettle" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
-              🫖 Kettle
-            </Link>
             <Link to={`/p/${user.username}`} className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
               🎚 Portfolio
             </Link>
@@ -80,9 +77,6 @@ export default function App() {
         )}
         {!user && (
           <div className="userbox">
-            <Link to="/kettle" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
-              🫖 Kettle
-            </Link>
             <Link to="/login" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
               Sign in
             </Link>

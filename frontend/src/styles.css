@@ -4836,3 +4836,67 @@ pre.diff-raw code {
   font-size: 13px;
 }
 .public-delivery-archive p { margin: 6px 0; }
+
+/* ====== Reminders (email nudges) ====== */
+.rs-reminders {
+  margin: 14px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border, #e2e2e2);
+  border-radius: 10px;
+  background: var(--card, #fff);
+}
+.rs-rem-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 13.5px;
+}
+.rs-rem-label {
+  min-width: 130px;
+  font-weight: 600;
+  color: var(--muted, #666);
+}
+.rs-rem-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+.rs-chip {
+  border: 1px solid var(--border, #e2e2e2);
+  background: transparent;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--muted, #777);
+}
+.rs-chip.on {
+  border-color: var(--accent, #5b5bd6);
+  color: var(--accent, #5b5bd6);
+  background: color-mix(in srgb, var(--accent, #5b5bd6) 10%, transparent);
+}
+.rs-rem-log {
+  margin-top: 10px;
+  max-height: 220px;
+  overflow: auto;
+  border-top: 1px dashed var(--border, #e2e2e2);
+  padding-top: 6px;
+}
+.rs-rem-kind {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--accent, #5b5bd6);
+  white-space: nowrap;
+}
+.rs-rem-sub {
+  color: var(--muted, #666);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-theme="dark"] .rs-reminders {
+  border-color: #333;
+  background: #1d1d22;
+}

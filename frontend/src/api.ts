@@ -16,6 +16,9 @@ import type {
   ReferenceTrack,
   ReleasePackage,
   ReleaseTemplate,
+  ReminderSettings,
+  RemindersEvalResult,
+  SessionRemindersResponse,
   VersionComparison,
   GhBranch,
   GhCommit,
@@ -569,6 +572,20 @@ export const api = {
   // demo sample review (landing CTA)
   demoReview: () =>
     request<{ share_token: string; name: string; url: string; version_count: number }>("/api/demo/review"),
+  // reminder automation
+  evaluateReminders: () =>
+    request<RemindersEvalResult>("/api/reminders/evaluate", { method: "POST" }),
+  sessionReminders: (sessionId: number) =>
+    request<SessionRemindersResponse>(`/api/sessions/${sessionId}/reminders`),
+  updateReminderSettings: (sessionId: number, patch: Partial<ReminderSettings>) =>
+    request<ReviewSession>(`/api/sessions/${sessionId}/reminders`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  optOutReminders: (shareToken: string) =>
+    request<{ opted_out: boolean; dismissed: number }>(`/api/sessions/public/${shareToken}/reminders/opt-out`, {
+      method: "POST",
+    }),
   // GitHub API (public, unauthenticated) — the SoundHub code repo itself
   ghBranches: () =>
     fetch("https://api.github.com/repos/CRYPTOSCOPE101/SOUNDHUB/branches").then((r) =>

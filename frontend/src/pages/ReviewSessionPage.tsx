@@ -10,14 +10,17 @@ import {
   DELIVERABLE_TYPES,
   STEM_LOGICAL_NAMES,
   CHANGE_ORDER_DECISIONS,
+  REMINDER_CATEGORIES,
   type ChangeOrder,
   type LedgerEntry,
   type LedgerVerify,
+  type NotificationOut,
   type PreflightResult,
   type ReferenceComparison,
   type ReferenceTrack,
   type ReleasePackage,
   type ReleaseTemplate,
+  type ReminderSettings,
   type ReviewApproval,
   type ReviewComment,
   type ReviewSession,
@@ -96,6 +99,14 @@ function ledgerText(e: LedgerEntry): string {
       return `removed reference “${p.title}”`;
     case "reference.compared":
       return `compared ${p.version} vs reference “${p.reference}”${p.artist ? ` (${p.artist})` : ""} — ${p.level_match}`;
+    case "notification.sent":
+      return `📧 sent email reminder (${p.kind}) → ${p.recipient}`;
+    case "notification.failed":
+      return `⚠ email reminder failed (${p.kind}) → ${p.recipient}${p.error ? ` — ${p.error}` : ""}`;
+    case "notification.dismissed":
+      return `client dismissed email reminder (${p.kind})`;
+    case "reminders.settings_updated":
+      return `updated reminder settings — ${p.enabled ? "automation on" : "automation off"}${p.client_email ? ", client email set" : ""}`;
     default:
       return e.event.replace(/\./g, " ");
   }
@@ -109,6 +120,7 @@ function ledgerIcon(e: LedgerEntry): string {
   if (e.event.startsWith("version")) return "⬆";
   if (e.event.startsWith("change_order")) return "🔄";
   if (e.event.startsWith("deposit")) return "💰";
+  if (e.event.startsWith("notification") || e.event.startsWith("reminders")) return "📧";
   return "✎";
 }
 
@@ -1275,6 +1287,140 @@ function ChangeOrdersPanel({ sessionId }: { sessionId: number }) {
   );
 }
 
+function RemindersPanel({ sessionId }: { sessionId: number }) {
+  const [settings, setSettings] = useState<ReminderSettings | null>(null);
+  const [notifs, setNotifs] = useState<NotificationOut[]>([]);
+  const [email, setEmail] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await api.sessionReminders(sessionId);
+      setSettings(r.settings);
+      setNotifs(r.notifications);
+      setEmail(r.settings.client_email);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to load reminders");
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const save = async (patch: Partial<ReminderSettings>) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.updateReminderSettings(sessionId, patch);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runNow = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.evaluateReminders();
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Evaluate failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!settings) return <div className="rs-empty">Loading reminders…</div>;
+
+  const cats = settings.reminder_categories ? settings.reminder_categories.split(",").map((s) => s.trim()).filter(Boolean) : [];
+
+  const toggleCat = (id: string) => {
+    const next = cats.includes(id) ? cats.filter((c) => c !== id) : [...cats, id];
+    void save({ reminder_categories: next.join(",") });
+  };
+
+  return (
+    <div className="rs-reminders">
+      <div className="rs-versions-head">Email reminders <span className="rs-round-stat">deadlines & nudges</span></div>
+      <p className="rs-brief-hint">
+        Nudge the client instead of chasing: review opened, feedback deadlines, idle drafts, invoice due,
+        quote expiring, archive & delivery-link expiry. One email per type per 24h, everything logged in the decision ledger.
+      </p>
+      <div className="rs-rem-row">
+        <span className="rs-rem-label">Automated reminders</span>
+        <button
+          type="button"
+          className={`rs-btn sm ${settings.reminders_enabled ? "approve" : "ghost"}`}
+          disabled={busy}
+          onClick={() => void save({ reminders_enabled: !settings.reminders_enabled })}
+        >
+          {settings.reminders_enabled ? "● On" : "○ Off"}
+        </button>
+      </div>
+      <div className="rs-rem-row">
+        <span className="rs-rem-label">Client email</span>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="aisha@label.com — where reminders go"
+          className="rs-input"
+          style={{ flex: 1 }}
+        />
+        <button type="button" className="rs-btn ghost sm" disabled={busy} onClick={() => void save({ client_email: email })}>
+          Save
+        </button>
+      </div>
+      {!settings.client_email && (
+        <div className="rs-round-stat closed" style={{ marginTop: 6 }}>
+          Set a client email to enable reminders for this session.
+        </div>
+      )}
+      <div className="rs-rem-cats">
+        {REMINDER_CATEGORIES.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            className={`rs-chip ${cats.length === 0 || cats.includes(c.id) ? "on" : ""}`}
+            title={cats.length === 0 ? "All categories are on (empty = all)" : c.label}
+            onClick={() => void toggleCat(c.id)}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+      <div className="rs-rem-row" style={{ marginTop: 6 }}>
+        <button type="button" className="rs-btn ghost sm" disabled={busy} onClick={() => void runNow()}>
+          ⚡ Evaluate & send now
+        </button>
+        <span className="rs-round-stat">cron-friendly: re-running never duplicates</span>
+      </div>
+      {settings.client_opted_out && (
+        <div className="rs-round-stat closed" style={{ marginTop: 6 }}>
+          Client opted out of non-critical reminders — payment & delivery emails still go.
+        </div>
+      )}
+      {notifs.length > 0 && (
+        <div className="rs-rem-log">
+          {notifs.slice(0, 25).map((n) => (
+            <div key={n.id} className="rs-rem-row">
+              <span className={`rs-round-stat ${n.status === "sent" ? "open" : n.status === "failed" ? "closed" : ""}`}>{n.status}</span>
+              <span className="rs-rem-kind">{n.kind}</span>
+              <span className="rs-rem-sub">{n.subject}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {err && <div className="error">{err}</div>}
+    </div>
+  );
+}
+
 function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: () => void }) {
   const [versions, setVersions] = useState<ReviewVersion[]>(session.versions ?? []);
   const [approvals, setApprovals] = useState<ReviewApproval[]>(session.approvals ?? []);
@@ -2000,6 +2146,8 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                 <ReleasePackagePanel sessionId={session.id} version={current} />
 
                 <ChangeOrdersPanel sessionId={session.id} />
+
+                <RemindersPanel sessionId={session.id} />
 
                 <div className="rs-share-block">
                   <div className="rs-versions-head">Review link</div>

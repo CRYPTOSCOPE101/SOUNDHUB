@@ -214,6 +214,10 @@ export interface ReviewSession {
   recall_fee_cents?: number | null;
   revision_fee_cents?: number | null;
   change_rounds_granted?: number;
+  reminders_enabled?: boolean;
+  reminder_categories?: string;
+  reminders_client_opt_out?: boolean;
+  client_email?: string;
   service_type?: string;
   genre?: string;
   goal?: string;
@@ -223,6 +227,51 @@ export interface ReviewSession {
   do_not_change?: string;
   required_deliverables?: string;
 }
+
+export interface NotificationOut {
+  id: number;
+  session_id: number;
+  kind: string;
+  channel: string;
+  recipient: string;
+  subject: string;
+  body: string;
+  cta_url: string;
+  cta_label: string;
+  status: "queued" | "sent" | "failed" | "dismissed";
+  error: string;
+  sent_at: string | null;
+  created_at: string;
+}
+
+export interface ReminderSettings {
+  reminders_enabled: boolean;
+  reminder_categories: string;
+  client_email: string;
+  client_opted_out: boolean;
+}
+
+export interface SessionRemindersResponse {
+  settings: ReminderSettings;
+  notifications: NotificationOut[];
+}
+
+export interface RemindersEvalResult {
+  evaluated: number;
+  created: number;
+  sent: number;
+  failed: number;
+  dismissed: number;
+}
+
+export const REMINDER_CATEGORIES = [
+  { id: "review", label: "Review & approval" },
+  { id: "feedback", label: "Feedback deadlines & idle drafts" },
+  { id: "invoice", label: "Invoice due / overdue" },
+  { id: "change_order", label: "Change-order quotes" },
+  { id: "archive", label: "Archive expiry" },
+  { id: "delivery", label: "Delivery link expiry" },
+] as const;
 
 export interface PortfolioTrack {
   session_id: number;
@@ -293,6 +342,7 @@ export interface ReleasePackage {
   archive_expires_at: string | null;
   archive_status: string;
   last_verified_opened_at: string | null;
+  invoice_due_at?: string | null;
   force_locked_reason: string;
   force_locked_by: string;
   deliverables: Deliverable[];
@@ -362,6 +412,7 @@ export interface DeliveryPage {
   archive_status: string;
   archive_expires_at: string | null;
   last_verified_opened_at: string | null;
+  invoice_due_at?: string | null;
   retention_until: string | null;
   share_token: string;
   deliverables: Deliverable[];
