@@ -5,7 +5,7 @@
 <a href="https://github.com/kavishdevar/librepods/releases/latest">
   <img src="https://img.shields.io/github/downloads/kavishdevar/librepods/total?label=GitHub%20Downloads" />
 </a>
-<a href="https://github.com/kavishdevar/librepods/actions/workflows/ci-android.yml">
+<a href="https://github.com/CRYPTOSCOPE101/SoundHub/tree/main/m4l">
   <img src="https://github.com/kavishdevar/librepods/actions/workflows/ci-android.yml/badge.svg" />
 </a>
 <a href="https://github.com/kavishdevar/librepods/actions/workflows/ci-linux-rust.yml">
