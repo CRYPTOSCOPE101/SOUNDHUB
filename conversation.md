@@ -391,6 +391,20 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
 
 ---
 
+## Фаза 15 — Roadmap-сокращение + гайд user tests (фокус, не фичи)
+
+**Roadmap на лендинге перестал быть «product spec»:**
+- **Now** — только 7 реально используемых функций: Review sessions & versioning, Revision rounds, Loudness-matched A/B, Release package + QC preflight, Stripe paid delivery, Roles & approval chains, DAW bridge CLI.
+- **Also available** (новая колонка, accent-стиль) — остальное из старого Now: stems, reference tracks, client brief, deposit, watermarked previews, share links, templates + archive handoff, change orders, voice notes, reminders, portfolio.
+- **Next** — 3 пункта: USDC checkout, Max for Live review comments, REAPER integration (перенесён из Later).
+- **Later** — mainnet + audit, seller packs, DAO.
+
+**`USER_TESTS.md`** — готовый инструментарий для 5–10 живых тестов с инженерами: кого приглашать (Gearspace/Twitter/личные контакты + их клиенты), единый сценарий из 11 шагов (brief → public link → voice notes → submit round → **push через CLI** → A/B → approve → preflight → lock → Stripe → delivery → change request), чек-лист наблюдателя (вопросы, «куда нажать», роли, «что после approval»), метрики (time-to-first-feedback, % consolidated notes, число раундов, % approval без напоминаний, time-to-payment, где просили помощи), шаблон отчёта по каждому тесту и порядок обработки результатов (топ-3 боли → фиксы onboarding/public review → только потом USDC/Max for Live/REAPER).
+
+**Принцип фазы:** не добавлять новые модули (crypto-слой, Max for Live comments) до user tests; упрощать то, что уже есть.
+
+---
+
 ## Запуск
 
 ```bash

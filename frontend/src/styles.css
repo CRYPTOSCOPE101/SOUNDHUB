@@ -1642,6 +1642,7 @@ pre.diff-raw code {
 }
 
 .landing-roadmap-phase.live { color: var(--green); }
+.landing-roadmap-phase.also { color: var(--accent); }
 .landing-roadmap-phase.next { color: var(--yellow); }
 .landing-roadmap-phase.later { color: var(--muted); }
 
