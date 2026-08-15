@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, getToken } from "../api";
 import { fmtClock, WaveformCanvas, CommentComposer, ApprovalPanel } from "../components/ReviewShared";
+import ABCompare from "../components/ABCompare";
 import {
   humanSize,
   shortDate,
@@ -13,6 +14,7 @@ import {
   type ReviewComment,
   type ReviewSession,
   type ReviewVersion,
+  type VersionComparison,
 } from "../types";
 
 /* ---------- helpers ---------- */
@@ -408,6 +410,8 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
   const [mode, setMode] = useState<"seek" | "comment">("seek");
   const [pendingComment, setPendingComment] = useState<number | null>(null);
   const [compare, setCompare] = useState<number | null>(null); // other version id in A/B
+  const [comparison, setComparison] = useState<VersionComparison | null>(null); // loudness-matched A/B panel
+  const [comparisonErr, setComparisonErr] = useState<string | null>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [srcVersion, setSrcVersion] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
@@ -561,6 +565,25 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
     if (!current) return;
     await api.setRequestStatus(session.id, current.id, commentId, status);
     await refresh();
+  };
+
+  const openComparison = async (c: ReviewComment) => {
+    if (!c.fixed_in) return;
+    setComparisonErr(null);
+    try {
+      const startMs = Math.max(0, Math.round((c.time_s - 8) * 1000));
+      const endMs = Math.round((c.time_s + 8) * 1000);
+      const comp = await api.createComparison({
+        baseVersionId: c.version_id,
+        compareVersionId: c.fixed_in,
+        requestId: c.id,
+        startMs,
+        endMs,
+      });
+      setComparison(comp);
+    } catch (e) {
+      setComparisonErr(e instanceof Error ? e.message : "Failed to create comparison");
+    }
   };
 
   const copyLink = async () => {
@@ -721,6 +744,16 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
             </div>
           )}
 
+          {/* loudness-matched A/B panel */}
+          {comparison && (
+            <ABCompare
+              sessionId={session.id}
+              comparison={comparison}
+              onClose={() => setComparison(null)}
+            />
+          )}
+          {comparisonErr && <div className="error">{comparisonErr}</div>}
+
           {/* player */}
           <div className="rs-player">
             <div className="rs-wave-wrap">
@@ -845,6 +878,16 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                           <button type="button" className="rs-link" onClick={() => setRequestStatus(c.id, "approved")}>
                             Approve request
                           </button>
+                        )}
+                        {c.fixed_in != null && versions.length >= 2 && (
+                          <button type="button" className="rs-link" onClick={() => void openComparison(c)}>
+                            🎧 Compare around request
+                          </button>
+                        )}
+                        {c.fixed_in != null && (
+                          <span className="rs-req-fixedin">
+                            changed in {versions.find((v) => v.id === c.fixed_in)?.label ?? `v${c.fixed_in}`}
+                          </span>
                         )}
                         <button type="button" className="rs-link" onClick={() => copyCommentLink(c)}>
                           Copy link to comment

@@ -637,3 +637,124 @@ def test_decision_ledger_hash_chain(client):
     r = client.get(f"/api/sessions/{s['id']}/ledger/verify", headers=_auth(token))
     assert r.json()["ok"] is False
     assert len(r.json()["problems"]) >= 1
+
+
+def test_loudness_analysis_and_level_matched_comparison(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    # v1 quieter, v2 louder (same sine, different amplitude)
+    quiet = make_wav(1.0)
+    buf = io.BytesIO()
+    n = 8000
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(8000)
+        w.writeframes(b"".join(struct.pack("<h", int(8000 * 0.9)) for _ in range(n)))  # louder
+    loud = buf.getvalue()
+    v1 = _upload(client, token, s["id"], quiet, "v1 quiet")
+    v2 = _upload(client, token, s["id"], loud, "v2 louder")
+
+    # analysis is stored (sync in test env)
+    r = client.get(f"/api/versions/{v1['id']}/audio-analysis", headers=_auth(token))
+    assert r.status_code == 200
+    assert r.json()["analysis_status"] == "done"
+    assert r.json()["integrated_lufs"] is not None
+    assert r.json()["sample_rate"] == 8000
+
+    # versions from different sessions rejected
+    other = _create_session(client, token)
+    v3 = _upload(client, token, other["id"], quiet, "other")
+    r = client.post(
+        "/api/comparisons",
+        json={"base_version_id": v1["id"], "compare_version_id": v3["id"], "start_ms": 0, "end_ms": 800},
+        headers=_auth(token),
+    )
+    assert r.status_code == 400
+
+    # level-matched comparison: louder version gets negative gain
+    r = client.post(
+        "/api/comparisons",
+        json={"base_version_id": v1["id"], "compare_version_id": v2["id"], "start_ms": 0, "end_ms": 800},
+        headers=_auth(token),
+    )
+    assert r.status_code == 201
+    comp = r.json()
+    assert comp["level_match"] == "short_term_lufs"
+    assert comp["compare_gain_db"] < 0  # v2 louder → attenuated
+    assert comp["base_gain_db"] == 0
+    assert "v1" in comp["short_term_lufs"]
+    assert comp["label"].startswith("Level matched")
+    assert comp["start_ms"] == 0
+
+    # fetch it back
+    r = client.get(f"/api/comparisons/{comp['id']}", headers=_auth(token))
+    assert r.status_code == 200
+    assert r.json()["compare_gain_db"] == comp["compare_gain_db"]
+
+    # ledger records comparison.created
+    r = client.get(f"/api/sessions/{s['id']}/ledger", headers=_auth(token))
+    assert "comparison.created" in {e["event"] for e in r.json()["events"]}
+
+
+def test_comparison_requires_same_session_and_pending_analysis_fallback(client):
+    token = _register(client)
+    s = _create_session(client, token)
+    v1 = _upload(client, token, s["id"], make_wav(1.0))
+    v2 = _upload(client, token, s["id"], make_wav(1.0))
+
+    # request_id links to a request but still creates fine
+    r = client.post(
+        "/api/comparisons",
+        json={
+            "base_version_id": v1["id"],
+            "compare_version_id": v2["id"],
+            "request_id": 99,
+            "start_ms": 1000,
+            "end_ms": 5000,
+            "level_match": "none",
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 201
+    assert r.json()["level_match"] == "none"
+    assert r.json()["label"] == "Level match unavailable"
+    assert r.json()["request_id"] == 99
+
+    # different sample rates still play (analysis doesn't crash) — mp3 vs wav
+    s2 = _create_session(client, token)
+    v3 = _upload(client, token, s2["id"], make_wav(1.0))
+    r = client.post(
+        "/api/comparisons",
+        json={"base_version_id": v1["id"], "compare_version_id": v3["id"], "start_ms": 0},
+        headers=_auth(token),
+    )
+    assert r.status_code == 400  # different sessions
+
+    # locking a release package doesn't touch comparison metadata
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{v2['id']}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    pkg = client.post(
+        "/api/release-packages",
+        json={"session_id": s["id"], "approved_version_id": v2["id"], "name": "P"},
+        headers=_auth(token),
+    ).json()
+    client.post(
+        f"/api/release-packages/{pkg['id']}/deliverables/from-version",
+        json={"type": "master", "from_version_id": v2["id"]},
+        headers=_auth(token),
+    )
+    client.post(f"/api/release-packages/{pkg['id']}/lock", json={"approval_scope": "master"}, headers=_auth(token))
+    # analysis and comparisons survive the lock — metadata is untouched
+    r = client.get(f"/api/versions/{v1['id']}/audio-analysis", headers=_auth(token))
+    assert r.status_code == 200
+    assert r.json()["analysis_status"] in ("done", "unavailable")
+    r = client.post(
+        "/api/comparisons",
+        json={"base_version_id": v1["id"], "compare_version_id": v2["id"], "start_ms": 0, "end_ms": 800, "level_match": "none"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 201

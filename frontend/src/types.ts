@@ -284,6 +284,36 @@ export interface LedgerVerify {
   problems: Array<{ id: number; event: string; expected: string; stored: string }>;
 }
 
+export interface AudioAnalysis {
+  version_id: number | null;
+  duration_ms: number;
+  sample_rate: number | null;
+  channels: number | null;
+  integrated_lufs: number | null;
+  true_peak_dbtp: number | null;
+  analysis_status: string;
+  analysed_at: string | null;
+}
+
+export interface VersionComparison {
+  id: number;
+  session_id: number;
+  base_version_id: number;
+  compare_version_id: number;
+  base_label: string;
+  compare_label: string;
+  request_id: number | null;
+  start_ms: number;
+  end_ms: number | null;
+  base_gain_db: number;
+  compare_gain_db: number;
+  short_term_lufs: Record<string, number>;
+  level_match: string;
+  label: string;
+  mode: string;
+  created_at: string;
+}
+
 export function fmtTime(s: number): string {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);

@@ -10,7 +10,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -529,6 +529,7 @@ def upload_version(
     session_id: int,
     message: str = Form(""),
     file: UploadFile = File(...),
+    background: BackgroundTasks = BackgroundTasks(),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -588,6 +589,19 @@ def upload_version(
     )
     db.commit()
     db.refresh(version)
+
+    # loudness analysis runs after the response — waveform is already served
+    from ..services.analysis import analyse_version
+
+    def _run(vid: int) -> None:
+        from ..database import SessionLocal as _SL
+
+        with _SL() as sdb:
+            v = sdb.get(ReviewVersion, vid)
+            if v:
+                analyse_version(sdb, v)
+
+    background.add_task(_run, version.id)
     return _version_out(db, version)
 
 

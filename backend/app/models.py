@@ -263,6 +263,57 @@ class ShareAccessEvent(Base):
     session: Mapped["ReviewSession"] = relationship(back_populates="access_events")
 
 
+class AudioAnalysis(Base):
+    """Loudness analysis for one audio version (computed after upload).
+
+    Integrated LUFS / true peak are measured in a background job; the waveform
+    peaks are returned immediately on upload. Short-term LUFS for loop regions
+    is estimated from the same peaks on demand.
+    """
+
+    __tablename__ = "audio_analyses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"), unique=True, index=True)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    sample_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    channels: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    integrated_lufs: Mapped[float | None] = mapped_column(nullable=True)
+    true_peak_dbtp: Mapped[float | None] = mapped_column(nullable=True)
+    analysis_status: Mapped[str] = mapped_column(String(16), default="pending")  # pending | done | unavailable
+    analysed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    version: Mapped["ReviewVersion"] = relationship()
+
+
+class VersionComparison(Base):
+    """A level-matched A/B between two versions of the same session.
+
+    The gains are computed from loudness analysis and applied ONLY in the
+    preview graph — source files and the locked release package are untouched.
+    """
+
+    __tablename__ = "version_comparisons"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    base_version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"))
+    compare_version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"))
+    request_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    start_ms: Mapped[int] = mapped_column(Integer, default=0)
+    end_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    base_gain_db: Mapped[float] = mapped_column(default=0.0)
+    compare_gain_db: Mapped[float] = mapped_column(default=0.0)
+    level_match: Mapped[str] = mapped_column(String(32), default="none")  # none | integrated_lufs | short_term_lufs
+    short_term_lufs: Mapped[dict] = mapped_column(JSON, default=dict)
+    mode: Mapped[str] = mapped_column(String(32), default="full_mix")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    session: Mapped["ReviewSession"] = relationship()
+    base_version: Mapped["ReviewVersion"] = relationship(foreign_keys=[base_version_id])
+    compare_version: Mapped["ReviewVersion"] = relationship(foreign_keys=[compare_version_id])
+
+
 class LedgerEvent(Base):
     """One immutable decision-log entry, chained by hash.
 
