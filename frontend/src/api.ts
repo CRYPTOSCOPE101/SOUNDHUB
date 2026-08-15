@@ -5,8 +5,10 @@ import type {
   Deliverable,
   DeliveryPage,
   Diff,
+  AudioAnalysis,
   LedgerResponse,
   LedgerVerify,
+  VersionComparison,
   GhBranch,
   GhCommit,
   Project,
@@ -235,6 +237,30 @@ export const api = {
     request<LedgerResponse>(`/api/sessions/${id}/ledger`),
   verifyLedger: (id: number) =>
     request<LedgerVerify>(`/api/sessions/${id}/ledger/verify`),
+  // A/B comparison
+  getAudioAnalysis: (versionId: number) =>
+    request<AudioAnalysis>(`/api/versions/${versionId}/audio-analysis`),
+  createComparison: (opts: {
+    baseVersionId: number;
+    compareVersionId: number;
+    requestId?: number | null;
+    startMs: number;
+    endMs?: number | null;
+    levelMatch?: string;
+  }) =>
+    request<VersionComparison>("/api/comparisons", {
+      method: "POST",
+      body: JSON.stringify({
+        base_version_id: opts.baseVersionId,
+        compare_version_id: opts.compareVersionId,
+        request_id: opts.requestId ?? null,
+        start_ms: opts.startMs,
+        end_ms: opts.endMs ?? null,
+        level_match: opts.levelMatch ?? "short_term_lufs",
+      }),
+    }),
+  getComparison: (id: number) =>
+    request<VersionComparison>(`/api/comparisons/${id}`),
   publicSubmitFeedback: (token: string, note: string, actor: string) =>
     request<ReviewSession>(
       `/api/sessions/public/${token}/submit-feedback?actor=${encodeURIComponent(actor)}`,

@@ -55,6 +55,15 @@ const INITIAL_COMMENTS: Comment[] = [
     resolved: true,
     status: "verified",
   },
+  {
+    id: 5,
+    time: "01:52",
+    author: "Marcus",
+    role: "Mix engineer",
+    text: "Kick needs more weight before the drop — compare against v12.",
+    resolved: false,
+    status: "open",
+  },
 ];
 
 // deterministic waveform (same on every render)
@@ -150,11 +159,7 @@ export default function ReviewSession({ compact = false }: { compact?: boolean }
         <div className="rs-comments">
           <div className="rs-comments-head">
             <span>Requests</span>
-            <span className="rs-count">
-              {comments.filter((c) => c.status === "open").length} open ·{" "}
-              {comments.filter((c) => c.status === "fixed").length} fixed in v13 ·{" "}
-              {comments.filter((c) => c.status === "verified").length} verified
-            </span>
+            <span className="rs-count">Round 2 · 3 open requests</span>
           </div>
           {comments.map((c) => (
             <div key={c.id} className={`rs-comment ${c.resolved ? "resolved" : ""}`}>

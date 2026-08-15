@@ -276,6 +276,47 @@ class ReviewSessionDetailOut(ReviewSessionOut):
     rounds_open: bool = True
 
 
+# ---------- Audio analysis & A/B comparison ----------
+class AudioAnalysisOut(BaseModel):
+    version_id: int | None = None
+    duration_ms: int = 0
+    sample_rate: int | None = None
+    channels: int | None = None
+    integrated_lufs: float | None = None
+    true_peak_dbtp: float | None = None
+    analysis_status: str = "pending"  # pending | done | unavailable
+    analysed_at: datetime | None = None
+
+
+class ComparisonCreate(BaseModel):
+    base_version_id: int
+    compare_version_id: int
+    request_id: int | None = None
+    start_ms: int = Field(default=0, ge=0)
+    end_ms: int | None = Field(default=None, ge=0)
+    mode: str = Field(default="full_mix", pattern=r"^(full_mix|stem)$")
+    level_match: str = Field(default="short_term_lufs", pattern=r"^(none|integrated_lufs|short_term_lufs)$")
+
+
+class ComparisonOut(BaseModel):
+    id: int
+    session_id: int
+    base_version_id: int
+    compare_version_id: int
+    base_label: str = ""
+    compare_label: str = ""
+    request_id: int | None = None
+    start_ms: int = 0
+    end_ms: int | None = None
+    base_gain_db: float = 0.0
+    compare_gain_db: float = 0.0
+    short_term_lufs: dict = {}
+    level_match: str = "none"
+    label: str = ""
+    mode: str = "full_mix"
+    created_at: datetime
+
+
 # ---------- Release packages (final delivery) ----------
 class ReleasePackageCreate(BaseModel):
     session_id: int
