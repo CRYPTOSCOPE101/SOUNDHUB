@@ -395,7 +395,7 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
 
 **Roadmap на лендинге перестал быть «product spec»:**
 - **Now** — только 7 реально используемых функций: Review sessions & versioning, Revision rounds, Loudness-matched A/B, Release package + QC preflight, Stripe paid delivery, Roles & approval chains, DAW bridge CLI.
-- **Also available** (новая колонка, accent-стиль) — остальное из старого Now: stems, reference tracks, client brief, deposit, watermarked previews, share links, templates + archive handoff, change orders, voice notes, reminders, portfolio.
+- **Already works** (колонка, accent-стиль — не «планируем», а «уже доступно, но не в главном фокусе») — остальное из старого Now: stems, reference tracks, client brief, deposit, watermarked previews, share links, templates + archive handoff, change orders, voice notes, reminders, portfolio.
 - **Next** — 3 пункта: USDC checkout, Max for Live review comments, REAPER integration (перенесён из Later).
 - **Later** — mainnet + audit, seller packs, DAO.
 
