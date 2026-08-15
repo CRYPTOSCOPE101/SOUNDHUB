@@ -3737,13 +3737,50 @@ pre.diff-raw code {
 }
 
 .public-delivery-gate {
-  background: rgba(229, 116, 104, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: rgba(229, 116, 104, 0.1);
   border: 1px solid rgba(229, 116, 104, 0.35);
   color: #e57468;
   border-radius: 8px;
-  padding: 10px 14px;
+  padding: 12px 14px;
   font-size: 13px;
   margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.public-delivery-gate-text {
+  font-weight: 700;
+  color: #f0b7b0;
+}
+
+.public-delivery-gate-sub {
+  display: block;
+  font-weight: 400;
+  font-size: 11.5px;
+  color: #8b929c;
+  margin-top: 3px;
+}
+
+.public-delivery-paid {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(61, 220, 132, 0.4);
+  background: rgba(61, 220, 132, 0.1);
+  color: #3ddc84;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.rs-release-invoice-amount {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 .public-delivery-files {

@@ -1,11 +1,12 @@
 import type {
+  AudioAnalysis,
   Branch,
+  CheckoutOut,
   Commit,
   CommitDetail,
   Deliverable,
   DeliveryPage,
   Diff,
-  AudioAnalysis,
   LedgerResponse,
   LedgerVerify,
   VersionComparison,
@@ -329,11 +330,19 @@ export const api = {
     request<{ package: ReleasePackage; manifest_json: Record<string, unknown>; manifest_hash: string }>(
       `/api/release-packages/${packageId}/manifest`
     ),
-  setInvoiceStatus: (packageId: number, invoiceStatus: string) =>
+  setInvoiceStatus: (packageId: number, invoiceStatus: string, amountCents?: number | null, currency?: string) =>
     request<ReleasePackage>(`/api/release-packages/${packageId}/invoice`, {
       method: "PATCH",
-      body: JSON.stringify({ invoice_status: invoiceStatus }),
+      body: JSON.stringify({
+        invoice_status: invoiceStatus,
+        amount_due_cents: amountCents ?? null,
+        currency: currency ?? "usd",
+      }),
     }),
+  createCheckout: (packageId: number) =>
+    request<CheckoutOut>(`/api/release-packages/${packageId}/checkout`, { method: "POST" }),
+  publicCheckout: (token: string) =>
+    request<CheckoutOut>(`/api/release-packages/public/${token}/checkout`, { method: "POST" }),
   releaseDownloadUrl: (packageId: number, deliverableId: number) =>
     `/api/release-packages/${packageId}/download?deliverable_id=${deliverableId}`,
   // public delivery link

@@ -22,6 +22,12 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(
 
 MAX_UPLOAD_SIZE = int(os.environ.get("SOUNDHUB_MAX_UPLOAD_SIZE", str(2 * 1024**3)))  # 2 GiB
 
+# Stripe (paid delivery). Leave unset to run in manual-invoice mode.
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_CURRENCY = os.environ.get("STRIPE_CURRENCY", "usd")
+STRIPE_API_BASE = os.environ.get("STRIPE_API_BASE", "https://api.stripe.com")
+
 
 def ensure_dirs() -> None:
     for d in (DATA_DIR, BLOB_DIR, TMP_DIR):

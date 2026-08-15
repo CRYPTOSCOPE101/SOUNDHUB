@@ -11,7 +11,7 @@ import json
 import secrets
 from pathlib import PurePosixPath
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -27,6 +27,7 @@ from ..models import (
     utcnow,
 )
 from ..schemas import (
+    CheckoutOut,
     DeliverableCreate,
     DeliverableOut,
     DeliveryInvoiceUpdate,
@@ -37,7 +38,7 @@ from ..schemas import (
     ReleasePackageOut,
 )
 from ..security import get_current_user
-from ..services import ledger, storage, waveform
+from ..services import ledger, storage, stripe_pay, waveform
 
 router = APIRouter(prefix="/api/release-packages", tags=["release packages"])
 
@@ -118,6 +119,8 @@ def _package_out(db: Session, p: ReleasePackage) -> ReleasePackageOut:
         name=p.name,
         status=p.status,
         invoice_status=p.invoice_status,
+        amount_due_cents=p.amount_due_cents,
+        currency=p.currency or "usd",
         immutable_at=p.immutable_at,
         manifest_hash=p.manifest_hash,
         delivery_token=p.delivery_token,
@@ -405,7 +408,16 @@ def update_invoice(
     if package is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Package not found")
     _require_owner(package, user)
+    if payload.invoice_status in ("deposit_due", "balance_due") and not payload.amount_due_cents:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Set an amount (amount_due_cents) before charging '{payload.invoice_status}'",
+        )
     package.invoice_status = payload.invoice_status
+    if payload.amount_due_cents is not None:
+        package.amount_due_cents = payload.amount_due_cents
+    if payload.currency:
+        package.currency = payload.currency
     if payload.invoice_status == "paid":
         _event(db, package, "invoice.paid", user.username, "payment confirmed — delivery unlocked")
         ledger.append(
@@ -481,6 +493,8 @@ def public_delivery_page(
         name=package.name,
         status=package.status,
         invoice_status=package.invoice_status,
+        amount_due_cents=package.amount_due_cents,
+        currency=package.currency or "usd",
         locked_by=package.locked_by,
         immutable_at=package.immutable_at,
         manifest_hash=package.manifest_hash,
@@ -519,3 +533,160 @@ def public_delivery_download(
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{d.filename}"'},
     )
+
+
+# ---------- Stripe paid delivery ----------
+
+
+def _checkout_session(
+    package: ReleasePackage,
+    success_url: str,
+    cancel_url: str,
+    db: Session,
+) -> CheckoutOut:
+    """Create (or reuse) a Stripe Checkout Session for this package."""
+    if not stripe_pay.enabled():
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Stripe is not configured — set STRIPE_SECRET_KEY or use the manual invoice flow",
+        )
+    if package.status != "ready":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Lock the package before charging")
+    if package.invoice_status not in ("deposit_due", "balance_due"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Invoice status '{package.invoice_status}' has nothing to charge",
+        )
+    amount = package.amount_due_cents
+    if not amount or amount <= 0:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Set an amount on the invoice before creating a checkout session",
+        )
+    if package.stripe_session_id:
+        # idempotent: return the existing session so a refresh doesn't double-charge
+        try:
+            data = stripe_pay.retrieve_checkout_session(package.stripe_session_id)
+            return CheckoutOut(
+                checkout_url=data["url"],
+                session_id=data["id"],
+                amount_due_cents=amount,
+                currency=package.currency or "usd",
+            )
+        except Exception:
+            pass  # fall through and create a fresh session
+    try:
+        session_id, url = stripe_pay.create_checkout_session(
+            amount_cents=amount,
+            currency=package.currency or "usd",
+            package_id=package.id,
+            package_name=package.name,
+            session_id=package.session_id,
+            success_url=success_url,
+            cancel_url=cancel_url,
+        )
+    except Exception as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc))
+    package.stripe_session_id = session_id
+    db.add(package)
+    _event(db, package, "invoice.checkout_created", "owner", session_id)
+    ledger.append(
+        db,
+        "invoice.checkout_created",
+        session_id=package.session_id,
+        package_id=package.id,
+        actor="owner",
+        entity_type="package",
+        entity_id=package.id,
+        payload={"stripe_session": session_id, "amount_cents": amount},
+    )
+    db.commit()
+    return CheckoutOut(
+        checkout_url=url,
+        session_id=session_id,
+        amount_due_cents=amount,
+        currency=package.currency or "usd",
+    )
+
+
+@router.post("/{package_id}/checkout", response_model=CheckoutOut)
+def owner_checkout(
+    package_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    package = db.get(ReleasePackage, package_id)
+    if package is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Package not found")
+    _require_owner(package, user)
+    origin = "http://localhost:5173"  # dev; frontend passes its own URL
+    return _checkout_session(
+        package,
+        success_url=f"{origin}/d/{package.delivery_token}?paid=1",
+        cancel_url=f"{origin}/d/{package.delivery_token}",
+        db=db,
+    )
+
+
+@router.post("/public/{delivery_token}/checkout", response_model=CheckoutOut)
+def public_checkout(
+    delivery_token: str,
+    success_url: str = Form(""),
+    cancel_url: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """Let the client pay from the delivery page without an account."""
+    package = db.scalar(
+        select(ReleasePackage).where(ReleasePackage.delivery_token == delivery_token)
+    )
+    if package is None or package.status != "ready":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Delivery link not found")
+    origin = success_url or f"http://localhost:5173/d/{delivery_token}?paid=1"
+    return _checkout_session(
+        package,
+        success_url=origin,
+        cancel_url=cancel_url or f"http://localhost:5173/d/{delivery_token}",
+        db=db,
+    )
+
+
+@router.post("/webhooks/stripe")
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    """Stripe webhook: checkout.session.completed → mark invoice paid.
+
+    Signature is verified with the Stripe-Signature header before any state
+    change; the handler is idempotent (a replayed event is a no-op).
+    """
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    try:
+        event = stripe_pay.verify_webhook_signature(payload, sig)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Invalid signature: {exc}")
+
+    if event.get("type") != "checkout.session.completed":
+        return {"received": True, "handled": False}
+    session_obj = event.get("data", {}).get("object", {})
+    package_id = (session_obj.get("metadata") or {}).get("package_id")
+    if package_id is None:
+        return {"received": True, "handled": False}
+    package = db.get(ReleasePackage, int(package_id))
+    if package is None:
+        return {"received": True, "handled": False}
+    if package.invoice_status == "paid":
+        return {"received": True, "handled": True, "already_paid": True}  # idempotent
+    package.invoice_status = "paid"
+    package.stripe_session_id = session_obj.get("id") or package.stripe_session_id
+    _event(db, package, "invoice.paid", "stripe", "checkout.session.completed")
+    ledger.append(
+        db,
+        "invoice.paid",
+        session_id=package.session_id,
+        package_id=package.id,
+        actor="stripe",
+        entity_type="package",
+        entity_id=package.id,
+        payload={"package": package.name, "method": "stripe", "session": session_obj.get("id")},
+    )
+    db.commit()
+    return {"received": True, "handled": True}

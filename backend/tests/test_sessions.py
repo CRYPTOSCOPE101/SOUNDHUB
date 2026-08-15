@@ -560,8 +560,16 @@ def test_release_package_lock_and_delivery(client):
     assert r.status_code == 200
     assert r.content == make_wav(1.0)
 
-    # invoice gate: balance_due blocks download with 402
-    client.patch(f"/api/release-packages/{pid}/invoice", json={"invoice_status": "balance_due"}, headers=_auth(token))
+    # invoice gate: balance_due blocks download with 402; amount is required
+    r = client.patch(f"/api/release-packages/{pid}/invoice", json={"invoice_status": "balance_due"}, headers=_auth(token))
+    assert r.status_code == 400  # amount_due_cents missing
+    r = client.patch(
+        f"/api/release-packages/{pid}/invoice",
+        json={"invoice_status": "balance_due", "amount_due_cents": 4900, "currency": "usd"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    assert r.json()["amount_due_cents"] == 4900
     r = client.get(f"/api/release-packages/public/{tok}/files/{did}")
     assert r.status_code == 402
     client.patch(f"/api/release-packages/{pid}/invoice", json={"invoice_status": "paid"}, headers=_auth(token))

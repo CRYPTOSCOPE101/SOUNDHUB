@@ -76,6 +76,15 @@ def _migrate() -> None:
             ):
                 if col not in cm_cols:
                     conn.execute(text(f"ALTER TABLE review_comments ADD COLUMN {col} {ddl}"))
+        if inspector.has_table("release_packages"):
+            pkg_cols = {c["name"] for c in inspector.get_columns("release_packages")}
+            for col, ddl in (
+                ("amount_due_cents", "INTEGER"),
+                ("currency", "VARCHAR(8) DEFAULT 'usd'"),
+                ("stripe_session_id", "VARCHAR(128)"),
+            ):
+                if col not in pkg_cols:
+                    conn.execute(text(f"ALTER TABLE release_packages ADD COLUMN {col} {ddl}"))
         if "password_hash" in users_cols and not inspector.get_columns("users"):
             pass  # no-op guard
 

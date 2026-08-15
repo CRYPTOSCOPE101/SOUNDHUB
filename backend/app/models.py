@@ -356,6 +356,9 @@ class ReleasePackage(Base):
     name: Mapped[str] = mapped_column(String(160), default="Final delivery")
     status: Mapped[str] = mapped_column(String(32), default="draft")  # draft | ready | delivered | archived
     invoice_status: Mapped[str] = mapped_column(String(32), default="none")  # none | deposit_due | balance_due | paid | waived
+    amount_due_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Stripe Checkout amount
+    currency: Mapped[str] = mapped_column(String(8), default="usd")
+    stripe_session_id: Mapped[str | None] = mapped_column(String(128), nullable=True)  # idempotency for webhooks
     immutable_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     manifest_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     delivery_token: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
