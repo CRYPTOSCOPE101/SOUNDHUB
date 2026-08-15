@@ -142,6 +142,25 @@ export default function PublicDeliveryPage() {
           </div>
         )}
 
+        {(page.retention_until || page.archive_status !== "available_now" || page.share_token) && (
+          <div className="public-delivery-lifecycle">
+            {page.retention_until && (
+              <span>🗄 Archive retained until {new Date(page.retention_until).toLocaleDateString()}</span>
+            )}
+            {page.archive_status !== "available_now" && (
+              <span className={`archive-st-${page.archive_status}`}>
+                archive: {page.archive_status.replace(/_/g, " ")}
+                {page.archive_expires_at ? ` · expires ${new Date(page.archive_expires_at).toLocaleDateString()}` : ""}
+              </span>
+            )}
+            {page.share_token && (
+              <a href={`/r/${page.share_token}`} className="public-delivery-change-link">
+                🔁 Need something different? Request a change after approval
+              </a>
+            )}
+          </div>
+        )}
+
         {depositDue && (
           <div className="public-delivery-gate">
             <div className="public-delivery-gate-text">

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { api } from "../api";
 import ReviewSession from "../components/ReviewSession";
 
 const NAV_LINKS = [
@@ -99,12 +100,15 @@ const ROADMAP = [
       "Watermarked previews, public engineer portfolio",
       "Stripe paid delivery: card / Apple Pay / Google Pay",
       "Private share links & access audit",
+      "Release-package templates + QC preflight before lock",
+      "Change orders: quote late changes after approval (courtesy / paid round / new pass)",
+      "Archive & session-file handoff with retention policy",
     ],
     state: "live",
   },
   {
     phase: "Next",
-    items: ["Voice notes & mobile-first guest review", "Email reminders & deadlines", "Release-package templates", "Roles & approval chains for labels", "USDC checkout", "Max for Live: review comments in the DAW"],
+    items: ["Voice notes & mobile-first guest review", "Email reminders & deadlines", "Roles & approval chains for labels", "USDC checkout", "Max for Live: review comments in the DAW"],
     state: "next",
   },
   { phase: "Later", items: ["REAPER integration", "Mainnet + security audit", "Seller reputation & packs", "DAO governance"], state: "later" },
@@ -181,6 +185,17 @@ export default function LandingPage() {
   const [email, setEmail] = useState("");
   const [waitlist, setWaitlist] = useState<string | null>(null);
   const [showWorkflow, setShowWorkflow] = useState(false);
+  const [sampleUrl, setSampleUrl] = useState<string | null>(null);
+
+  // "Open a sample review" — a real seeded public review, no login needed
+  useEffect(() => {
+    api
+      .demoReview()
+      .then((d) => {
+        if (d.url) setSampleUrl(d.url);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const joinWaitlist = (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,7 +222,7 @@ export default function LandingPage() {
         <div className="landing-nav-cta">
           <Link to="/kettle">🫖 Kettle</Link>
           <Link to="/login">Sign in</Link>
-          <Link to="/login" className="landing-nav-get">Try demo project</Link>
+          <Link to={sampleUrl ?? "/login"} className="landing-nav-get">Open a sample review</Link>
         </div>
       </nav>
 
@@ -224,12 +239,15 @@ export default function LandingPage() {
             Send a private review link. Get timestamped notes. Compare versions.
             Approve the final master — no bounced files, no ZIP archives, no Discord chaos.
           </p>
+          <p className="landing-subtitle landing-subtitle-strong">
+            Set the brief. Review with context. Lock the approved master. Deliver with proof.
+          </p>
           <div className="landing-cta">
             <button type="button" className="landing-btn-primary" onClick={() => setShowWorkflow(true)}>
               ▶ Watch the workflow
             </button>
-            <Link to="/session" className="landing-btn-ghost">
-              Try a demo session
+            <Link to={sampleUrl ?? "/session"} className="landing-btn-ghost">
+              Open a sample review
             </Link>
           </div>
           <div className="landing-proof">
@@ -429,7 +447,7 @@ export default function LandingPage() {
           </form>
           {waitlist && <div className="landing-waitlist-msg">{waitlist}</div>}
           <div className="landing-cta-final-alts">
-            <Link to="/session">or try the demo session now →</Link>
+            <Link to={sampleUrl ?? "/session"}>or open a sample review now →</Link>
           </div>
         </Reveal>
       </section>

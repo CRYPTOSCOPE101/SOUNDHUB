@@ -175,6 +175,17 @@ class ReviewSession(Base):
     do_not_change: Mapped[str] = mapped_column(Text, default="")  # e.g. "don't touch the vocal balance"
     required_deliverables: Mapped[str] = mapped_column(Text, default="")  # comma-separated: master, instrumental…
 
+    # Late-change protection: project retention, recall/revision fees, and
+    # rounds granted by accepted change orders ("we came back after 3 months").
+    retention_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    recall_fee_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)  # mastering recall / new pass
+    revision_fee_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)  # one-off mix revision
+    change_rounds_granted: Mapped[int] = mapped_column(Integer, default=0)  # rounds from accepted change orders
+
+    change_orders: Mapped[list["ChangeOrder"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+
 
 class ReviewVersion(Base):
     __tablename__ = "review_versions"
@@ -253,6 +264,41 @@ class ReviewRound(Base):
     __table_args__ = (UniqueConstraint("session_id", "number", name="uq_review_round_number"),)
 
     session: Mapped["ReviewSession"] = relationship(back_populates="rounds")
+
+
+class ChangeOrder(Base):
+    """A late change request after the project was approved / delivered.
+
+    Flow: client requests a change → engineer quotes (courtesy / paid round /
+    new mastering pass) or declines → client accepts the price + deadline →
+    the new invoice is paid → the revision round reopens.
+
+    status: requested → quoted → accepted → (declined | paid)
+    round_granted: the reopened round was already credited to the session
+    (idempotent — a webhook replay can never grant twice).
+    """
+
+    __tablename__ = "change_orders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    created_by: Mapped[str] = mapped_column(String(128), default="")  # client / reviewer email
+    reason: Mapped[str] = mapped_column(String(32))  # mix_revision | new_stem_request | format_change | mastering_recall
+    description: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(32), default="requested")  # requested | quoted | accepted | declined | paid
+    decision: Mapped[str | None] = mapped_column(String(32), nullable=True)  # courtesy | paid_round | new_mastering_pass
+    price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    currency: Mapped[str] = mapped_column(String(8), default="usd")
+    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    target_round: Mapped[int] = mapped_column(Integer, default=1)  # the round that reopens
+    round_granted: Mapped[bool] = mapped_column(default=False)
+    quoted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    declined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    session: Mapped["ReviewSession"] = relationship(back_populates="change_orders")
 
 
 class ReferenceTrack(Base):
@@ -485,6 +531,13 @@ class ReleasePackage(Base):
     delivery_token: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     locked_by: Mapped[str] = mapped_column(String(128), default="")
+    # Delivery templates + archive / session-file handoff
+    template: Mapped[str] = mapped_column(String(32), default="custom")  # final_master | stem_handoff | archive_handoff | label_sync | dj_promo | post_production | custom
+    plugin_manifest: Mapped[str] = mapped_column(Text, default="")  # DAW version, plugins, versions, missing-plugin fallback
+    session_manifest: Mapped[dict] = mapped_column(JSON, default=dict)  # sample rate, bit depth, tempo, key, start time…
+    consolidate_audio: Mapped[bool] = mapped_column(default=False)  # all audio aligned to one start point
+    archive_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archive_status: Mapped[str] = mapped_column(String(32), default="available_now")  # available_now | needs_preparation | archived | permanently_deleted
 
     session: Mapped["ReviewSession"] = relationship()
     approved_version: Mapped["ReviewVersion"] = relationship()
@@ -511,6 +564,7 @@ class Deliverable(Base):
     format: Mapped[str] = mapped_column(String(16), default="wav")
     sample_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
     bit_depth: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    channels: Mapped[int | None] = mapped_column(Integer, nullable=True)
     integrated_lufs: Mapped[float | None] = mapped_column(nullable=True)
     true_peak: Mapped[float | None] = mapped_column(nullable=True)
     is_required: Mapped[bool] = mapped_column(default=True)

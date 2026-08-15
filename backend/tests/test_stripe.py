@@ -380,3 +380,77 @@ def test_session_checkout_deposit_and_extra_round(client, monkeypatch):
     s2 = client.post("/api/sessions", json={"name": "No deposit"}, headers=_auth(token)).json()
     r = client.post(f"/api/sessions/{s2['id']}/checkout", data={"kind": "deposit"}, headers=_auth(token))
     assert r.status_code == 400
+
+
+def test_webhook_change_order_grants_round(client, monkeypatch):
+    """Stripe webhook for kind=change_order marks the order paid + reopens the round."""
+    from app.services import stripe_pay
+
+    token = _register(client)
+    s = client.post("/api/sessions", json={"name": "Change order session"}, headers=_auth(token)).json()
+    r = client.post(
+        f"/api/sessions/{s['id']}/versions",
+        headers=_auth(token),
+        data={"message": "v1"},
+        files=[("file", ("v1.wav", make_wav(1.0), "audio/wav"))],
+    )
+    vid = r.json()["id"]
+    client.post(
+        f"/api/sessions/{s['id']}/versions/{vid}/status",
+        json={"status": "approved"},
+        headers=_auth(token),
+    )
+    share = client.get(f"/api/sessions/{s['id']}", headers=_auth(token)).json()["share_token"]
+
+    co = client.post(
+        f"/api/sessions/public/{share}/change-orders",
+        json={"reason": "mix_revision", "description": "rebalance"},
+        params={"actor": "client@x.com"},
+    ).json()
+    client.patch(
+        f"/api/sessions/{s['id']}/change-orders/{co['id']}",
+        json={"decision": "paid_round", "price_cents": 4500},
+        headers=_auth(token),
+    )
+    client.post(
+        f"/api/sessions/public/{share}/change-orders/{co['id']}/accept",
+        params={"actor": "client@x.com"},
+    )
+
+    # the webhook pays it (metadata kind=change_order)
+    event = {
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "id": "cs_test_co",
+                "metadata": {
+                    "kind": "change_order",
+                    "change_order_id": str(co["id"]),
+                    "session_id": str(s["id"]),
+                    "package_id": "0",
+                },
+            }
+        },
+    }
+    body, sig = _signed_event(event)
+    r = client.post(
+        "/api/release-packages/webhooks/stripe",
+        content=body,
+        headers={"stripe-signature": sig},
+    )
+    assert r.status_code == 200
+    assert r.json()["handled"] is True
+
+    detail = client.get(f"/api/sessions/{s['id']}", headers=_auth(token)).json()
+    assert detail["change_rounds_granted"] == 1
+    assert detail["rounds_open"] is True
+
+    # replay is a no-op — the round is granted exactly once
+    r = client.post(
+        "/api/release-packages/webhooks/stripe",
+        content=body,
+        headers={"stripe-signature": sig},
+    )
+    assert r.status_code == 200
+    assert r.json()["handled"] is False
+    assert client.get(f"/api/sessions/{s['id']}", headers=_auth(token)).json()["change_rounds_granted"] == 1
