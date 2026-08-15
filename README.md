@@ -1,5 +1,5 @@
 
-![SoundHub repo page](screenshots/LOGO_cr.jpg)
+![SoundHub repo page](screenshots/LOGO_modY.jpg)
 
 # 🎛 SoundHub
 
