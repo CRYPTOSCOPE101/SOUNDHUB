@@ -4,6 +4,12 @@ import { fmtClock } from "./ReviewShared";
 import { STEM_LOGICAL_NAMES, type StemAsset, type VersionComparison } from "../types";
 
 const CROSSFADE_MS = 40;
+// Lookahead scheduling window (seconds) — segments are scheduled on the
+// AudioContext clock well before they start, so loop boundaries are exact
+// and gapless (the pattern from Ableton's web-audio-sequencing: schedule
+// ahead on the audio clock, never restart on a rAF frame).
+const SCHED_LOOKAHEAD_S = 0.15;
+const SCHED_MAX_ITER = 64;
 
 /**
  * A/B comparison player.
@@ -12,6 +18,11 @@ const CROSSFADE_MS = 40;
  * so A/B toggling never resets the playhead. Switching crossfades the gains
  * (40 ms). Level-matched gains from the comparison are applied ONLY to the
  * preview graph — source files and the release package are untouched.
+ *
+ * Playback uses lookahead scheduling: while playing, the RAF tick asks the
+ * scheduler to fill a small horizon of BufferSource segments (`start(when)` /
+ * `stop(when)` at exact AudioContext times). The loop region therefore loops
+ * gapless — no stop/start gap at the boundary, no frame-quantized restart.
  *
  * Modes: `full_mix` compares the whole bounce; `stem` compares one submix
  * (drums / bass / vocal / synths) matched by logical name across both
@@ -44,16 +55,33 @@ export default function ABCompare({
   const [gain, setGain] = useState(0);
   const [manual, setManual] = useState(false);
   const ctxRef = useRef<AudioContext | null>(null);
-  const srcRef = useRef<{ base: AudioBufferSourceNode; compare: AudioBufferSourceNode } | null>(null);
   const gainNodesRef = useRef<{ base: GainNode; compare: GainNode } | null>(null);
   const masterRef = useRef<GainNode | null>(null);
   const offsetRef = useRef(0);
+  const livePosRef = useRef<number | null>(null);
   const playingRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const loopRef = useRef<{ start: number; end: number } | null>(null);
-  const startCtxRef = useRef<number | null>(null);
   const compRef = useRef(comp);
   compRef.current = comp;
+  // Mirror of `buffers` state so the scheduler (a stable callback reading
+  // refs only) always sees the current buffers without re-creating itself.
+  const buffersRef = useRef<{ base: AudioBuffer | null; compare: AudioBuffer | null }>({
+    base: null,
+    compare: null,
+  });
+  // Scheduled playback segments: each plays a slice of the loop region at
+  // exact AudioContext times. `nextStartCtxRef` is the ctx time when the
+  // NEXT segment should begin; `nextOffsetRef` is its buffer offset.
+  interface Segment {
+    base: AudioBufferSourceNode;
+    compare: AudioBufferSourceNode;
+    startCtx: number;
+    endCtx: number;
+  }
+  const segmentsRef = useRef<Segment[]>([]);
+  const nextStartCtxRef = useRef<number | null>(null);
+  const nextOffsetRef = useRef(0);
 
   const endMs = (comp.end_ms ?? comp.start_ms + 20000) / 1000;
 
@@ -113,6 +141,7 @@ export default function ABCompare({
         const [b, c] = await Promise.all([decodeAudio(ctx, baseUrl), decodeAudio(ctx, compareUrl)]);
         if (cancelled) return;
         setBuffers({ base: b, compare: c });
+        buffersRef.current = { base: b, compare: c };
         const dur = Math.min(b.duration, c.duration);
         setDuration(dur);
         const start = Math.min(comp.start_ms / 1000, Math.max(0, dur - 0.05));
@@ -124,7 +153,8 @@ export default function ABCompare({
         };
         playingRef.current = false;
         setPlaying(false);
-        srcRef.current = null;
+        stopAllSegments();
+        nextStartCtxRef.current = null;
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Failed to load audio");
       } finally {
@@ -144,38 +174,78 @@ export default function ABCompare({
     };
   }, []);
 
+  // Build the shared gain graph once per buffer load. Sources are created by
+  // the scheduler on demand — there is no single long-lived source pair to
+  // restart at the loop boundary.
   const buildGraph = useCallback(() => {
     const ctx = ctxRef.current;
-    const b = buffers.base;
-    const c = buffers.compare;
-    if (!ctx || !b || !c) return;
-    if (srcRef.current) {
-      try {
-        srcRef.current.base.stop();
-        srcRef.current.compare.stop();
-      } catch {
-        /* already stopped */
-      }
-    }
-    const baseSrc = ctx.createBufferSource();
-    baseSrc.buffer = b;
-    const compareSrc = ctx.createBufferSource();
-    compareSrc.buffer = c;
+    if (!ctx) return;
+    if (gainNodesRef.current) return;
     const gBase = ctx.createGain();
     const gCompare = ctx.createGain();
     const master = ctx.createGain();
-    baseSrc.connect(gBase).connect(master).connect(ctx.destination);
-    compareSrc.connect(gCompare).connect(master).connect(ctx.destination);
-    srcRef.current = { base: baseSrc, compare: compareSrc };
+    gBase.connect(master).connect(ctx.destination);
+    gCompare.connect(master).connect(ctx.destination);
     gainNodesRef.current = { base: gBase, compare: gCompare };
     masterRef.current = master;
     gBase.gain.value = 0;
     gCompare.gain.value = 0;
-    const t = ctx.currentTime + 0.02;
-    baseSrc.start(t, offsetRef.current);
-    compareSrc.start(t, offsetRef.current);
-    startCtxRef.current = t;
-  }, [buffers]);
+  }, []);
+
+  const stopAllSegments = useCallback(() => {
+    for (const seg of segmentsRef.current) {
+      try {
+        seg.base.stop();
+        seg.compare.stop();
+      } catch {
+        /* already stopped */
+      }
+    }
+    segmentsRef.current = [];
+  }, []);
+
+  // Lookahead scheduler: fill the horizon with segments starting at exact
+  // AudioContext times. Each segment plays `loop.end - loop.start` (or the
+  // remainder when looping is off), so the next one can be scheduled while
+  // the current is still playing — the boundary is gapless.
+  const schedule = useCallback(() => {
+    const ctx = ctxRef.current;
+    const b = buffersRef.current.base;
+    const c = buffersRef.current.compare;
+    if (!ctx || !b || !c || !gainNodesRef.current) return;
+    const g = gainNodesRef.current;
+    const lp = loopRef.current;
+    const horizon = ctx.currentTime + SCHED_LOOKAHEAD_S;
+    let next = nextStartCtxRef.current;
+    let offset = nextOffsetRef.current;
+    if (next == null) return;
+    // Drop finished segments (they self-stop at their scheduled endCtx).
+    const now = ctx.currentTime;
+    segmentsRef.current = segmentsRef.current.filter((s) => s.endCtx > now);
+    let iterations = 0;
+    while (next < horizon && iterations < SCHED_MAX_ITER) {
+      const start = Math.max(next, now + 0.01);
+      const len = lp ? lp.end - lp.start : Math.max(0, Math.min(b.duration, c.duration) - offset);
+      if (len <= 0.0005) break;
+      const end = start + len;
+      const baseSrc = ctx.createBufferSource();
+      baseSrc.buffer = b;
+      const compareSrc = ctx.createBufferSource();
+      compareSrc.buffer = c;
+      baseSrc.connect(g.base);
+      compareSrc.connect(g.compare);
+      baseSrc.start(start, offset);
+      compareSrc.start(start, offset);
+      baseSrc.stop(end);
+      compareSrc.stop(end);
+      segmentsRef.current.push({ base: baseSrc, compare: compareSrc, startCtx: start, endCtx: end });
+      next = end;
+      offset = lp ? lp.start : offset + len;
+      iterations += 1;
+    }
+    nextStartCtxRef.current = next;
+    nextOffsetRef.current = offset;
+  }, []);
 
   const applyGains = useCallback((side: "base" | "compare") => {
     const g = gainNodesRef.current;
@@ -192,46 +262,28 @@ export default function ABCompare({
     g.compare.gain.linearRampToValueAtTime(compareGain, now + ramp);
   }, []);
 
-  const seek = (t: number) => {
-    const dur = duration || 0;
-    const clamped = Math.max(0, Math.min(t, Math.max(0, dur - 0.02)));
-    offsetRef.current = clamped;
-    setPosition(clamped);
-    if (playingRef.current) {
-      const g = gainNodesRef.current;
-      const activeSide = active;
-      srcRef.current = null;
-      buildGraph();
-      const now = ctxRef.current?.currentTime ?? 0;
-      if (g) {
-        g.base.gain.cancelScheduledValues(now);
-        g.compare.gain.cancelScheduledValues(now);
-        g.base.gain.value = 0;
-        g.compare.gain.value = 0;
-      }
-      applyGains(activeSide);
-    }
-  };
-
   const toggle = () => {
     if (playing) {
-      ctxRef.current?.suspend().catch(() => undefined);
+      if (livePosRef.current != null) offsetRef.current = livePosRef.current;
+      stopAllSegments();
+      nextStartCtxRef.current = null;
       playingRef.current = false;
       setPlaying(false);
       return;
     }
     const ctx = ctxRef.current;
     if (!ctx) return;
-    if (!srcRef.current) buildGraph();
+    buildGraph();
+    if (nextStartCtxRef.current == null) {
+      nextStartCtxRef.current = ctx.currentTime + 0.02;
+      nextOffsetRef.current = offsetRef.current;
+    }
     void ctx.resume().then(() => {
       applyGains(active);
       playingRef.current = true;
       setPlaying(true);
+      schedule();
     });
-  };
-
-  const markStart = () => {
-    startCtxRef.current = ctxRef.current?.currentTime ?? null;
   };
 
   const switchSide = (side: "base" | "compare") => {
@@ -239,18 +291,29 @@ export default function ABCompare({
     if (playingRef.current) applyGains(side);
   };
 
-  // playhead + loop tick
+  // playhead tick + lookahead scheduling
   useEffect(() => {
     const tick = () => {
       const ctx = ctxRef.current;
-      if (ctx && playingRef.current && srcRef.current && startCtxRef.current != null) {
-        const pos = offsetRef.current + (ctx.currentTime - startCtxRef.current);
+      if (ctx && playingRef.current) {
+        schedule();
         const lp = loopRef.current;
-        if (lp && pos >= lp.end) {
-          seek(lp.start);
-          return;
+        // Position from the most recent scheduled segment: the segment's
+        // buffer offset + elapsed audio-clock time since it started.
+        let pos: number | null = null;
+        const now = ctx.currentTime;
+        const segs = segmentsRef.current;
+        if (segs.length > 0 && lp) {
+          const activeSeg = segs.find((s) => s.startCtx <= now && s.endCtx > now) ?? segs[segs.length - 1];
+          pos = lp.start + (now - activeSeg.startCtx);
+        } else if (segs.length > 0) {
+          const activeSeg = segs.find((s) => s.startCtx <= now && s.endCtx > now) ?? segs[segs.length - 1];
+          pos = offsetRef.current + (now - activeSeg.startCtx);
         }
-        setPosition(Math.min(pos, duration || pos));
+        if (pos != null) {
+          setPosition(Math.min(pos, duration || pos));
+          livePosRef.current = Math.min(pos, duration || pos);
+        }
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -262,7 +325,6 @@ export default function ABCompare({
   }, [duration]);
 
   const play = () => {
-    markStart();
     toggle();
   };
 

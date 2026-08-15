@@ -4,6 +4,11 @@ import { decodeAudio, fetchAudioBlob } from "./ABCompare";
 import type { ReferenceComparison, ReferenceTrack } from "../types";
 
 const CROSSFADE_MS = 40;
+// Lookahead scheduling window (seconds) — the pattern from Ableton's
+// web-audio-sequencing: schedule segments on the AudioContext clock ahead of
+// time so the loop region restarts exactly and gapless, never on a rAF frame.
+const SCHED_LOOKAHEAD_S = 0.15;
+const SCHED_MAX_ITER = 64;
 
 /**
  * Mix ↔ reference A/B player.
@@ -13,6 +18,9 @@ const CROSSFADE_MS = 40;
  * through GainNodes in the Web Audio graph (10^(gain/20)) — the reference
  * file and the mix are never modified, and neither is exported anywhere.
  * Neutral measurements are shown, never a judgement.
+ *
+ * Playback uses lookahead scheduling (segments started at exact AudioContext
+ * times), so the loop region loops gapless with no stop/start gap.
  */
 export default function ReferenceCompare({
   comparison,
@@ -33,14 +41,26 @@ export default function ReferenceCompare({
   const [manual, setManual] = useState(false);
   const [masterGain, setMasterGain] = useState(0);
   const ctxRef = useRef<AudioContext | null>(null);
-  const srcRef = useRef<{ mix: AudioBufferSourceNode; ref: AudioBufferSourceNode } | null>(null);
   const gainNodesRef = useRef<{ mix: GainNode; ref: GainNode } | null>(null);
   const masterRef = useRef<GainNode | null>(null);
   const offsetRef = useRef(0);
+  const livePosRef = useRef<number | null>(null);
   const playingRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const loopRef = useRef<{ start: number; end: number } | null>(null);
-  const startCtxRef = useRef<number | null>(null);
+  // Mirror of `buffers` state so the stable scheduler callback always sees
+  // the current buffers.
+  const buffersRef = useRef<{ mix: AudioBuffer | null; ref: AudioBuffer | null }>({ mix: null, ref: null });
+  // Scheduled playback segments (exact AudioContext start/stop times).
+  interface Segment {
+    mix: AudioBufferSourceNode;
+    ref: AudioBufferSourceNode;
+    startCtx: number;
+    endCtx: number;
+  }
+  const segmentsRef = useRef<Segment[]>([]);
+  const nextStartCtxRef = useRef<number | null>(null);
+  const nextOffsetRef = useRef(0);
 
   const endMs = (comparison.end_ms ?? comparison.start_ms + 20000) / 1000;
   // level compensation as linear gains (applied ONLY in the Web Audio graph)
@@ -62,6 +82,7 @@ export default function ReferenceCompare({
         const [m, r] = await Promise.all([decodeAudio(ctx, mixUrl), decodeAudio(ctx, refUrl)]);
         if (cancelled) return;
         setBuffers({ mix: m, ref: r });
+        buffersRef.current = { mix: m, ref: r };
         const dur = Math.min(m.duration, r.duration);
         setDuration(dur);
         const start = Math.min(comparison.start_ms / 1000, Math.max(0, dur - 0.05));
@@ -73,7 +94,8 @@ export default function ReferenceCompare({
         };
         playingRef.current = false;
         setPlaying(false);
-        srcRef.current = null;
+        stopAllSegments();
+        nextStartCtxRef.current = null;
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Failed to load audio");
       } finally {
@@ -93,40 +115,76 @@ export default function ReferenceCompare({
     };
   }, []);
 
+  // Shared gain graph — built once per buffer load; sources are created by
+  // the scheduler on demand.
   const buildGraph = useCallback(() => {
     const ctx = ctxRef.current;
-    const m = buffers.mix;
-    const r = buffers.ref;
-    if (!ctx || !m || !r) return;
-    if (srcRef.current) {
-      try {
-        srcRef.current.mix.stop();
-        srcRef.current.ref.stop();
-      } catch {
-        /* already stopped */
-      }
-    }
-    const mixSrc = ctx.createBufferSource();
-    mixSrc.buffer = m;
-    const refSrc = ctx.createBufferSource();
-    refSrc.buffer = r;
+    if (!ctx) return;
+    if (gainNodesRef.current) return;
     const gMix = ctx.createGain();
     const gRef = ctx.createGain();
     const master = ctx.createGain();
-    mixSrc.connect(gMix).connect(master).connect(ctx.destination);
-    refSrc.connect(gRef).connect(master).connect(ctx.destination);
-    srcRef.current = { mix: mixSrc, ref: refSrc };
+    gMix.connect(master).connect(ctx.destination);
+    gRef.connect(master).connect(ctx.destination);
     gainNodesRef.current = { mix: gMix, ref: gRef };
     masterRef.current = master;
     gMix.gain.value = 0;
     gRef.gain.value = 0;
     master.gain.value = 10 ** (masterGain / 20);
-    const t = ctx.currentTime + 0.02;
-    mixSrc.start(t, offsetRef.current);
-    refSrc.start(t, offsetRef.current);
-    startCtxRef.current = t;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buffers]);
+  }, [masterGain]);
+
+  const stopAllSegments = useCallback(() => {
+    for (const seg of segmentsRef.current) {
+      try {
+        seg.mix.stop();
+        seg.ref.stop();
+      } catch {
+        /* already stopped */
+      }
+    }
+    segmentsRef.current = [];
+  }, []);
+
+  // Lookahead scheduler: fill the horizon with segments starting at exact
+  // AudioContext times, so the loop boundary is gapless.
+  const schedule = useCallback(() => {
+    const ctx = ctxRef.current;
+    const m = buffersRef.current.mix;
+    const r = buffersRef.current.ref;
+    if (!ctx || !m || !r || !gainNodesRef.current) return;
+    const g = gainNodesRef.current;
+    const lp = loopRef.current;
+    const horizon = ctx.currentTime + SCHED_LOOKAHEAD_S;
+    let next = nextStartCtxRef.current;
+    let offset = nextOffsetRef.current;
+    if (next == null) return;
+    const now = ctx.currentTime;
+    segmentsRef.current = segmentsRef.current.filter((s) => s.endCtx > now);
+    let iterations = 0;
+    while (next < horizon && iterations < SCHED_MAX_ITER) {
+      const start = Math.max(next, now + 0.01);
+      const len = lp ? lp.end - lp.start : Math.max(0, Math.min(m.duration, r.duration) - offset);
+      if (len <= 0.0005) break;
+      const end = start + len;
+      const mixSrc = ctx.createBufferSource();
+      mixSrc.buffer = m;
+      const refSrc = ctx.createBufferSource();
+      refSrc.buffer = r;
+      mixSrc.connect(g.mix);
+      refSrc.connect(g.ref);
+      mixSrc.start(start, offset);
+      refSrc.start(start, offset);
+      mixSrc.stop(end);
+      refSrc.stop(end);
+      segmentsRef.current.push({ mix: mixSrc, ref: refSrc, startCtx: start, endCtx: end });
+      next = end;
+      offset = lp ? lp.start : offset + len;
+      iterations += 1;
+    }
+    nextStartCtxRef.current = next;
+    nextOffsetRef.current = offset;
+  }, []);
 
   const applyGains = useCallback((side: "mix" | "ref") => {
     const g = gainNodesRef.current;
@@ -141,37 +199,31 @@ export default function ReferenceCompare({
     g.ref.gain.linearRampToValueAtTime(side === "ref" ? refLevel : 0, now + ramp);
   }, [mixLevel, refLevel]);
 
-  const seek = (t: number) => {
-    const dur = duration || 0;
-    const clamped = Math.max(0, Math.min(t, Math.max(0, dur - 0.02)));
-    offsetRef.current = clamped;
-    setPosition(clamped);
-    if (playingRef.current) {
-      srcRef.current = null;
-      buildGraph();
-      applyGains(active);
-    }
-  };
-
   const toggle = () => {
     if (playing) {
-      ctxRef.current?.suspend().catch(() => undefined);
+      if (livePosRef.current != null) offsetRef.current = livePosRef.current;
+      stopAllSegments();
+      nextStartCtxRef.current = null;
       playingRef.current = false;
       setPlaying(false);
       return;
     }
     const ctx = ctxRef.current;
     if (!ctx) return;
-    if (!srcRef.current) buildGraph();
+    buildGraph();
+    if (nextStartCtxRef.current == null) {
+      nextStartCtxRef.current = ctx.currentTime + 0.02;
+      nextOffsetRef.current = offsetRef.current;
+    }
     void ctx.resume().then(() => {
       applyGains(active);
       playingRef.current = true;
       setPlaying(true);
+      schedule();
     });
   };
 
   const play = () => {
-    startCtxRef.current = ctxRef.current?.currentTime ?? null;
     toggle();
   };
 
@@ -180,18 +232,25 @@ export default function ReferenceCompare({
     if (playingRef.current) applyGains(side);
   };
 
-  // playhead + loop tick
+  // playhead tick + lookahead scheduling
   useEffect(() => {
     const tick = () => {
       const ctx = ctxRef.current;
-      if (ctx && playingRef.current && srcRef.current && startCtxRef.current != null) {
-        const pos = offsetRef.current + (ctx.currentTime - startCtxRef.current);
+      if (ctx && playingRef.current) {
+        schedule();
         const lp = loopRef.current;
-        if (lp && pos >= lp.end) {
-          seek(lp.start);
-          return;
+        let pos: number | null = null;
+        const now = ctx.currentTime;
+        const segs = segmentsRef.current;
+        if (segs.length > 0) {
+          const activeSeg = segs.find((s) => s.startCtx <= now && s.endCtx > now) ?? segs[segs.length - 1];
+          const base = lp ? lp.start : offsetRef.current;
+          pos = base + (now - activeSeg.startCtx);
         }
-        setPosition(Math.min(pos, duration || pos));
+        if (pos != null) {
+          setPosition(Math.min(pos, duration || pos));
+          livePosRef.current = Math.min(pos, duration || pos);
+        }
       }
       rafRef.current = requestAnimationFrame(tick);
     };

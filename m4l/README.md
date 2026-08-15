@@ -1,5 +1,21 @@
 # SoundHub for Ableton Live (Max for Live prototype)
 
+> **References from Ableton's own GitHub org** (all MIT, studied for the
+> future DAW bridge — nothing integrated yet):
+> - [`Ableton/m4l-connection-kit`](https://github.com/Ableton/m4l-connection-kit)
+>   — example M4L devices connecting Live to the outside world via **OSC**
+>   (`udpsend`/`udpreceive`) and **JSON APIs**; the natural transport pattern
+>   for the future “review comments in the DAW” panel.
+> - [`Ableton/maxdevtools`](https://github.com/Ableton/maxdevtools) — Python
+>   tooling to build/install Max packages from CI; candidate to replace the
+>   hand-rolled `build_amxd.py` packaging when we ship a real panel.
+> - [`Ableton/web-audio-sequencing`](https://github.com/Ableton/web-audio-sequencing)
+>   — lookahead scheduling on the Web Audio clock; **already applied** to the
+>   frontend A/B + reference players (gapless loop regions, see
+>   `frontend/src/components/ABCompare.tsx` / `ReferenceCompare.tsx`).
+> - `Ableton/Link` — tempo sync between devices — **not** used: it requires a
+>   licensing agreement and is out of scope for review/delivery.
+
 > **SoundHub inside Ableton = the fastest way to buy finished sound assets
 > while you're actually making music.** Buy-ready presets, loops and packs,
 > paid with SND, loaded straight into your Live set.

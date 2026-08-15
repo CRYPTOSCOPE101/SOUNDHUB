@@ -405,6 +405,23 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
 
 **`USER_TESTS.md` v2 (по фидбеку «как провести первые 3 теста»):** задачи **по ролям** вместо общего маршрута — Engineer, Client/artist с телефона, A&R/label. Единая вступительная фраза «Представь, что это твой текущий проект…», без объяснения интерфейса. Запись **дословных формулировок** — как готовые тексты для UI/onboarding/email. Отдельный чек-лист лендинга: понятен ли «Max for Live panel prototype», не воспринимается ли marketplace как главное, доходят ли до roadmap с 4 колонками.
 
+## Фаза 16 — `snd push` (ветка `snd-project-push`) + находки GitHub Ableton
+
+**`snd push` — пуш полного DAW-проекта одним versioned-коммитом (ветка `snd-project-push`):**
+- CLI `backend/snd` + `backend/snd_cli.py` (чистый stdlib): `snd login` / `snd push <dir> --project "Name" --message "v12"` / `--include-media`.
+- **Локальный парсинг DAW** перед загрузкой: треки, инструменты, плагины И их настройки (REAPER `<PARAM name=… val=…/>` — реальное состояние инстанса; Ableton `PresetRef` → файлы пресетов типа `Neon Lead.xvl`).
+- Push в `POST /api/projects/{id}/push` одним коммитом + `SOUNDHUB-MANIFEST.json` (структура: files, daws → tracks/plugins/params/presets) в дереве коммита; сервер ре-анализирует файлы для tree/diff.
+- UX-фикс: `--project "Имя"` на первой заливке авто-создаёт проект (было «not found»). Парсер REAPER: `<TEMPO 128 4 4` без `>` — regex исправлен.
+- Проверено на живом сервере: `✓ pushed “Neon Warehouse” — commit #1 · 3 files · main; RPP: Neon.rpp — 2 tracks, 3 plugins, 3 plugins with settings`. 96 backend-тестов зелёные.
+
+**Изучен GitHub-организации Ableton (29 репозиториев):** почти всё — внутренняя инфра (Ansible/Jenkins), нерелевантно. Применимы четыре:
+1. **`Ableton/web-audio-sequencing` (MIT)** — lookahead-планирование на часах AudioContext. **Применено сразу:** оба Web Audio плеера (`ABCompare.tsx`, `ReferenceCompare.tsx`) переведены с «RAF-тик ловит границу loop и перезапускает source с зазором» на планировщик сегментов (`start(when)`/`stop(when)` на точных временах аудио-часов, горизонт 0.15 с) — loop-регион теперь gapless, без frame-квантования и дрейфа. Frontend build зелёный.
+2. **`Ableton/m4l-connection-kit` (MIT)** — примеры M4L-устройств, связывающих Live с внешним миром через **OSC** и **JSON API**; зафиксирован как референс транспорта для будущего «review comments in the DAW» панели (не интегрируется сейчас).
+3. **`Ableton/maxdevtools` (MIT, Python)** — CI-инструменты сборки Max-пакетов; кандидат на замену самопального `build_amxd.py` при релизе реальной панели.
+4. **`Ableton/Link`** — **не берём**: требует лицензионного соглашения и не про review/delivery.
+
+Все три находки задокументированы в `m4l/README.md`.
+
 **Ещё две правки перед интервью:** footer-ссылки DAW приведены к integrations (Ableton Live · available, FL Studio/Cubase/REAPER · planned — убрано «REAPER · Q4 2026»); ссылка «Demo session» в footer унифицирована на публичный `/r/demo-review-token` (как все CTA) вместо `/session`. Позже убрана ссылка «Community → /dao» из footer (реального community hub нет, DAO governance — в Later; роут остаётся только в топбаре для залогиненных).
 
 **Правки перед стартом тестов:** CLI **не обязателен** в первом тесте инженера — основной сценарий идёт через web-flow (UI upload, сравнение, package+QC), CLI только для инженеров, живущих в терминале, с вопросом «в какой момент реальной DAW-работы ты бы запустил эту команду?» (это определит, нужен ли CLI как продукт или только как фундамент Max for Live). В лендинг-тест добавлен вопрос **«Что это за продукт и кому он нужен?»** после 10–15 сек; при 2/3 ответах «магазин пресетов» — marketplace уменьшается вдвое, escrow/on-chain копии уходят в docs, CTA в топ-навигации меняется на «How it works»/«Open review». **Integrations приведены к реальности:** Ableton/CLI — available now; FL Studio, Cubase, REAPER — planned без конкретных обещаний (убраны MIDI scripting device / web panel / Q4 2026). Сводная таблица болей + правило фиксов: только 2+ повтора или полный блок сценария.
