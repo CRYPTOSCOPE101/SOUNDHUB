@@ -294,3 +294,89 @@ def test_webhook_unknown_package_noop(client):
     )
     assert r.status_code == 200
     assert r.json()["handled"] is False
+
+
+def test_session_checkout_deposit_and_extra_round(client, monkeypatch):
+    from app.services import stripe_pay
+
+    created = {}
+
+    def fake_create(**kw):
+        created.update(kw)
+        return "cs_test_sess", "https://checkout.stripe.com/c/pay/cs_test_sess"
+
+    monkeypatch.setattr(stripe_pay, "create_checkout_session", fake_create)
+    token = _register(client)
+    s = client.post("/api/sessions", json={"name": "Deposit session"}, headers=_auth(token)).json()
+
+    # deposit checkout (owner)
+    client.patch(f"/api/sessions/{s['id']}/share", json={"deposit_due_cents": 5000}, headers=_auth(token))
+    r = client.post(f"/api/sessions/{s['id']}/checkout", data={"kind": "deposit"}, headers=_auth(token))
+    assert r.status_code == 200
+    assert r.json()["amount_due_cents"] == 5000
+    assert created["metadata"] == {"kind": "deposit"}
+
+    # public checkout by share token (client without account)
+    share = client.get(f"/api/sessions/{s['id']}", headers=_auth(token)).json()["share_token"]
+    r = client.post(
+        f"/api/sessions/public/{share}/checkout",
+        data={"kind": "deposit", "success_url": "https://soundhub.app/r/x?paid=1"},
+    )
+    assert r.status_code == 200
+    assert r.json()["amount_due_cents"] == 5000
+
+    # webhook marks the deposit paid
+    event = {
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "id": "cs_test_sess",
+                "metadata": {"session_id": str(s["id"]), "kind": "deposit", "package_id": "0"},
+            }
+        },
+    }
+    body, sig = _signed_event(event)
+    r = client.post(
+        "/api/release-packages/webhooks/stripe",
+        content=body,
+        headers={"stripe-signature": sig},
+    )
+    assert r.status_code == 200
+    assert r.json()["handled"] is True
+    detail = client.get(f"/api/sessions/{s['id']}", headers=_auth(token)).json()
+    assert detail["deposit_status"] == "paid"
+
+    # extra-round checkout + webhook increments rounds_paid
+    client.patch(
+        f"/api/sessions/{s['id']}/share",
+        json={"extra_round_price_cents": 2500},
+        headers=_auth(token),
+    )
+    r = client.post(f"/api/sessions/{s['id']}/checkout", data={"kind": "extra_round"}, headers=_auth(token))
+    assert r.status_code == 200
+    assert r.json()["amount_due_cents"] == 2500
+
+    event = {
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "id": "cs_x",
+                "metadata": {"session_id": str(s["id"]), "kind": "extra_round", "package_id": "0"},
+            }
+        },
+    }
+    body, sig = _signed_event(event)
+    r = client.post(
+        "/api/release-packages/webhooks/stripe",
+        content=body,
+        headers={"stripe-signature": sig},
+    )
+    assert r.status_code == 200
+    assert r.json()["handled"] is True
+    detail = client.get(f"/api/sessions/{s['id']}", headers=_auth(token)).json()
+    assert detail["rounds_paid"] == 1
+
+    # deposit checkout without a due deposit → 400
+    s2 = client.post("/api/sessions", json={"name": "No deposit"}, headers=_auth(token)).json()
+    r = client.post(f"/api/sessions/{s2['id']}/checkout", data={"kind": "deposit"}, headers=_auth(token))
+    assert r.status_code == 400

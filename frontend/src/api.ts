@@ -9,6 +9,9 @@ import type {
   Diff,
   LedgerResponse,
   LedgerVerify,
+  Portfolio,
+  ReferenceComparison,
+  ReferenceTrack,
   VersionComparison,
   GhBranch,
   GhCommit,
@@ -215,11 +218,106 @@ export const api = {
       included_rounds?: number;
       rounds_open?: boolean;
       feedback_due_at?: string | null;
+      deposit_due_cents?: number | null;
+      deposit_status?: string;
+      extra_round_price_cents?: number | null;
+      rounds_paid?: number;
+      portfolio_public?: boolean;
+      watermark_enabled?: boolean;
     }
   ) =>
     request<ReviewSession>(`/api/sessions/${id}/share`, {
       method: "PATCH",
       body: JSON.stringify(opts),
+    }),
+  updateBrief: (
+    id: number,
+    opts: {
+      service_type: string;
+      genre?: string;
+      goal?: string;
+      deadline_at?: string | null;
+      review_start_at?: string | null;
+      reference_links?: string;
+      do_not_change?: string;
+      required_deliverables?: string;
+    }
+  ) =>
+    request<ReviewSession>(`/api/sessions/${id}/brief`, {
+      method: "PATCH",
+      body: JSON.stringify(opts),
+    }),
+  createSessionCheckout: (id: number, kind: "deposit" | "extra_round") => {
+    const fd = new FormData();
+    fd.append("kind", kind);
+    return request<CheckoutOut>(`/api/sessions/${id}/checkout`, { method: "POST", body: fd });
+  },
+  publicSessionCheckout: (token: string, kind: "deposit" | "extra_round") => {
+    const fd = new FormData();
+    fd.append("kind", kind);
+    return request<CheckoutOut>(`/api/sessions/public/${token}/checkout`, { method: "POST", body: fd });
+  },
+  // public engineer portfolio
+  portfolioGet: (username: string) => request<Portfolio>(`/api/portfolio/${encodeURIComponent(username)}`),
+  portfolioPreviewUrl: (username: string, versionId: number) =>
+    `/api/portfolio/${encodeURIComponent(username)}/preview/${versionId}`,
+  // reference tracks (mix/reference A/B)
+  listReferences: (sessionId: number) => request<ReferenceTrack[]>(`/api/sessions/${sessionId}/references`),
+  createReferenceUrl: (
+    sessionId: number,
+    opts: { title: string; artist?: string; external_url: string; purpose?: string; visibility?: string; note?: string }
+  ) =>
+    request<ReferenceTrack>(`/api/sessions/${sessionId}/references`, {
+      method: "POST",
+      body: JSON.stringify({ source_type: "external_url", ...opts }),
+    }),
+  uploadReference: (
+    sessionId: number,
+    opts: { title: string; artist?: string; purpose?: string; visibility?: string; note?: string; file: File }
+  ) => {
+    const fd = new FormData();
+    fd.append("title", opts.title);
+    fd.append("artist", opts.artist ?? "");
+    fd.append("purpose", opts.purpose ?? "overall");
+    fd.append("visibility", opts.visibility ?? "reviewers");
+    fd.append("note", opts.note ?? "");
+    fd.append("file", opts.file);
+    return request<ReferenceTrack>(`/api/sessions/${sessionId}/references/upload`, { method: "POST", body: fd });
+  },
+  updateReference: (sessionId: number, referenceId: number, opts: { title?: string; artist?: string; external_url?: string; purpose?: string; visibility?: string; note?: string }) =>
+    request<ReferenceTrack>(`/api/sessions/${sessionId}/references/${referenceId}`, {
+      method: "PATCH",
+      body: JSON.stringify(opts),
+    }),
+  deleteReference: (sessionId: number, referenceId: number) =>
+    request<void>(`/api/sessions/${sessionId}/references/${referenceId}`, { method: "DELETE" }),
+  referenceAudioUrl: (sessionId: number, referenceId: number) =>
+    `/api/sessions/${sessionId}/references/${referenceId}/audio`,
+  createReferenceComparison: (sessionId: number, opts: { versionId: number; referenceId: number; startMs: number; endMs?: number | null; levelMatch?: string }) =>
+    request<ReferenceComparison>(`/api/sessions/${sessionId}/references/compare`, {
+      method: "POST",
+      body: JSON.stringify({
+        version_id: opts.versionId,
+        reference_id: opts.referenceId,
+        start_ms: opts.startMs,
+        end_ms: opts.endMs ?? null,
+        level_match: opts.levelMatch ?? "short_term_lufs",
+      }),
+    }),
+  // public share references (guests / reviewers)
+  publicReferences: (token: string) => request<ReferenceTrack[]>(`/api/sessions/public/${token}/references`),
+  publicReferenceAudioUrl: (token: string, referenceId: number) =>
+    `/api/sessions/public/${token}/references/${referenceId}/audio`,
+  publicReferenceComparison: (token: string, opts: { versionId: number; referenceId: number; startMs: number; endMs?: number | null; levelMatch?: string }) =>
+    request<ReferenceComparison>(`/api/sessions/public/${token}/references/compare`, {
+      method: "POST",
+      body: JSON.stringify({
+        version_id: opts.versionId,
+        reference_id: opts.referenceId,
+        start_ms: opts.startMs,
+        end_ms: opts.endMs ?? null,
+        level_match: opts.levelMatch ?? "short_term_lufs",
+      }),
     }),
   carryUnresolved: (id: number, versionId: number) =>
     request<ReviewVersion>(`/api/sessions/${id}/versions/${versionId}/carry`, {
@@ -356,8 +454,11 @@ export const api = {
     }),
   createCheckout: (packageId: number) =>
     request<CheckoutOut>(`/api/release-packages/${packageId}/checkout`, { method: "POST" }),
-  publicCheckout: (token: string) =>
-    request<CheckoutOut>(`/api/release-packages/public/${token}/checkout`, { method: "POST" }),
+  publicCheckout: (token: string, kind: "package" | "deposit" = "package") => {
+    const fd = new FormData();
+    fd.append("kind", kind);
+    return request<CheckoutOut>(`/api/release-packages/public/${token}/checkout`, { method: "POST", body: fd });
+  },
   releaseDownloadUrl: (packageId: number, deliverableId: number) =>
     `/api/release-packages/${packageId}/download?deliverable_id=${deliverableId}`,
   // public delivery link

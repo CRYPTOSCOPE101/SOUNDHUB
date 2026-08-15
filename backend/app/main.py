@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import init_db
-from .routers import assets, auth, comparisons, diffs, files, projects, release_packages, sessions
+from .routers import assets, auth, comparisons, diffs, files, portfolio, projects, references, release_packages, sessions
 
 app = FastAPI(
     title="SoundHub API",
@@ -28,6 +28,8 @@ app.include_router(assets.router)
 app.include_router(sessions.router)
 app.include_router(release_packages.router)
 app.include_router(comparisons.router)
+app.include_router(portfolio.router)
+app.include_router(references.router)
 
 
 @app.on_event("startup")

@@ -4068,3 +4068,539 @@ pre.diff-raw code {
     border-top: 1px solid #262b33;
   }
 }
+
+/* ================= Phase 9: watermark, deposits/paid rounds, portfolio, kettle ================= */
+
+/* watermark chip */
+.rs-wm-chip {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 166, 61, 0.14);
+  color: #ffa63d;
+  border: 1px solid rgba(255, 166, 61, 0.35);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.rs-file-meta .rs-wm-chip {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* pay prompts (extra round / deposit) */
+.rs-pay-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 166, 61, 0.08);
+  border: 1px dashed rgba(255, 166, 61, 0.4);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: #ffd9a8;
+}
+.rs-pay-prompt .rs-btn.approve {
+  background: #ffa63d;
+  color: #17191d;
+}
+.rs-pay-prompt .rs-btn.approve:hover {
+  background: #ffb85c;
+}
+
+/* checkbox rows in share settings */
+.rs-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #a7abb5;
+  margin: 8px 0;
+  cursor: pointer;
+}
+.rs-check input {
+  margin-top: 2px;
+  accent-color: #ffd900;
+}
+
+/* round bar deposit status */
+.rs-round-stat.due {
+  color: #ffa63d;
+  font-weight: 700;
+}
+.rs-round-stat.open {
+  color: #3ddc84;
+}
+
+/* public review watermark notice */
+.public-review-note.wm {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  background: rgba(255, 166, 61, 0.08);
+  border: 1px solid rgba(255, 166, 61, 0.3);
+  border-radius: 8px;
+  color: #ffd9a8;
+}
+
+/* ---------- public portfolio ---------- */
+.portfolio {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+.portfolio-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 28px 0 32px;
+}
+.portfolio-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffd900, #ffa63d);
+  color: #17191d;
+  font-size: 28px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.portfolio-name {
+  margin: 0;
+  font-size: 26px;
+}
+.portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.portfolio-card {
+  background: #14161b;
+  border: 1px solid #262b33;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.portfolio-card.ok {
+  border-color: rgba(61, 220, 132, 0.35);
+}
+.portfolio-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.portfolio-card-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+.portfolio-card-meta {
+  font-size: 12.5px;
+  color: #a7abb5;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.portfolio-card-meta.muted {
+  color: #6b7280;
+}
+.portfolio-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+.portfolio-audio {
+  display: none;
+}
+.portfolio-note {
+  margin-top: 32px;
+  font-size: 12.5px;
+  text-align: center;
+}
+
+/* ---------- kettle ---------- */
+.kettle {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.kettle .landing {
+  flex: 1;
+}
+.kettle-hero {
+  text-align: center;
+  padding: 56px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.kettle-logo {
+  margin-bottom: 18px;
+  filter: drop-shadow(0 6px 18px rgba(255, 217, 0, 0.18));
+}
+.kettle-sub {
+  max-width: 640px;
+}
+.kettle-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: 760px;
+  margin: 28px auto 0;
+  padding: 16px 20px;
+  background: rgba(255, 217, 0, 0.07);
+  border: 1px solid rgba(255, 217, 0, 0.3);
+  border-radius: 12px;
+  font-size: 14.5px;
+  color: #e8e8f0;
+}
+.kettle-banner-icon {
+  font-size: 22px;
+}
+.kettle-glossary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+.kettle-term {
+  background: #14161b;
+  border: 1px solid #262b33;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.kettle-term h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #ffd900;
+}
+.kettle-term p {
+  margin: 0;
+  font-size: 13px;
+  color: #a7abb5;
+  line-height: 1.5;
+}
+
+/* light theme tweaks for the new bits */
+[data-theme="light"] .portfolio-card,
+[data-theme="light"] .kettle-term {
+  background: #ffffff;
+  border-color: #e2e5ec;
+}
+[data-theme="light"] .kettle-term h3 {
+  color: #b8860b;
+}
+[data-theme="light"] .rs-pay-prompt,
+[data-theme="light"] .public-review-note.wm {
+  background: rgba(255, 166, 61, 0.08);
+  border-color: rgba(255, 166, 61, 0.45);
+  color: #8a4d0a;
+}
+[data-theme="light"] .rs-wm-chip {
+  background: rgba(255, 166, 61, 0.12);
+  border-color: rgba(255, 166, 61, 0.5);
+  color: #a85f10;
+}
+
+/* ================= Client brief (expectations before the first bounce) ================= */
+
+.rs-brief {
+  border-top: 1px solid #262b33;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rs-brief-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+.rs-brief-preset {
+  font-size: 12px;
+  color: #a7abb5;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rs-brief label {
+  font-size: 12px;
+  color: #a7abb5;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* public brief block — the client sees the agreed rules */
+.public-brief {
+  margin: 14px 0 4px;
+  padding: 14px 16px;
+  background: #14161b;
+  border: 1px solid #2c3242;
+  border-left: 3px solid #ffd900;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.public-brief-head {
+  font-weight: 700;
+  font-size: 13px;
+  color: #e8e8f0;
+}
+.public-brief-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.public-brief-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: #1d2230;
+  border: 1px solid #343c4e;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  color: #e8e8f0;
+}
+.public-brief-key {
+  color: #6b7280;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.public-brief-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  color: #e8e8f0;
+}
+.public-brief-link {
+  color: #6ba3d8;
+  text-decoration: none;
+  margin-right: 10px;
+}
+.public-brief-link:hover {
+  text-decoration: underline;
+}
+.public-brief-dnc {
+  font-size: 12.5px;
+  color: #ffd9a8;
+  background: rgba(255, 166, 61, 0.08);
+  border: 1px solid rgba(255, 166, 61, 0.3);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+[data-theme="light"] .public-brief {
+  background: #ffffff;
+  border-color: #e2e5ec;
+}
+[data-theme="light"] .public-brief-chip {
+  background: #f5f6fa;
+  border-color: #e2e5ec;
+}
+
+/* ================= Reference tracks (mix/reference A/B) ================= */
+
+.rs-refs {
+  border-top: 1px solid #262b33;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rs-ref-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rs-ref-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  background: #17191d;
+  border: 1px solid #262b33;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.rs-ref-main {
+  min-width: 0;
+}
+.rs-ref-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: #e8e8f0;
+}
+.rs-ref-artist {
+  color: #8b929c;
+  font-weight: 400;
+}
+.rs-ref-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: #a7abb5;
+}
+.rs-ref-purpose {
+  color: #6ba3d8;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  background: rgba(58, 110, 165, 0.14);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+.rs-ref-vis {
+  color: #8b929c;
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+.rs-ref-metric {
+  color: #3ddc84;
+  font-family: ui-monospace, monospace;
+}
+.rs-ref-note {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #8b929c;
+}
+.rs-ref-link {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6ba3d8;
+  text-decoration: none;
+}
+.rs-ref-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: none;
+}
+.rs-ref-add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rs-ref-add-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rs-ref-disclaimer {
+  margin: 0;
+  font-size: 10.5px;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+/* reference comparison player extras */
+.ref-metrics {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #a7abb5;
+  font-family: ui-monospace, monospace;
+}
+.ref-disclaimer {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+/* guest references block */
+.public-refs {
+  margin: 16px 0 4px;
+  padding: 14px 16px;
+  background: #14161b;
+  border: 1px solid #2c3242;
+  border-left: 3px solid #6ba3d8;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.public-refs-head {
+  font-weight: 700;
+  font-size: 13px;
+  color: #e8e8f0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.public-refs-note {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 400;
+}
+.public-ref {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #1d2230;
+  border: 1px solid #343c4e;
+  border-radius: 8px;
+  padding: 10px 12px;
+  flex-wrap: wrap;
+}
+.public-ref-info {
+  min-width: 0;
+}
+.public-ref-title {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+.public-ref-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  color: #a7abb5;
+  margin-top: 3px;
+  font-family: ui-monospace, monospace;
+}
+.public-ref-note {
+  font-size: 12px;
+  color: #8b929c;
+  margin-top: 3px;
+}
+.public-ref-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.public-ref-audio {
+  height: 36px;
+  max-width: 240px;
+}
+
+[data-theme="light"] .rs-ref-row,
+[data-theme="light"] .public-refs,
+[data-theme="light"] .public-ref {
+  background: #ffffff;
+  border-color: #e2e5ec;
+}

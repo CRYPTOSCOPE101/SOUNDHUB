@@ -136,6 +136,9 @@ class ReviewSession(Base):
     release_packages: Mapped[list["ReleasePackage"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
+    references: Mapped[list["ReferenceTrack"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
 
     # Share-link settings (professional review links)
     share_password: Mapped[str | None] = mapped_column(String(256), nullable=True)
@@ -147,8 +150,30 @@ class ReviewSession(Base):
     round_number: Mapped[int] = mapped_column(Integer, default=1)
     feedback_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     feedback_owner: Mapped[str] = mapped_column(String(128), default="")  # who consolidates draft notes
-    included_rounds: Mapped[int] = mapped_column(Integer, default=1)  # paid/included rounds
+    included_rounds: Mapped[int] = mapped_column(Integer, default=1)  # paid/included revision rounds
     rounds_open: Mapped[bool] = mapped_column(default=True)  # can clients still add notes?
+
+    # Booking deposit ("new job, not a revision" — engineers ask for a deposit upfront)
+    deposit_due_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    deposit_status: Mapped[str] = mapped_column(String(32), default="none")  # none | deposit_due | paid | waived
+
+    # Paid extra revision rounds (beyond included_rounds)
+    extra_round_price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rounds_paid: Mapped[int] = mapped_column(Integer, default=0)  # extra rounds already paid for
+
+    # Public portfolio (showcase of approved work) + preview protection
+    portfolio_public: Mapped[bool] = mapped_column(default=False)
+    watermark_enabled: Mapped[bool] = mapped_column(default=True)
+
+    # Client brief — expectations fixed before the first bounce
+    service_type: Mapped[str] = mapped_column(String(32), default="mix")  # mix | master | mix_master | production | stems
+    genre: Mapped[str] = mapped_column(String(128), default="")
+    goal: Mapped[str] = mapped_column(String(64), default="")  # streaming | label | sync | dj | social | other
+    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reference_links: Mapped[str] = mapped_column(Text, default="")  # one per line
+    do_not_change: Mapped[str] = mapped_column(Text, default="")  # e.g. "don't touch the vocal balance"
+    required_deliverables: Mapped[str] = mapped_column(Text, default="")  # comma-separated: master, instrumental…
 
 
 class ReviewVersion(Base):
@@ -167,6 +192,7 @@ class ReviewVersion(Base):
     audio_format: Mapped[str] = mapped_column(String(16), default="wav")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     round_number: Mapped[int] = mapped_column(Integer, default=1)
+    watermark_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)  # cached watermarked preview blob
 
     __table_args__ = (UniqueConstraint("session_id", "number", name="uq_review_version_number"),)
 
@@ -227,6 +253,73 @@ class ReviewRound(Base):
     __table_args__ = (UniqueConstraint("session_id", "number", name="uq_review_round_number"),)
 
     session: Mapped["ReviewSession"] = relationship(back_populates="rounds")
+
+
+class ReferenceTrack(Base):
+    """A reference track for mix/reference comparison.
+
+    References are private to the review session and by construction
+    NON-DELIVERABLE: they live in their own table, are never linked from
+    `release_deliverables` (which only references `review_versions`), and are
+    never exposed on the public delivery link. A server-side guard in the
+    deliverable endpoints keeps it that way.
+
+    source_type: external_url (just a link, opened separately) or
+    private_upload (a file the user has rights to, used for in-app A/B).
+    """
+
+    __tablename__ = "reference_tracks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    artist: Mapped[str] = mapped_column(String(128), default="")
+    source_type: Mapped[str] = mapped_column(String(16))  # external_url | private_upload
+    external_url: Mapped[str] = mapped_column(String(2000), default="")
+    blob_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)  # private_upload only
+    filename: Mapped[str] = mapped_column(String(256), default="")
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    audio_format: Mapped[str] = mapped_column(String(16), default="")
+    duration_s: Mapped[float] = mapped_column(default=0.0)
+    purpose: Mapped[str] = mapped_column(String(32), default="overall")  # balance | low_end | vocal | width | arrangement | overall
+    visibility: Mapped[str] = mapped_column(String(32), default="reviewers")  # engineer_only | reviewers
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_by: Mapped[str] = mapped_column(String(128), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # loudness analysis (same measurements as versions — neutral, no scoring)
+    integrated_lufs: Mapped[float | None] = mapped_column(nullable=True)
+    true_peak_dbtp: Mapped[float | None] = mapped_column(nullable=True)
+    sample_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    channels: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    analysis_status: Mapped[str] = mapped_column(String(16), default="pending")  # pending | done | unavailable
+
+    session: Mapped["ReviewSession"] = relationship(back_populates="references")
+
+
+class ReferenceComparison(Base):
+    """A level-matched A/B between a mix version and a private reference.
+
+    Gains are derived from loudness and applied ONLY in the Web Audio preview
+    graph — the mix and the reference files are never modified.
+    """
+
+    __tablename__ = "reference_comparisons"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"))
+    reference_id: Mapped[int] = mapped_column(ForeignKey("reference_tracks.id"))
+    start_ms: Mapped[int] = mapped_column(Integer, default=0)
+    end_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    mix_gain_db: Mapped[float] = mapped_column(default=0.0)
+    ref_gain_db: Mapped[float] = mapped_column(default=0.0)
+    level_match: Mapped[str] = mapped_column(String(32), default="none")
+    short_term_lufs: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    session: Mapped["ReviewSession"] = relationship()
+    version: Mapped["ReviewVersion"] = relationship()
+    reference: Mapped["ReferenceTrack"] = relationship()
 
 
 class ReviewApproval(Base):

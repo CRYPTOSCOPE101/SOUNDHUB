@@ -48,7 +48,7 @@ const MARKET_BENEFITS = [
 ];
 
 const INTEGRATIONS = [
-  { name: "Ableton Live", status: "prototype", detail: "Max for Live — review comments, catalog & buy & load in the DAW", when: "coming next" },
+  { name: "Ableton Live", status: "prototype", detail: "Max for Live catalog panel — review comments in the DAW are next", when: "panel prototype now" },
   { name: "FL Studio", status: "prototype", detail: "MIDI scripting device + file bridge", when: "beta 2026" },
   { name: "Cubase", status: "prototype", detail: "MIDI Remote script + web panel", when: "beta 2026" },
   { name: "REAPER", status: "planned", detail: "ReaScript — file & HTTP access", when: "Q4 2026" },
@@ -92,13 +92,21 @@ const ROADMAP = [
       "Revision rounds: consolidated feedback",
       "Release package: lock approved master + delivery link",
       "Loudness-matched A/B compare (full mix & stems)",
+      "Stems + loop regions, matched by logical name",
+      "Reference tracks: mix vs reference A/B (private, non-deliverable)",
+      "Client brief + service presets + revision rules",
+      "Booking deposit + paid extra rounds",
+      "Watermarked previews, public engineer portfolio",
       "Stripe paid delivery: card / Apple Pay / Google Pay",
       "Private share links & access audit",
-      "Private beta on Base Sepolia",
     ],
     state: "live",
   },
-  { phase: "Next", items: ["Loop regions on stems", "Ableton integration for comments", "USDC checkout"], state: "next" },
+  {
+    phase: "Next",
+    items: ["Voice notes & mobile-first guest review", "Email reminders & deadlines", "Release-package templates", "Roles & approval chains for labels", "USDC checkout", "Max for Live: review comments in the DAW"],
+    state: "next",
+  },
   { phase: "Later", items: ["REAPER integration", "Mainnet + security audit", "Seller reputation & packs", "DAO governance"], state: "later" },
 ];
 
@@ -197,6 +205,7 @@ export default function LandingPage() {
           ))}
         </div>
         <div className="landing-nav-cta">
+          <Link to="/kettle">🫖 Kettle</Link>
           <Link to="/login">Sign in</Link>
           <Link to="/login" className="landing-nav-get">Try demo project</Link>
         </div>
@@ -226,7 +235,7 @@ export default function LandingPage() {
           <div className="landing-proof">
             <span>No account for reviewers</span>
             <span>WAV, MP3 &amp; stems</span>
-            <span>Ableton integration</span>
+            <span>Max for Live panel prototype</span>
           </div>
         </div>
 
@@ -451,6 +460,7 @@ export default function LandingPage() {
             <Link to="/session">Demo session</Link>
             <Link to="/market">Marketplace</Link>
             <Link to="/dao">Community</Link>
+            <Link to="/kettle">🫖 Kettle for beginners</Link>
           </div>
         </div>
         <p className="landing-footer-bottom muted">
