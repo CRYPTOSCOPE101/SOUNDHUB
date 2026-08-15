@@ -112,6 +112,54 @@ export interface Diff {
   truncated: boolean;
 }
 
+export interface ReviewComment {
+  id: number;
+  version_id: number;
+  time_s: number;
+  body: string;
+  resolved: boolean;
+  author_name: string;
+  parent_id: number | null;
+  created_at: string;
+}
+
+export interface ReviewVersion {
+  id: number;
+  session_id: number;
+  number: number;
+  label: string;
+  message: string;
+  status: string;
+  filename: string;
+  size: number;
+  duration_s: number;
+  audio_format: string;
+  created_at: string;
+  waveform: number[];
+  waveform_synthetic: boolean;
+  comments: ReviewComment[];
+}
+
+export interface ReviewSession {
+  id: number;
+  project_id: number | null;
+  name: string;
+  status: string;
+  share_token: string;
+  created_at: string;
+  updated_at: string;
+  owner_username: string;
+  version_count: number;
+  latest_status: string;
+  versions?: ReviewVersion[];
+}
+
+export function fmtTime(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
 export function humanSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB", "TB"];
