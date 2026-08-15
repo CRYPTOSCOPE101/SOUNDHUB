@@ -6,6 +6,7 @@ import CommitPage from "./pages/CommitPage";
 import DiffPage from "./pages/DiffPage";
 import DAOPage from "./pages/DAOPage";
 import GitHubRepoPage from "./pages/GitHubRepoPage";
+import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import MarketplacePage from "./pages/MarketplacePage";
 import ProjectPage from "./pages/ProjectPage";
@@ -39,11 +40,12 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <Link to="/projects" className="logo" title="SoundHub">
+          <Link to="/" className="logo" title="SoundHub">
             S
           </Link>
-          <Link to="/projects">SoundHub</Link>
-          <span className="tagline">version control for music</span>
+          <Link to="/">SoundHub</Link>
+          {!user && <span className="tagline">buy finished sound</span>}
+          {user && <span className="tagline">version control for music</span>}
         </div>
         {user && (
           <div className="userbox">
@@ -65,9 +67,20 @@ export default function App() {
             </button>
           </div>
         )}
+        {!user && (
+          <div className="userbox">
+            <Link to="/login" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
+              Sign in
+            </Link>
+            <Link to="/login" className="btn" style={{ padding: "6px 12px", fontSize: 13 }}>
+              Get started
+            </Link>
+          </div>
+        )}
       </header>
       <main className="content">
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/projects"
@@ -133,7 +146,7 @@ export default function App() {
               </RequireAuth>
             }
           />
-          <Route path="*" element={<Navigate to="/projects" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>
