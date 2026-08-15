@@ -156,11 +156,14 @@ function ReleasePackagePanel({
   const [copied, setCopied] = useState(false);
   const [showManifest, setShowManifest] = useState(false);
   const [manifest, setManifest] = useState<{ manifest_json: Record<string, unknown>; manifest_hash: string } | null>(null);
+  const [invoiceAmountCents, setInvoiceAmountCents] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
       const list = await api.listReleasePackages(sessionId);
-      setPkg(list.find((p) => p.approved_version_id === version.id) ?? list[0] ?? null);
+      const p = list.find((p) => p.approved_version_id === version.id) ?? list[0] ?? null;
+      setPkg(p);
+      setInvoiceAmountCents(p?.amount_due_cents ?? null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load packages");
     }
@@ -348,7 +351,7 @@ function ReleasePackagePanel({
                 <select
                   value={pkg.invoice_status}
                   onChange={(e) => {
-                    void api.setInvoiceStatus(pkg.id, e.target.value).then(load);
+                    void api.setInvoiceStatus(pkg.id, e.target.value, invoiceAmountCents, pkg.currency).then(load);
                   }}
                   className="rs-select"
                   style={{ margin: 0 }}
@@ -360,6 +363,43 @@ function ReleasePackagePanel({
                   <option value="waived">waived</option>
                 </select>
               </label>
+              {(pkg.invoice_status === "balance_due" || pkg.invoice_status === "deposit_due") && (
+                <span className="rs-release-invoice-amount">
+                  <input
+                    type="number"
+                    min={0}
+                    value={invoiceAmountCents ?? ""}
+                    placeholder={`amount (${pkg.currency} cents)`}
+                    onChange={(e) => setInvoiceAmountCents(e.target.value === "" ? null : Number(e.target.value))}
+                    className="rs-input"
+                    style={{ width: 120, margin: 0 }}
+                  />
+                  <button
+                    type="button"
+                    className="rs-btn ghost sm"
+                    onClick={() =>
+                      void api.setInvoiceStatus(pkg.id, pkg.invoice_status, invoiceAmountCents, pkg.currency).then(load)
+                    }
+                  >
+                    save amount
+                  </button>
+                  <button
+                    type="button"
+                    className="rs-btn approve sm"
+                    onClick={async () => {
+                      try {
+                        const c = await api.createCheckout(pkg.id);
+                        window.location.href = c.checkout_url;
+                      } catch (e) {
+                        setErr(e instanceof Error ? e.message : "Checkout failed");
+                      }
+                    }}
+                    title="Open Stripe Checkout (card / Apple Pay / Google Pay)"
+                  >
+                    💳 Open checkout
+                  </button>
+                </span>
+              )}
             </div>
           )}
           {showManifest && manifest && (

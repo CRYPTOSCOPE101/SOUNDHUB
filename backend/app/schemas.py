@@ -361,6 +361,8 @@ class ReleasePackageOut(BaseModel):
     name: str
     status: str
     invoice_status: str = "none"
+    amount_due_cents: int | None = None
+    currency: str = "usd"
     immutable_at: datetime | None = None
     manifest_hash: str | None = None
     delivery_token: str | None = None
@@ -386,6 +388,8 @@ class DeliveryPageOut(BaseModel):
     name: str
     status: str
     invoice_status: str = "none"
+    amount_due_cents: int | None = None
+    currency: str = "usd"
     locked_by: str = ""
     immutable_at: datetime | None = None
     manifest_hash: str | None = None
@@ -396,6 +400,17 @@ class DeliveryPageOut(BaseModel):
 
 class DeliveryInvoiceUpdate(BaseModel):
     invoice_status: str = Field(pattern=r"^(none|deposit_due|balance_due|paid|waived)$")
+    amount_due_cents: int | None = Field(default=None, ge=0, le=100_000_000)  # 1M USD max
+    currency: str = Field(default="usd", max_length=8)
+
+
+class CheckoutOut(BaseModel):
+    """A Stripe Checkout session ready for redirect."""
+
+    checkout_url: str
+    session_id: str
+    amount_due_cents: int
+    currency: str
 
 
 # ---------- Diff ----------

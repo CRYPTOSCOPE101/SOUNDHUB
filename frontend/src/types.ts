@@ -236,6 +236,8 @@ export interface ReleasePackage {
   name: string;
   status: string;
   invoice_status: string;
+  amount_due_cents: number | null;
+  currency: string;
   immutable_at: string | null;
   manifest_hash: string | null;
   delivery_token: string | null;
@@ -250,12 +252,21 @@ export interface DeliveryPage {
   name: string;
   status: string;
   invoice_status: string;
+  amount_due_cents: number | null;
+  currency: string;
   locked_by: string;
   immutable_at: string | null;
   manifest_hash: string | null;
   approved_label: string;
   approved_filename: string;
   deliverables: Deliverable[];
+}
+
+export interface CheckoutOut {
+  checkout_url: string;
+  session_id: string;
+  amount_due_cents: number;
+  currency: string;
 }
 
 export const DELIVERABLE_TYPES = ["master", "instrumental", "acapella", "clean_edit", "stems", "artwork", "other"] as const;

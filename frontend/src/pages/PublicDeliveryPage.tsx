@@ -5,11 +5,15 @@ import { humanSize, shortDate, type DeliveryPage, type Deliverable } from "../ty
 
 export default function PublicDeliveryPage() {
   const { token } = useParams<{ token: string }>();
+  const params = new URLSearchParams(window.location.search);
+  const justPaid = params.get("paid") === "1";
   const [page, setPage] = useState<DeliveryPage | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [downloading, setDownloading] = useState<number | null>(null);
   const [dlErr, setDlErr] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [payErr, setPayErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -51,6 +55,31 @@ export default function PublicDeliveryPage() {
     }
   };
 
+  const pay = async () => {
+    if (!token) return;
+    setPaying(true);
+    setPayErr(null);
+    try {
+      const checkout = await api.publicCheckout(token);
+      window.location.href = checkout.checkout_url;
+    } catch (e) {
+      setPayErr(e instanceof Error ? e.message : "Failed to start checkout");
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const fmtMoney = (cents: number, currency: string) => {
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: currency.toUpperCase(),
+      }).format(cents / 100);
+    } catch {
+      return `${currency.toUpperCase()} ${(cents / 100).toFixed(2)}`;
+    }
+  };
+
   if (err) {
     return (
       <div className="session-page">
@@ -86,6 +115,10 @@ export default function PublicDeliveryPage() {
           {locked && <div className="rs-release-status st-ready">🔒 LOCKED</div>}
         </div>
 
+        {justPaid && page.invoice_status === "paid" && (
+          <div className="public-delivery-paid">✓ Payment received — delivery unlocked.</div>
+        )}
+
         {page.manifest_hash && (
           <div className="public-delivery-manifest">
             Manifest SHA-256: <code>{page.manifest_hash}</code>
@@ -94,10 +127,19 @@ export default function PublicDeliveryPage() {
 
         {gate && (
           <div className="public-delivery-gate">
-            💳 {page.invoice_status === "balance_due" ? "Outstanding balance" : "Deposit due"} — files unlock once the
-            engineer marks the payment received.
+            <div className="public-delivery-gate-text">
+              💳 {page.invoice_status === "balance_due" ? "Outstanding balance" : "Deposit due"}
+              {page.amount_due_cents ? ` — ${fmtMoney(page.amount_due_cents, page.currency)}` : ""}
+              <span className="public-delivery-gate-sub">
+                Pay to unlock the approved files. Card, Apple Pay and Google Pay accepted.
+              </span>
+            </div>
+            <button type="button" className="rs-btn approve" onClick={() => void pay()} disabled={paying}>
+              {paying ? "Opening checkout…" : "💳 Pay with card"}
+            </button>
           </div>
         )}
+        {payErr && <div className="error">{payErr}</div>}
 
         <div className="public-delivery-files">
           {page.deliverables.map((d) => (

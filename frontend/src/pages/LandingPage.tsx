@@ -91,12 +91,14 @@ const ROADMAP = [
       "Review sessions: versions & approvals",
       "Revision rounds: consolidated feedback",
       "Release package: lock approved master + delivery link",
+      "Loudness-matched A/B compare",
+      "Stripe paid delivery: card / Apple Pay / Google Pay",
       "Private share links & access audit",
       "Private beta on Base Sepolia",
     ],
     state: "live",
   },
-  { phase: "Next", items: ["Loudness-matched A/B compare", "Stems & loop regions", "Ableton integration for comments", "Card / USDC checkout"], state: "next" },
+  { phase: "Next", items: ["Stems & loop regions", "Ableton integration for comments", "USDC checkout"], state: "next" },
   { phase: "Later", items: ["REAPER integration", "Mainnet + security audit", "Seller reputation & packs", "DAO governance"], state: "later" },
 ];
 
