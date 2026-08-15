@@ -52,10 +52,10 @@ const MARKET_BENEFITS = [
 ];
 
 const INTEGRATIONS = [
-  { name: "Ableton Live", status: "prototype", detail: "Max for Live catalog panel + `soundhub` CLI (push bounces, export requests, locator helper) — review comments in the DAW are next", when: "panel prototype + CLI now" },
-  { name: "FL Studio", status: "prototype", detail: "MIDI scripting device + file bridge", when: "beta 2026" },
-  { name: "Cubase", status: "prototype", detail: "MIDI Remote script + web panel", when: "beta 2026" },
-  { name: "REAPER", status: "planned", detail: "ReaScript — file & HTTP access", when: "Q4 2026" },
+  { name: "Ableton Live", status: "available", detail: "`soundhub` CLI bridge — push bounces, export open requests, locator helper · Max for Live catalog panel prototype", when: "available now" },
+  { name: "FL Studio", status: "planned", detail: "Planned — no timeline yet", when: "planned" },
+  { name: "Cubase", status: "planned", detail: "Planned — no timeline yet", when: "planned" },
+  { name: "REAPER", status: "planned", detail: "Planned — no timeline yet", when: "planned" },
 ];
 
 const LICENSES = [
