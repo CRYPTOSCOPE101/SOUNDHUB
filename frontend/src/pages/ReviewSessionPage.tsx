@@ -11,6 +11,9 @@ import {
   STEM_LOGICAL_NAMES,
   CHANGE_ORDER_DECISIONS,
   REMINDER_CATEGORIES,
+  APPROVAL_PRESETS,
+  TEAM_ROLES,
+  type ApprovalPolicy,
   type ChangeOrder,
   type LedgerEntry,
   type LedgerVerify,
@@ -25,6 +28,7 @@ import {
   type ReviewComment,
   type ReviewSession,
   type ReviewVersion,
+  type SessionMember,
   type StemAsset,
   type VersionComparison,
 } from "../types";
@@ -107,6 +111,12 @@ function ledgerText(e: LedgerEntry): string {
       return `client dismissed email reminder (${p.kind})`;
     case "reminders.settings_updated":
       return `updated reminder settings — ${p.enabled ? "automation on" : "automation off"}${p.client_email ? ", client email set" : ""}`;
+    case "team.member_invited":
+      return `invited ${p.email} as ${String(p.role).replace(/_/g, " ")}`;
+    case "team.member_removed":
+      return `removed ${p.email} (${String(p.role).replace(/_/g, " ")}) from the team`;
+    case "team.preset_updated":
+      return `switched approval workflow ${String(p.from).replace(/_/g, " ")} → ${String(p.to).replace(/_/g, " ")}`;
     default:
       return e.event.replace(/\./g, " ");
   }
@@ -121,6 +131,7 @@ function ledgerIcon(e: LedgerEntry): string {
   if (e.event.startsWith("change_order")) return "🔄";
   if (e.event.startsWith("deposit")) return "💰";
   if (e.event.startsWith("notification") || e.event.startsWith("reminders")) return "📧";
+  if (e.event.startsWith("team")) return "👥";
   return "✎";
 }
 
@@ -1421,6 +1432,132 @@ function RemindersPanel({ sessionId }: { sessionId: number }) {
   );
 }
 
+const ROLE_SHORT: Record<string, string> = {
+  artist: "Artist",
+  a_r: "A&R",
+  label_admin: "Label admin",
+  producer: "Producer",
+  director: "Director",
+  feedback_owner: "Feedback owner",
+  viewer: "Viewer",
+  engineer: "Engineer",
+  client: "Client",
+};
+
+function TeamPanel({ sessionId }: { sessionId: number }) {
+  const [policy, setPolicy] = useState<ApprovalPolicy | null>(null);
+  const [members, setMembers] = useState<SessionMember[]>([]);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("artist");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const [p, m] = await Promise.all([api.getTeamPolicy(sessionId), api.listMembers(sessionId)]);
+      setPolicy(p);
+      setMembers(m);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to load team");
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await fn();
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Action failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!policy) return <div className="rs-empty">Loading team…</div>;
+
+  return (
+    <div className="rs-team">
+      <div className="rs-versions-head">Team & approval policy <span className="rs-round-stat">who signs off</span></div>
+      <p className="rs-brief-hint">
+        Default is <strong>Solo client</strong> — any reviewer can approve. Switch to a label workflow and the
+        chain gates sign-offs by role: Artist → mix, A&R → master, label admin → release. Sign-offs are bound to
+        the version, so a fresh v14 never inherits v13's approvals.
+      </p>
+      <label>
+        Workflow preset
+        <select
+          value={policy.preset}
+          onChange={(e) => void act(() => api.setApprovalPreset(sessionId, e.target.value))}
+          className="rs-select"
+        >
+          {APPROVAL_PRESETS.map((p) => (
+            <option key={p.id} value={p.id}>{p.label} — {p.description}</option>
+          ))}
+        </select>
+      </label>
+      <div className="rs-team-policy">
+        {Object.entries(policy.policy).map(([scope, roleIds]) => (
+          <div key={scope} className="rs-team-scope">
+            <span className="rs-team-scope-name">{scope}</span>
+            <span className="rs-team-scope-roles">{roleIds.map((r) => ROLE_SHORT[r] ?? r).join(" + ")}</span>
+            <span className={`rs-round-stat ${policy.enforced ? "open" : ""}`}>
+              {policy.enforced ? "🔒 enforced" : "any reviewer"}
+            </span>
+          </div>
+        ))}
+      </div>
+      {policy.enforced && (
+        <div className="rs-round-stat closed" style={{ marginTop: 6 }}>
+          Enforced: approvals require the invited team member's email; release also requires master approved.
+        </div>
+      )}
+      {members.length > 0 && (
+        <div className="rs-team-members">
+          {members.map((m) => (
+            <div key={m.id} className="rs-rem-row">
+              <span className="rs-rem-label">{ROLE_SHORT[m.role] ?? m.role}</span>
+              <span className="rs-rem-sub" style={{ flex: 1 }}>{m.email}</span>
+              <button type="button" className="rs-btn ghost sm" disabled={busy} onClick={() => void act(() => api.removeMember(sessionId, m.id))}>
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="rs-rem-row" style={{ marginTop: 8 }}>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="aisha@label.com — invite by email"
+          className="rs-input"
+          style={{ flex: 1 }}
+        />
+        <select value={role} onChange={(e) => setRole(e.target.value)} className="rs-select">
+          {TEAM_ROLES.map((r) => (
+            <option key={r.id} value={r.id}>{r.label}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="rs-btn approve sm"
+          disabled={busy || !email.trim()}
+          onClick={() => void act(() => api.inviteMember(sessionId, email.trim(), role))}
+        >
+          Invite
+        </button>
+      </div>
+      {err && <div className="error">{err}</div>}
+    </div>
+  );
+}
+
 function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: () => void }) {
   const [versions, setVersions] = useState<ReviewVersion[]>(session.versions ?? []);
   const [approvals, setApprovals] = useState<ReviewApproval[]>(session.approvals ?? []);
@@ -2148,6 +2285,8 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                 <ChangeOrdersPanel sessionId={session.id} />
 
                 <RemindersPanel sessionId={session.id} />
+
+                <TeamPanel sessionId={session.id} />
 
                 <div className="rs-share-block">
                   <div className="rs-versions-head">Review link</div>

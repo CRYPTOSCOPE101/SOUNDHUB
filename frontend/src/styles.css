@@ -4900,3 +4900,49 @@ pre.diff-raw code {
   border-color: #333;
   background: #1d1d22;
 }
+
+/* ====== Team & approval policy ====== */
+.rs-team {
+  margin: 14px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border, #e2e2e2);
+  border-radius: 10px;
+  background: var(--card, #fff);
+}
+.rs-team-policy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0;
+}
+.rs-team-scope {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border, #e2e2e2);
+}
+.rs-team-scope-name {
+  min-width: 90px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.rs-team-scope-roles {
+  flex: 1;
+  color: var(--muted, #666);
+}
+.rs-team-members {
+  margin: 6px 0;
+}
+[data-theme="dark"] .rs-team {
+  border-color: #333;
+  background: #1d1d22;
+}
+.public-approval-chain {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent, #5b5bd6);
+  background: color-mix(in srgb, var(--accent, #5b5bd6) 8%, transparent);
+  font-size: 13px;
+}

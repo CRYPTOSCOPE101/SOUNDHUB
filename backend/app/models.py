@@ -139,6 +139,14 @@ class ReviewSession(Base):
     references: Mapped[list["ReferenceTrack"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
+    members: Mapped[list["SessionMember"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+
+    # Team roles & approval chain (labels). Default = solo client: no
+    # enterprise complexity for the freelance engineer. Enforced presets
+    # (label_workflow, post_production) gate approvals by role and scope.
+    approval_preset: Mapped[str] = mapped_column(String(32), default="solo_client")
 
     # Share-link settings (professional review links)
     share_password: Mapped[str | None] = mapped_column(String(256), nullable=True)
@@ -228,6 +236,29 @@ class ReviewVersion(Base):
     stems: Mapped[list["StemAsset"]] = relationship(
         back_populates="version", cascade="all, delete-orphan"
     )
+
+
+class SessionMember(Base):
+    """A named participant of a review session with an explicit role.
+
+    The engineer is the session owner; everyone else (artist, A&R, label
+    admin, producer, director, feedback owner, viewer) is invited by email.
+    Approval chains in enforced presets match these roles to the scope they
+    may sign off: Artist → mix, A&R → master, Label admin → release.
+    """
+
+    __tablename__ = "session_members"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    email: Mapped[str] = mapped_column(String(256))
+    role: Mapped[str] = mapped_column(String(32))  # artist | a_r | label_admin | producer | director | feedback_owner | viewer | engineer
+    invited_by: Mapped[str] = mapped_column(String(128), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("session_id", "email", name="uq_session_member_email"),)
+
+    session: Mapped["ReviewSession"] = relationship(back_populates="members")
 
 
 class ReviewComment(Base):
@@ -403,6 +434,7 @@ class ReviewApproval(Base):
     approved: Mapped[bool] = mapped_column(default=True)
     note: Mapped[str] = mapped_column(Text, default="")
     approver_name: Mapped[str] = mapped_column(String(128), default="")
+    role: Mapped[str] = mapped_column(String(32), default="")  # team role that signed off (policy checks)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     session: Mapped["ReviewSession"] = relationship(back_populates="approvals")

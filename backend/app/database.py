@@ -82,6 +82,7 @@ def _migrate() -> None:
                 ("reminder_categories", "TEXT DEFAULT ''"),
                 ("reminders_client_opt_out", "BOOLEAN DEFAULT 0"),
                 ("client_email", "VARCHAR(256) DEFAULT ''"),
+                ("approval_preset", "VARCHAR(32) DEFAULT 'solo_client'"),
             ):
                 if col not in review_cols:
                     conn.execute(text(f"ALTER TABLE review_sessions ADD COLUMN {col} {ddl}"))
@@ -104,6 +105,10 @@ def _migrate() -> None:
             ):
                 if col not in cm_cols:
                     conn.execute(text(f"ALTER TABLE review_comments ADD COLUMN {col} {ddl}"))
+        if inspector.has_table("review_approvals"):
+            ap_cols = {c["name"] for c in inspector.get_columns("review_approvals")}
+            if "role" not in ap_cols:
+                conn.execute(text("ALTER TABLE review_approvals ADD COLUMN role VARCHAR(32) DEFAULT ''"))
         if inspector.has_table("change_orders"):
             co_cols = {c["name"] for c in inspector.get_columns("change_orders")}
             for col, ddl in (

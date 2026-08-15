@@ -346,6 +346,31 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
 
 ---
 
+## Фаза 13 — Roles & approval chains + hero-фикс
+
+**Усложнение дефолта — нет:** preset по умолчанию `solo_client` (любой reviewer может approve, как раньше — ноль enterprise-шума для фрилансера). Presets: `solo_client`, `artist_team`, `label_workflow`, `post_production`.
+
+**Модель:** таблица `SessionMember` (email + role, уникально на сессию), `ReviewSession.approval_preset`, `ReviewApproval.role` (роль, под которой подписан sign-off).
+
+**Политики (enforced только для label_workflow/post_production):**
+- `label_workflow`: mix = Artist · master = Artist + A&R · release = Label admin (prerequisite: master approved).
+- `post_production`: mix = Producer · master = Producer + Director · release = Director.
+- Approve с чужой ролью → **403** с понятным текстом («master approval requires Artist, A&R…»); роль определяется по email приглашённого члена (case-insensitive).
+- **Lock-гейт:** enforced-пресет не залочит release package, пока на выбранной версии не выполнена политика по `approval_scope` (403 + список недостающих ролей).
+- **Версии не наследуют approvals:** sign-offs привязаны к version_id — свежий v14 не получает подписи v13 и не проходит как approved для delivery (исторические approvals v13 остаются нетронутыми).
+
+**Minimal permissions (по спеке):** engineer (upload/resolve/package/quote) — владелец; reviewer ≠ approver (гость может комментировать, но подписывать только в рамках своей роли); label admin управляет release-подписью через share-ссылку по email — без логина.
+
+**Эндпоинты:** `GET|POST /api/sessions/{id}/members`, `DELETE …/members/{member_id}`, `PUT …/approval-preset`, `GET …/team` (policy). Ledger: `team.member_invited / member_removed / preset_updated`; `approval.created` теперь несёт `role`.
+
+**UI:** панель «Team & approval policy» у инженера (выбор preset + политика по scope с чипами enforced/any reviewer, список членов с удалением, инвайт по email+роли); на публичной странице у enforced-пресетов хинт цепочки («Artist → mix · A&R → master · label admin → release») над кнопкой approve. Ledger-строки для team-событий.
+
+**Hero-фикс:** «no ZIP archives» → **«no scattered ZIP archives, no Discord chaos»** (больше не противоречит package delivery). Roadmap: «Roles & approval chains» перенесены в Now.
+
+**Тесты:** 80 backend (8 новых: дефолт solo, preset+ledger, invite/remove/dedup, гейт по ролям 403, lock-гейты master/release, prereq master для release, v2 не наследует approvals, дефолт не сломан) + frontend build + `make smoke`.
+
+---
+
 ## Запуск
 
 ```bash

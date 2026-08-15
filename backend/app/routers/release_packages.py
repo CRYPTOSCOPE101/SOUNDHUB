@@ -458,6 +458,21 @@ def lock_package(
             status.HTTP_402_PAYMENT_REQUIRED,
             "Booking deposit due — collect the deposit before locking the final delivery",
         )
+    # Approval chain: enforced presets (label / post-production) only lock a
+    # version whose approval policy is satisfied. Approvals are bound to the
+    # version — a fresh v14 never inherits v13's sign-off, so it can't sneak
+    # into the delivery as "approved".
+    from ..services import roles as roles_svc
+
+    preset = roles_svc.preset_info(package.session.approval_preset)
+    if preset["enforced"]:
+        pol = roles_svc.policy_status(db, package.session, package.approved_version, payload.approval_scope)
+        if not pol["ok"]:
+            labels = ", ".join(roles_svc.ROLE_LABELS.get(r, r) for r in pol["missing"])
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                f"Approval policy not met for {payload.approval_scope}: missing {labels} — sign-offs are bound to the approved version",
+            )
     preflight = _run_preflight(db, package)
     if preflight.blocking and not payload.force:
         raise HTTPException(

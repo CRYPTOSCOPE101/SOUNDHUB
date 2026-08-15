@@ -108,12 +108,13 @@ const ROADMAP = [
       "Archive & session-file handoff with retention policy",
       "Voice notes & mobile-first guest review",
       "Email reminders & deadlines",
+      "Roles & approval chains for labels",
     ],
     state: "live",
   },
   {
     phase: "Next",
-    items: ["Roles & approval chains for labels", "USDC checkout", "Max for Live: review comments in the DAW"],
+    items: ["USDC checkout", "Max for Live: review comments in the DAW"],
     state: "next",
   },
   { phase: "Later", items: ["REAPER integration", "Mainnet + security audit", "Seller reputation & packs", "DAO governance"], state: "later" },
@@ -230,7 +231,7 @@ export default function LandingPage() {
           </h1>
           <p className="landing-subtitle">
             Send a private review link. Get timestamped notes. Compare versions.
-            Approve the final master — no bounced files, no ZIP archives, no Discord chaos.
+            Approve the final master — no scattered ZIP archives, no Discord chaos.
           </p>
           <p className="landing-subtitle landing-subtitle-strong">
             Set the brief. Review with context. Lock the approved master. Deliver with proof.
