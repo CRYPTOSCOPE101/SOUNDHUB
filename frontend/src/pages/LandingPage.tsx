@@ -477,7 +477,6 @@ export default function LandingPage() {
             <h4>Ecosystem</h4>
             <Link to={SAMPLE_REVIEW_URL}>Open a sample review</Link>
             <Link to="/market">Marketplace</Link>
-            <Link to="/dao">Community</Link>
             <Link to="/kettle">🫖 Kettle for beginners</Link>
           </div>
         </div>
