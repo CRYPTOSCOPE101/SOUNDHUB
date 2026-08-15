@@ -21,14 +21,23 @@
 
 # 🎛 What is SoundHub?
 
+[![CI](https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/ci.yml/badge.svg)](https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/ci.yml)
+[![Release](https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/release.yml/badge.svg)](https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg)](backend/)
+[![React 18](https://img.shields.io/badge/React-18-61DAFB.svg)](frontend/)
+[![Solidity](https://img.shields.io/badge/Solidity-%5E0.8-363636.svg)](contracts/)
+[![Ableton Live](https://img.shields.io/badge/Max%20for%20Live-Ableton%20Live-BF00FF.svg)](m4l/)
+
 SoundHub is a tokenized marketplace where music producers buy and sell finished presets, loops, stems, and sound packs with on-chain ownership and licensing
 
 **Don't generate. Buy. — the marketplace lives inside your DAW.** Presets,
 loops, stems and packs, paid for with SND — from the SoundHub panel in
 Ableton Live (Max for Live prototype in `m4l/`) or the web app.
 
+![SoundHub demo](screenshots/demo.gif)
+
 ![SoundHub main page](screenshots/main-light.png)
-....
 ![SoundHub repo page](screenshots/repo-page.png)
 ![SoundHub branch selector](screenshots/repo-page-branches.png)
 
@@ -93,8 +102,29 @@ npm run dev          # http://localhost:5173
 ## Tests
 
 ```bash
+# Backend
 cd backend
 .venv/bin/python -m pytest tests/ -q
+
+# Contracts (compile + 12 tests: token, royalties, splits, escrow, faucet, DAO)
+cd contracts
+npm test
+
+# Frontend (tsc + vite build)
+cd frontend
+npm run build
+```
+
+All three run automatically in [CI](.github/workflows/ci.yml) on every push
+and pull request.
+
+## Releases
+
+Tag a version and CI publishes a [GitHub Release](.github/workflows/release.yml)
+with the built Max for Live device:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
 ```
 
 ## API overview

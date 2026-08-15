@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build M4L device
+        run: python3 build_amxd.py
+        working-directory: m4l
+
+      - name: Package release assets
+        run: |
+          mkdir -p dist
+          cp m4l/SoundHub.amxd dist/SoundHub.amxd
+          cp m4l/soundhub-device.js dist/soundhub-device.js
+          cp m4l/README.md dist/M4L-README.md
+          tar -czf dist/soundhub-m4l-${GITHUB_REF_NAME}.tar.gz -C m4l SoundHub.amxd soundhub-device.js README.md
+        shell: bash
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          git log --oneline "$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo HEAD)"..HEAD 2>/dev/null | sed 's/^/- /' > dist/CHANGELOG.txt || true
+          if [ ! -s dist/CHANGELOG.txt ]; then echo "- Initial release" > dist/CHANGELOG.txt; fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/SoundHub.amxd
+            dist/soundhub-device.js
+            dist/M4L-README.md
+            dist/soundhub-m4l-*.tar.gz
+          body_path: dist/CHANGELOG.txt
+          generate_release_notes: true
