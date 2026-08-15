@@ -7,6 +7,7 @@ import {
   humanSize,
   shortDate,
   DELIVERABLE_TYPES,
+  STEM_LOGICAL_NAMES,
   type LedgerEntry,
   type LedgerVerify,
   type ReleasePackage,
@@ -14,6 +15,7 @@ import {
   type ReviewComment,
   type ReviewSession,
   type ReviewVersion,
+  type StemAsset,
   type VersionComparison,
 } from "../types";
 
@@ -423,6 +425,73 @@ async function fetchAudioBlob(url: string): Promise<string> {
   if (!res.ok) throw new Error(`Audio request failed (${res.status})`);
   const blob = await res.blob();
   return URL.createObjectURL(blob);
+}
+
+/* ---------- stems ---------- */
+
+function StemPanel({ version }: { version: ReviewVersion }) {
+  const [stems, setStems] = useState<StemAsset[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setStems(await api.listStems(version.id));
+  }, [version.id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const upload = async (name: string, file: File) => {
+    setErr(null);
+    try {
+      await api.uploadStem(version.id, name, `${name} stem`, 0, file);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Upload failed");
+    }
+  };
+
+  return (
+    <div className="rs-stems">
+      <div className="rs-versions-head">Stems · {version.label}</div>
+      {stems === null ? (
+        <div className="rs-empty">Loading stems…</div>
+      ) : stems.length === 0 ? (
+        <div className="rs-empty">No stems — upload submix renders to compare them between versions.</div>
+      ) : (
+        <div className="rs-stem-list">
+          {stems.map((s) => (
+            <div key={s.id} className="rs-stem-row">
+              <span className={`rs-stem-dot st-${s.logical_name}`} />
+              <span className="rs-stem-name">{s.display_name}</span>
+              <span className="rs-stem-meta">
+                {humanSize(s.size)} · {s.audio_format}
+                {s.start_offset_ms ? ` · +${s.start_offset_ms} ms` : ""}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="rs-stem-upload">
+        {STEM_LOGICAL_NAMES.map((name) => (
+          <label key={name} className="rs-btn ghost sm">
+            + {name}
+            <input
+              type="file"
+              accept=".wav,.mp3,.flac,.aif,.aiff,.m4a,.ogg,audio/*"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void upload(name, f);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        ))}
+      </div>
+      {err && <div className="error">{err}</div>}
+    </div>
+  );
 }
 
 /* ---------- session detail ---------- */
@@ -987,6 +1056,9 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                   {info && <div className="success">{info}</div>}
                   {err && <div className="error">{err}</div>}
                 </div>
+
+                {/* stems — submix renders for stem-level A/B comparison */}
+                <StemPanel version={current} />
 
                 {/* consolidated feedback — one submitted revision round */}
                 <div className="rs-rounds">

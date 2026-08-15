@@ -18,6 +18,7 @@ import type {
   ReviewComment,
   ReviewSession,
   ReviewVersion,
+  StemAsset,
   TokenResponse,
   Tree,
 } from "./types";
@@ -248,6 +249,8 @@ export const api = {
     startMs: number;
     endMs?: number | null;
     levelMatch?: string;
+    mode?: string;
+    stemLogicalName?: string | null;
   }) =>
     request<VersionComparison>("/api/comparisons", {
       method: "POST",
@@ -258,10 +261,22 @@ export const api = {
         start_ms: opts.startMs,
         end_ms: opts.endMs ?? null,
         level_match: opts.levelMatch ?? "short_term_lufs",
+        mode: opts.mode ?? "full_mix",
+        stem_logical_name: opts.stemLogicalName ?? null,
       }),
     }),
   getComparison: (id: number) =>
     request<VersionComparison>(`/api/comparisons/${id}`),
+  listStems: (versionId: number) => request<StemAsset[]>(`/api/versions/${versionId}/stems`),
+  uploadStem: (versionId: number, logicalName: string, displayName: string, startOffsetMs: number, file: File) => {
+    const fd = new FormData();
+    fd.append("logical_name", logicalName);
+    fd.append("display_name", displayName);
+    fd.append("start_offset_ms", String(startOffsetMs));
+    fd.append("file", file);
+    return request<StemAsset>(`/api/versions/${versionId}/stems`, { method: "POST", body: fd });
+  },
+  stemAudioUrl: (versionId: number, stemId: number) => `/api/versions/${versionId}/stems/${stemId}/audio`,
   publicSubmitFeedback: (token: string, note: string, actor: string) =>
     request<ReviewSession>(
       `/api/sessions/public/${token}/submit-feedback?actor=${encodeURIComponent(actor)}`,

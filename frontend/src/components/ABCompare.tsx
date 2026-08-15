@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { fmtClock } from "./ReviewShared";
-import type { VersionComparison } from "../types";
+import { STEM_LOGICAL_NAMES, type StemAsset, type VersionComparison } from "../types";
 
 const CROSSFADE_MS = 40;
 
@@ -12,6 +12,10 @@ const CROSSFADE_MS = 40;
  * so A/B toggling never resets the playhead. Switching crossfades the gains
  * (40 ms). Level-matched gains from the comparison are applied ONLY to the
  * preview graph — source files and the release package are untouched.
+ *
+ * Modes: `full_mix` compares the whole bounce; `stem` compares one submix
+ * (drums / bass / vocal / synths) matched by logical name across both
+ * versions. Stems appear in the picker only when present in BOTH versions.
  */
 export default function ABCompare({
   sessionId,
@@ -22,11 +26,14 @@ export default function ABCompare({
   comparison: VersionComparison;
   onClose: () => void;
 }) {
+  const [comp, setComp] = useState<VersionComparison>(comparison);
   const [buffers, setBuffers] = useState<{ base: AudioBuffer | null; compare: AudioBuffer | null }>({
     base: null,
     compare: null,
   });
+  const [stems, setStems] = useState<{ base: StemAsset[]; compare: StemAsset[] }>({ base: [], compare: [] });
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [active, setActive] = useState<"base" | "compare">("base");
   const [position, setPosition] = useState(0);
@@ -42,41 +49,94 @@ export default function ABCompare({
   const rafRef = useRef<number | null>(null);
   const loopRef = useRef<{ start: number; end: number } | null>(null);
   const startCtxRef = useRef<number | null>(null);
+  const compRef = useRef(comp);
+  compRef.current = comp;
 
-  const endMs = (comparison.end_ms ?? comparison.start_ms + 20000) / 1000;
+  const endMs = (comp.end_ms ?? comp.start_ms + 20000) / 1000;
 
-  // load both buffers
+  // load stems for both versions (for the picker)
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const baseUrl = await fetchAudioBlob(api.versionAudioUrl(sessionId, comparison.base_version_id));
-        const compareUrl = await fetchAudioBlob(api.versionAudioUrl(sessionId, comparison.compare_version_id));
+        const [b, c] = await Promise.all([
+          api.listStems(comp.base_version_id),
+          api.listStems(comp.compare_version_id),
+        ]);
+        if (cancelled) return;
+        setStems({ base: b, compare: c });
+      } catch {
+        /* stems are optional — full mix still works */
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comp.base_version_id, comp.compare_version_id]);
+
+  // stems available in BOTH versions (matched by logical name)
+  const sharedStems = STEM_LOGICAL_NAMES.filter(
+    (name) => stems.base.some((s) => s.logical_name === name) && stems.compare.some((s) => s.logical_name === name)
+  );
+
+  // load both buffers for the current comparison mode
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setErr(null);
+      try {
+        let baseUrl: string;
+        let compareUrl: string;
+        if (comp.mode === "stem" && comp.stem_logical_name) {
+          const bStem = stems.base.find((s) => s.logical_name === comp.stem_logical_name);
+          const cStem = stems.compare.find((s) => s.logical_name === comp.stem_logical_name);
+          if (!bStem || !cStem) throw new Error(`Stem “${comp.stem_logical_name}” is unavailable in one of the versions`);
+          baseUrl = await fetchAudioBlob(api.stemAudioUrl(comp.base_version_id, bStem.id));
+          compareUrl = await fetchAudioBlob(api.stemAudioUrl(comp.compare_version_id, cStem.id));
+        } else {
+          baseUrl = await fetchAudioBlob(api.versionAudioUrl(sessionId, comp.base_version_id));
+          compareUrl = await fetchAudioBlob(api.versionAudioUrl(sessionId, comp.compare_version_id));
+        }
         if (cancelled) return;
         const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        const ctx = new Ctx();
+        const ctx = ctxRef.current ?? new Ctx();
         ctxRef.current = ctx;
         const [b, c] = await Promise.all([decodeAudio(ctx, baseUrl), decodeAudio(ctx, compareUrl)]);
         if (cancelled) return;
         setBuffers({ base: b, compare: c });
         const dur = Math.min(b.duration, c.duration);
         setDuration(dur);
-        setPosition(Math.min(comparison.start_ms / 1000, Math.max(0, dur - 0.05)));
-        offsetRef.current = Math.min(comparison.start_ms / 1000, Math.max(0, dur - 0.05));
+        const start = Math.min(comp.start_ms / 1000, Math.max(0, dur - 0.05));
+        setPosition(start);
+        offsetRef.current = start;
         loopRef.current = {
-          start: Math.min(comparison.start_ms / 1000, dur - 0.05),
+          start: Math.min(comp.start_ms / 1000, Math.max(0, dur - 0.05)),
           end: Math.min(endMs, dur),
         };
+        playingRef.current = false;
+        setPlaying(false);
+        srcRef.current = null;
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Failed to load audio");
+      } finally {
+        setLoading(false);
       }
     };
     void load();
     return () => {
       cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comp, stems.base, stems.compare, sessionId]);
+
+  useEffect(() => {
+    return () => {
       ctxRef.current?.close().catch(() => undefined);
     };
-  }, [sessionId, comparison.base_version_id, comparison.compare_version_id, comparison.start_ms, endMs]);
+  }, []);
 
   const buildGraph = useCallback(() => {
     const ctx = ctxRef.current;
@@ -84,8 +144,12 @@ export default function ABCompare({
     const c = buffers.compare;
     if (!ctx || !b || !c) return;
     if (srcRef.current) {
-      srcRef.current.base.stop();
-      srcRef.current.compare.stop();
+      try {
+        srcRef.current.base.stop();
+        srcRef.current.compare.stop();
+      } catch {
+        /* already stopped */
+      }
     }
     const baseSrc = ctx.createBufferSource();
     baseSrc.buffer = b;
@@ -99,7 +163,6 @@ export default function ABCompare({
     srcRef.current = { base: baseSrc, compare: compareSrc };
     gainNodesRef.current = { base: gBase, compare: gCompare };
     masterRef.current = master;
-    // level-matched gains (compare attenuates when louder; base is reference)
     gBase.gain.value = 0;
     gCompare.gain.value = 0;
     const t = ctx.currentTime + 0.02;
@@ -108,23 +171,20 @@ export default function ABCompare({
     startCtxRef.current = t;
   }, [buffers]);
 
-  const applyGains = useCallback(
-    (side: "base" | "compare") => {
-      const g = gainNodesRef.current;
-      if (!g) return;
-      const baseGain = side === "base" ? 1 : 0;
-      const compareGain = side === "compare" ? 1 : 0;
-      const now = ctxRef.current?.currentTime ?? 0;
-      const ramp = CROSSFADE_MS / 1000;
-      g.base.gain.cancelScheduledValues(now);
-      g.compare.gain.cancelScheduledValues(now);
-      g.base.gain.setValueAtTime(g.base.gain.value, now);
-      g.compare.gain.setValueAtTime(g.compare.gain.value, now);
-      g.base.gain.linearRampToValueAtTime(baseGain, now + ramp);
-      g.compare.gain.linearRampToValueAtTime(compareGain, now + ramp);
-    },
-    []
-  );
+  const applyGains = useCallback((side: "base" | "compare") => {
+    const g = gainNodesRef.current;
+    if (!g) return;
+    const baseGain = side === "base" ? 1 : 0;
+    const compareGain = side === "compare" ? 1 : 0;
+    const now = ctxRef.current?.currentTime ?? 0;
+    const ramp = CROSSFADE_MS / 1000;
+    g.base.gain.cancelScheduledValues(now);
+    g.compare.gain.cancelScheduledValues(now);
+    g.base.gain.setValueAtTime(g.base.gain.value, now);
+    g.compare.gain.setValueAtTime(g.compare.gain.value, now);
+    g.base.gain.linearRampToValueAtTime(baseGain, now + ramp);
+    g.compare.gain.linearRampToValueAtTime(compareGain, now + ramp);
+  }, []);
 
   const seek = (t: number) => {
     const dur = duration || 0;
@@ -132,20 +192,10 @@ export default function ABCompare({
     offsetRef.current = clamped;
     setPosition(clamped);
     if (playingRef.current) {
-      // restart from the new offset to keep both sides aligned
       const g = gainNodesRef.current;
       const activeSide = active;
-      if (srcRef.current) {
-        try {
-          srcRef.current.base.stop();
-          srcRef.current.compare.stop();
-        } catch {
-          /* already stopped */
-        }
-        srcRef.current = null;
-      }
+      srcRef.current = null;
       buildGraph();
-      // apply crossfade to the active side (inactive silently starts)
       const now = ctxRef.current?.currentTime ?? 0;
       if (g) {
         g.base.gain.cancelScheduledValues(now);
@@ -210,41 +260,94 @@ export default function ABCompare({
     toggle();
   };
 
-  const levelLabel = comparison.level_match === "none"
+  const switchMode = async (mode: string, stemName?: string) => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const c = await api.createComparison({
+        baseVersionId: comp.base_version_id,
+        compareVersionId: comp.compare_version_id,
+        requestId: comp.request_id,
+        startMs: comp.start_ms,
+        endMs: comp.end_ms,
+        levelMatch: comp.level_match === "none" ? "short_term_lufs" : comp.level_match,
+        mode,
+        stemLogicalName: mode === "stem" ? stemName ?? null : null,
+      });
+      setComp(c);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to switch mode");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stemLabel = (name: string) => {
+    const s = stems.base.find((x) => x.logical_name === name);
+    return s?.display_name || name;
+  };
+
+  const levelLabel = comp.level_match === "none"
     ? "Level match unavailable"
-    : comparison.base_gain_db
-      ? `Level matched · ${comparison.base_label} ${comparison.base_gain_db >= 0 ? "+" : ""}${comparison.base_gain_db.toFixed(1)} dB`
-      : comparison.compare_gain_db
-        ? `Level matched · ${comparison.compare_label} ${comparison.compare_gain_db >= 0 ? "+" : ""}${comparison.compare_gain_db.toFixed(1)} dB`
+    : comp.base_gain_db
+      ? `Level matched · ${comp.base_label} ${comp.base_gain_db >= 0 ? "+" : ""}${comp.base_gain_db.toFixed(1)} dB`
+      : comp.compare_gain_db
+        ? `Level matched · ${comp.compare_label} ${comp.compare_gain_db >= 0 ? "+" : ""}${comp.compare_gain_db.toFixed(1)} dB`
         : "Level matched · equal loudness";
 
   const pct = duration > 0 ? (position / duration) * 100 : 0;
-  const loopStartPct = duration > 0 ? (loopRef.current?.start ?? 0 / duration) * 100 : 0;
-  const loopEndPct = duration > 0 ? (loopRef.current?.end ?? duration / duration) * 100 : 100;
+  const loopStartPct = duration > 0 ? ((loopRef.current?.start ?? 0) / duration) * 100 : 0;
+  const loopEndPct = duration > 0 ? ((loopRef.current?.end ?? duration) / duration) * 100 : 100;
 
   return (
     <div className="ab-panel">
       <div className="ab-head">
         <span className="ab-title">
-          COMPARE {comparison.base_label} ↔ {comparison.compare_label}
+          COMPARE {comp.base_label} ↔ {comp.compare_label}
+          {comp.mode === "stem" && comp.stem_logical_name && (
+            <span className="ab-mode-chip">· {stemLabel(comp.stem_logical_name)}</span>
+          )}
         </span>
-        {comparison.request_id != null && <span className="ab-request">request #{comparison.request_id}</span>}
+        {comp.request_id != null && <span className="ab-request">request #{comp.request_id}</span>}
         <button type="button" className="rs-btn ghost sm" onClick={onClose}>
           ✕
         </button>
       </div>
 
+      {/* mode picker: full mix + stems available in BOTH versions */}
+      <div className="ab-modes">
+        <button
+          type="button"
+          className={`ab-mode ${comp.mode === "full_mix" ? "active" : ""}`}
+          onClick={() => void switchMode("full_mix")}
+          disabled={loading}
+        >
+          Full mix
+        </button>
+        {sharedStems.map((name) => (
+          <button
+            key={name}
+            type="button"
+            className={`ab-mode ${comp.mode === "stem" && comp.stem_logical_name === name ? "active" : ""}`}
+            onClick={() => void switchMode("stem", name)}
+            disabled={loading}
+          >
+            {stemLabel(name)}
+          </button>
+        ))}
+      </div>
+
       <div className="ab-sidebar">
         <button type="button" className={`ab-side ${active === "base" ? "active" : ""}`} onClick={() => switchSide("base")}>
-          <strong>{comparison.base_label}</strong>
-          {comparison.short_term_lufs[comparison.base_label] != null && (
-            <span>{comparison.short_term_lufs[comparison.base_label]} LUFS</span>
+          <strong>{comp.base_label}</strong>
+          {comp.short_term_lufs[comp.base_label] != null && (
+            <span>{comp.short_term_lufs[comp.base_label]} LUFS</span>
           )}
         </button>
         <button type="button" className={`ab-side ${active === "compare" ? "active" : ""}`} onClick={() => switchSide("compare")}>
-          <strong>{comparison.compare_label}</strong>
-          {comparison.short_term_lufs[comparison.compare_label] != null && (
-            <span>{comparison.short_term_lufs[comparison.compare_label]} LUFS</span>
+          <strong>{comp.compare_label}</strong>
+          {comp.short_term_lufs[comp.compare_label] != null && (
+            <span>{comp.short_term_lufs[comp.compare_label]} LUFS</span>
           )}
         </button>
       </div>
@@ -258,12 +361,12 @@ export default function ABCompare({
         </div>
 
         <div className="ab-controls">
-          <button type="button" className="rs-play ab-play" onClick={play}>
+          <button type="button" className="rs-play ab-play" onClick={play} disabled={loading || !buffers.base}>
             {playing ? "❚❚" : "▶"}
           </button>
           <span className="ab-label">
             {levelLabel}
-            {comparison.level_match !== "none" && " · loop: ON"}
+            {comp.level_match !== "none" && " · loop: ON"}
           </span>
           <button
             type="button"
@@ -289,6 +392,7 @@ export default function ABCompare({
             />
           )}
         </div>
+        {loading && <div className="rs-empty">Switching mode…</div>}
         {err && <div className="error">{err}</div>}
       </div>
     </div>
