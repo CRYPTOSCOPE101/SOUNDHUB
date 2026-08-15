@@ -1,3 +1,4 @@
+import json
 import unicodedata
 from pathlib import PurePosixPath
 
@@ -7,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..config import MAX_UPLOAD_SIZE
 from ..database import get_db
-from ..models import Commit, FileSnapshot, Project, User
+from ..models import Commit, FileSnapshot, Project, User, utcnow
 from ..schemas import (
     BranchCreate,
     BranchOut,
@@ -284,6 +285,56 @@ def get_commit(
         ],
     )
     return out
+
+
+@router.post("/{project_id}/push")
+def push_project_files(
+    project_id: int,
+    message: str = Form(""),
+    manifest: str = Form(""),
+    branch: str = Form("main"),
+    files: list[UploadFile] = File(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Push a full project snapshot (DAW files + media) as one commit.
+
+    Used by the `snd push` CLI: each uploaded file carries its project path
+    in the filename (e.g. "Neon/Bass.als"), and an optional JSON `manifest`
+    (tracks / instruments / plugins / settings) is stored as
+    SOUNDHUB-MANIFEST.json inside the commit tree.
+    """
+    project = get_project_or_404(db, user, project_id)
+    tree: dict[str, bytes] = {}
+    for f in files:
+        path = PurePosixPath((f.filename or "file").replace("\\", "/")).as_posix()
+        if not path or path.startswith("/") or ".." in path.split("/"):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unsafe file path: {path!r}")
+        data = f.file.read()
+        if not data:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Empty file: {path}")
+        if len(data) > MAX_UPLOAD_SIZE:
+            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, f"File too large: {path}")
+        tree[path] = data
+    if not tree:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No files to push")
+    if manifest.strip():
+        try:
+            json.loads(manifest)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"manifest is not valid JSON: {exc}")
+        tree["SOUNDHUB-MANIFEST.json"] = manifest.encode()
+    commit = versioning.create_commit(db, project, user, message.strip() or "snd push", tree, branch)
+    project.updated_at = utcnow()
+    db.commit()
+    return {
+        "commit_id": commit.id,
+        "message": commit.message,
+        "branch": branch,
+        "file_count": len(tree),
+        "total_size": sum(len(d) for d in tree.values()),
+        "manifest_stored": bool(manifest.strip()),
+    }
 
 
 @router.post("/{project_id}/release", response_model=ProjectOut)

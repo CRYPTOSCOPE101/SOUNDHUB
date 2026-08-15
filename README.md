@@ -136,6 +136,27 @@ git tag v0.1.0 && git push origin v0.1.0
 | GET | `/api/projects/{id}/files/{path}` | download a file |
 | GET | `/api/projects/{id}/diff?path=…&from=…&to=…` | smart diff |
 
+## `snd push` — push a complete DAW project (branch: `snd-push`)
+
+`backend/snd` is a small CLI that scans a project folder, parses the DAW
+files **locally** (tracks, instruments, plugins AND their settings where the
+format stores them — REAPER `PARAM` lines, Ableton preset refs), and pushes
+the whole snapshot as one versioned commit with a `SOUNDHUB-MANIFEST.json`
+describing the structure.
+
+```bash
+cd backend
+./snd login --user demo --password demo123
+./snd push ~/Projects/Neon --project "Neon Warehouse" --message "v12 bounce"
+./snd push ~/Projects/Neon --include-media     # also upload audio/video/image files
+```
+
+- `--project` accepts an existing project name/id or a new name to auto-create.
+- Media files (`.wav`, `.mp3`, images…) are skipped unless `--include-media`.
+- The push lands on `POST /api/projects/{id}/push` as one commit; the parsed
+  structure is stored as `SOUNDHUB-MANIFEST.json` inside the tree and is also
+  re-analyzed server-side by the tree/diff endpoints.
+
 ## DAW parsing engine (`backend/app/services/daw/`)
 
 | Format | File | Approach |
