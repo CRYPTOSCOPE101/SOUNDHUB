@@ -695,75 +695,79 @@ def test_snd_push_json_error_contract(tmp_path, monkeypatch, capsys):
     assert "error" in payload
 
 
-def test_snd_serve_bridge_health_and_push(tmp_path, monkeypatch):
-    """`snd serve` is the localhost bridge the M4L push button calls: GET
-    /health pings, POST /push runs the same pipeline and returns the stable
-    contract; errors come back as {"ok": false, "error": …} with a 400."""
-    import socket
+def _start_bridge(tmp_path, monkeypatch, routes: list) -> tuple[str, FakeHttp, object]:
+    """Boot the `snd serve` bridge on an OS-assigned port with a fake HTTP
+    layer; returns (base_url, fake, server) — call server.shutdown() to stop."""
     import threading
-    import urllib.error
-    import urllib.request
 
     import soundhub_cli
 
     import snd_cli
-    from app.services.daw import fixtures
 
     monkeypatch.setattr(soundhub_cli, "CONFIG_PATH", "/nonexistent")
+    fake = FakeHttp()
+    for frag, status, body in routes:
+        fake.route(frag, status, body)
+    srv = snd_cli.start_bridge(api="http://x", token="t", port=0, http=fake)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    port = srv.server_address[1]
+    return f"http://127.0.0.1:{port}", fake, srv
+
+
+def _post(base: str, raw: bytes) -> tuple[int, dict]:
+    import urllib.error
+    import urllib.request
+
+    req = urllib.request.Request(base, data=raw, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as exc:
+        return exc.code, json.loads(exc.read())
+
+
+def test_snd_serve_bridge_health_and_push(tmp_path, monkeypatch):
+    """`snd serve` is the localhost bridge the M4L push button calls: GET
+    /health pings, POST /push runs the same pipeline and returns the stable
+    contract; errors come back as {"ok": false, "error": …} with a 400."""
+    import urllib.request
+
+    from app.services.daw import fixtures
+
     als = tmp_path / "Track_v12.als"
     als.write_bytes(fixtures.make_als(tracks=[("MidiTrack", "Synth Lead", ["Plugin:Serum"])]))
     master = tmp_path / "master.wav"
     master.write_bytes(make_wav())
 
-    fake = FakeHttp()
-    fake.route("/api/projects", 200, [{"id": 5, "name": "artist-track"}])
-    fake.route("/api/projects/5/push", 200, {
-        "ok": True,
-        "project_id": 5,
-        "branch": "review/v12",
-        "commit_id": 42,
-        "version_id": 7,
-        "session_id": 3,
-        "share_token": "tok123",
-        "review_url": "http://localhost:5173/r/tok123",
-        "uploaded": {"als": True, "master": True, "stems": 2},
-        "deduplicated": 1,
-    })
-
-    # start the bridge on an ephemeral port, inject the fake HTTP layer
-    sock = socket.socket()
-    sock.bind(("127.0.0.1", 0))
-    port = sock.getsockname()[1]
-    sock.close()
-
-    # run the bridge via main() in a background thread — it blocks in serve_forever
-    server_thread = threading.Thread(
-        target=snd_cli.main,
-        args=(["serve", "--host", "127.0.0.1", "--port", str(port), "--api", "http://x", "--token", "t"],),
-        kwargs={"http": fake},
-        daemon=True,
-    )
-    server_thread.start()
+    base, fake, srv = _start_bridge(tmp_path, monkeypatch, [
+        ("/api/projects", 200, [{"id": 5, "name": "artist-track"}]),
+        ("/api/projects/5/push", 200, {
+            "ok": True,
+            "project_id": 5,
+            "branch": "review/v12",
+            "commit_id": 42,
+            "version_id": 7,
+            "session_id": 3,
+            "share_token": "tok123",
+            "review_url": "http://localhost:5173/r/tok123",
+            "uploaded": {"als": True, "master": True, "stems": 2},
+            "deduplicated": 1,
+        }),
+    ])
     try:
         # health
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as r:
+        with urllib.request.urlopen(f"{base}/health", timeout=5) as r:
             assert json.loads(r.read()) == {"ok": True, "service": "snd-bridge"}
 
         # push — exactly the JSON the M4L device posts
-        req = urllib.request.Request(
-            f"http://127.0.0.1:{port}/push",
-            data=json.dumps({
-                "target": str(als),
-                "audio": str(master),
-                "project": "artist-track",
-                "branch": "review/v12",
-                "message": "Round 3 candidate",
-            }).encode(),
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req, timeout=10) as r:
-            res = json.loads(r.read())
-        assert res["ok"] is True
+        code, res = _post(f"{base}/push", json.dumps({
+            "target": str(als),
+            "audio": str(master),
+            "project": "artist-track",
+            "branch": "review/v12",
+            "message": "Round 3 candidate",
+        }).encode())
+        assert code == 200 and res["ok"] is True
         assert res["commit_id"] == 42 and res["version_id"] == 7
         assert res["review_url"].endswith("/r/tok123")
         assert res["uploaded"] == {"als": True, "master": True, "stems": 2}
@@ -776,23 +780,66 @@ def test_snd_serve_bridge_health_and_push(tmp_path, monkeypatch):
         assert b'name="manifest"' in data
 
         # preflight failure -> 400 + {"ok": false, "error": …}
-        req = urllib.request.Request(
-            f"http://127.0.0.1:{port}/push",
-            data=json.dumps({"target": str(tmp_path / "nope.als")}).encode(),
-            headers={"Content-Type": "application/json"},
-        )
-        try:
-            urllib.request.urlopen(req, timeout=10)
-            raise AssertionError("expected HTTP 400")
-        except urllib.error.HTTPError as exc:
-            assert exc.code == 400
-            err = json.loads(exc.read())
-            assert err["ok"] is False and "error" in err
+        code, err = _post(f"{base}/push", json.dumps({"target": str(tmp_path / "nope.als")}).encode())
+        assert code == 400 and err["ok"] is False and "error" in err
     finally:
-        # stop the bridge: it's a ThreadingHTTPServer on an ephemeral port —
-        # closing via a POST to /stop is not part of the contract, so we just
-        # leave the daemon thread (process exits with the test run)
-        pass
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_snd_serve_bridge_negative_cases(tmp_path, monkeypatch):
+    """Bridge error behaviors the M4L device can hit: malformed JSON body,
+    review mode without a master, and a repeat push of the same export
+    (preflight runs before anything reaches the server)."""
+    from app.services.daw import fixtures
+
+    als = tmp_path / "Track_v12.als"
+    als.write_bytes(fixtures.make_als(tracks=[("MidiTrack", "Synth Lead", ["Plugin:Serum"])]))
+
+    base, fake, srv = _start_bridge(tmp_path, monkeypatch, [
+        ("/api/projects", 200, [{"id": 5, "name": "artist-track"}]),
+        ("/api/projects/5/push", 200, {"ok": True, "commit_id": 42}),
+    ])
+    try:
+        # 1. malformed JSON -> 400 with a clear error (never hits the backend)
+        code, body = _post(f"{base}/push", b"{not json")
+        assert code == 400 and body["ok"] is False and "bad JSON" in body["error"]
+
+        # 2. review mode without a master (audio path given but missing) -> preflight 400
+        code, body = _post(f"{base}/push", json.dumps({"target": str(als), "audio": str(tmp_path / "nope.wav")}).encode())
+        assert code == 400 and body["ok"] is False
+        assert "Master file not found" in body["error"]
+
+        # 3. stems without a master -> preflight 400
+        stems = tmp_path / "stems"
+        stems.mkdir()
+        (stems / "Kick.wav").write_bytes(make_wav())
+        code, body = _post(f"{base}/push", json.dumps({"target": str(als), "stems": str(stems)}).encode())
+        assert code == 400 and body["ok"] is False
+        assert "requires --audio" in body["error"]
+
+        # 4. repeat push of the same export: identical multipart payload, both
+        #    succeed through the bridge (server-side dedup is tested at the endpoint)
+        n_before = len(fake.requests)
+        payload = json.dumps({"target": str(als), "project": "artist-track", "message": "Round 3 candidate"}).encode()
+        code, body = _post(f"{base}/push", payload)
+        assert code == 200 and body["ok"] is True
+        code2, body2 = _post(f"{base}/push", payload)
+        assert code2 == 200 and body2["ok"] is True
+        pushes = [r for r in fake.requests[n_before:] if "/push" in r[1]]
+        assert len(pushes) == 2
+        # both carried the same .als + manifest (multipart boundary differs by
+        # uuid, so compare the meaningful parts, not the raw bytes)
+        for r in pushes:
+            assert b'filename="Track_v12.als"' in r[2]
+            assert b'name="manifest"' in r[2]
+            assert b"Round 3 candidate" in r[2]
+
+        # 5. preflight failures (cases 1-3) never reached the backend
+        assert len([r for r in fake.requests if "push" in r[1]]) == 2
+    finally:
+        srv.shutdown()
+        srv.server_close()
 
 
 def test_snd_push_open_uses_review_url(tmp_path, monkeypatch):
