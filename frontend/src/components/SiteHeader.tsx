@@ -39,6 +39,8 @@ const ICONS: Record<string, ReactNode> = {
   portfolio: <Icon d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" extra="M4 21c0-4 3.6-6 8-6s8 2 8 6" />, // user
   dao: <Icon d="M4 4h16v16H4z" extra="M8.5 12.5l2 2 5-5" />, // ballot / vote
   repo: <Icon d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z" extra="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5" />, // book
+  cubase: <Icon d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" extra="M12 12l8-4.5M12 12v9M12 12L4 7.5" />, // cube — Cubase
+  fl: <Icon d="M4 6h16M4 10h10M4 14h16M4 18h7" />, // playlist rows — FL Studio
 };
 
 interface SubnavItem {
@@ -175,6 +177,8 @@ export default function SiteHeader({ theme, onToggleTheme }: SiteHeaderProps) {
   const subnav: SubnavItem[] = [
     { key: "workflow", label: "Workflow", to: onLanding ? "#workflow" : "/#workflow", icon: ICONS.workflow, kind: "anchor" },
     { key: "diff", label: "Smart diff", to: onLanding ? "#diff" : "/#diff", icon: ICONS.diff, kind: "anchor" },
+    { key: "cubase", label: "Cubase", to: "/integrations/cubase", icon: ICONS.cubase, kind: "route" },
+    { key: "fl", label: "FL Studio", to: "/integrations/fl-studio", icon: ICONS.fl, kind: "route" },
     { key: "market", label: "Marketplace", to: onLanding ? "#market" : "/#market", icon: ICONS.market, kind: "anchor" },
     { key: "faq", label: "FAQ", to: onLanding ? "#faq" : "/#faq", icon: ICONS.faq, kind: "anchor" },
   ];

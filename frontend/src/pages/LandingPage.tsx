@@ -1130,6 +1130,9 @@ export default function LandingPage() {
         <p className="bc-footer-bottom">
           Private beta on Base Sepolia · open-source contracts · © {new Date().getFullYear()} SoundHub
         </p>
+        <div className="bc-footer-giant" aria-hidden="true">
+          <img src="/logo.png" alt="" className="bc-footer-giant-img" />
+        </div>
       </footer>
 
       {showWorkflow && <WorkflowModal onClose={() => setShowWorkflow(false)} />}

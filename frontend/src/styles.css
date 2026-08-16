@@ -32,6 +32,9 @@
   --red-soft: rgba(192, 60, 46, 0.1);
   --muted-soft: rgba(107, 103, 97, 0.12);
   --blue-soft: rgba(58, 76, 107, 0.1);
+  --shot-bg: #d6d2c7;                       /* screenshot blocks sit on a dark gray pad */
+  --shot-border: #b5ae9e;
+  --shot-shadow: 0 4px 12px rgba(31, 31, 31, 0.2), 0 34px 90px rgba(31, 31, 31, 0.32);
 }
 
 :root[data-theme="dark"] {
@@ -60,6 +63,9 @@
   --red-soft: rgba(240, 128, 112, 0.14);
   --muted-soft: rgba(156, 151, 142, 0.16);
   --blue-soft: rgba(157, 180, 216, 0.14);
+  --shot-bg: #23221f;
+  --shot-border: #4a463e;
+  --shot-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 38px 100px rgba(0, 0, 0, 0.78);
 }
 
 * {
@@ -5499,6 +5505,11 @@ pre.diff-raw code {
   margin: 52px auto 0;
   max-width: 1040px;
   text-align: left;
+  padding: 14px;
+  background: var(--shot-bg);
+  border: 1px solid var(--shot-border);
+  border-radius: 14px;
+  box-shadow: var(--shot-shadow);
 }
 
 .cr-shot-bar {
@@ -7298,10 +7309,11 @@ pre.diff-raw code {
 }
 
 .daw-int-shot-frame {
-  border: 1px solid var(--border);
+  border: 1px solid var(--shot-border);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 18px 48px color-mix(in srgb, var(--daw-accent) 16%, transparent);
+  background: var(--shot-bg);
+  box-shadow: var(--shot-shadow), 0 18px 48px color-mix(in srgb, var(--daw-accent) 16%, transparent);
 }
 
 .daw-int-shot-frame .cr-shot-bar {
@@ -7533,6 +7545,32 @@ pre.diff-raw code {
   color: var(--muted);
   border-top: 1px solid var(--border);
   padding-top: 18px;
+}
+
+/* giant wordmark at the very bottom — full-width, faded (CodeRabbit-style) */
+.bc-footer-giant {
+  margin-top: 34px;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: clamp(120px, 22vw, 240px);
+}
+
+.bc-footer-giant-img {
+  width: min(92%, 1400px);
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
+  opacity: 0.5;
+  filter: grayscale(0.35);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 30%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 30%, transparent 100%);
+}
+
+.bc-footer-giant-img:hover {
+  opacity: 0.75;
 }
 
 /* modal: next button */
