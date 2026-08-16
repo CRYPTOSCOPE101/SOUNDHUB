@@ -916,6 +916,14 @@ Litepaper, Changelog).
 0 ошибок; «Docs» в сабнаве; секция на лендинге 4 карточки; клик → /docs.
 Build ✅.
 
+**Баг: Whitepaper недоступен на сайте.** Пользователь: «а где Whitepaper?» —
+ссылка `/Whitepaper.pdf` отдавала HTML (SPA-fallback) с Content-Type
+`text/html`, потому что PDF лежал в корне репо, а не в `frontend/public/`.
+Фикс: `cp Whitepaper.pdf frontend/public/Whitepaper.pdf` → теперь
+`application/pdf` с магией `%PDF-1.4`. Проверено: curl 200 application/pdf,
+клик на лендинге и на /docs → запрос отдаёт PDF (в headless нет встроенного
+вьюера, поэтому навигация не видна — в реальном браузере откроется).
+
 ---
 
 ## Запуск
