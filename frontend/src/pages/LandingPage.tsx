@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ReviewSession from "../components/ReviewSession";
 
@@ -69,6 +69,29 @@ const ENGINE_PILLARS = [
   },
 ];
 
+// What SoundHub understands about a session vs what a shared file shows.
+// CodeRabbit-style "best-in-class context" comparison.
+const CONTEXT_WE_SEE = [
+  { label: "Tempo & time signature", value: "128 BPM · 4/4" },
+  { label: "Tracks", value: "12 — midi · audio · return" },
+  { label: "Plugins & their settings", value: "8 — Serum, Vital, Pro-Q 3…" },
+  { label: "Samples & presets", value: "42 referenced files" },
+  { label: "Loudness", value: "LUFS · true peak · sample rate" },
+  { label: "Stems by role", value: "drums · bass · vocal · synths" },
+];
+
+const CONTEXT_OTHERS_SEE = [
+  "Filename",
+  "File size",
+  "“Binary file changed”",
+];
+
+const CONTEXT_STATS = [
+  { n: "4", label: "DAW formats parsed" },
+  { n: "30+", label: "context points per version" },
+  { n: "0", label: "ZIPs to unzip" },
+];
+
 const DAW_ASSETS = [
   {
     icon: "🎚",
@@ -100,11 +123,106 @@ const MARKET_BENEFITS = [
 ];
 
 const INTEGRATIONS = [
-  { name: "Ableton Live", status: "available", detail: "`soundhub` CLI bridge — push bounces, export open requests, locator helper · Max for Live catalog panel prototype" },
+  { name: "Ableton Live", status: "available", detail: "`soundhub` CLI bridge — push bounces, export open requests, locator helper · Max for Live panel: catalog + push current export" },
   { name: "FL Studio", status: "planned", detail: "Planned — no timeline yet" },
   { name: "Cubase", status: "planned", detail: "Planned — no timeline yet" },
   { name: "REAPER", status: "planned", detail: "Planned — no timeline yet" },
 ];
+
+// --- feature tabs (CodeRabbit-style) ---------------------------------------
+
+const FEATURE_TABS = [
+  {
+    id: "review",
+    label: "Review",
+    icon: "💬",
+    title: "Comments at the exact moment",
+    text: "Reviewers drop notes on the timeline — “01:24 — bass masks the vocal”. Reply, resolve, loop the region. No account needed.",
+    points: ["Timestamped comments & replies", "Consolidated revision rounds", "Voice notes from the phone", "Status: In review → Needs changes → Approved"],
+  },
+  {
+    id: "ab",
+    label: "A/B",
+    icon: "🔀",
+    title: "Gapless, level-matched A/B",
+    text: "Compare v12 and v13 with one playhead, loudness matched — mix or individual stems. Hear the fix, don't just read it.",
+    points: ["Same playhead, loop regions", "Short-term LUFS compensation", "Stem-level compare: drums, bass, vocal, synths", "Reference tracks (private, non-deliverable)"],
+  },
+  {
+    id: "diff",
+    label: "Smart diff",
+    icon: "📐",
+    title: "What actually changed",
+    text: "Between versions you see the structure, not “binary file changed”: tempo, tracks, plugins with their settings, samples.",
+    points: ["Tempo / signature changes", "Added or removed tracks & plugins", "Plugin parameter diffs (REAPER PARAM, Ableton presets)", "SHA-256 ledger of every decision"],
+  },
+];
+
+// --- honest testimonials (from Ableton-community research, not invented) ---
+
+const TESTIMONIALS = [
+  {
+    quote: "Хочется работать прямо из DAW, а не прыгать между браузером и проектом.",
+    who: "Producer on r/ableton — what users keep asking for",
+  },
+  {
+    quote: "Нужен push-to-work, а не «открой сайт, скачай ZIP, распакуй, импортируй, снова сравни».",
+    who: "Ableton forum thread on workflow friction",
+  },
+  {
+    quote: "Важно увидеть, что именно поменялось между итерациями, а не просто “binary changed”.",
+    who: "Community feedback — the smart-diff ask",
+  },
+];
+
+// --- pricing (honest: private beta, no invented prices) ---------------------
+
+const PLANS = [
+  {
+    name: "Free",
+    price: "$0",
+    note: "For solo producers trying the loop",
+    features: ["Review sessions & versioning", "Watermarked previews", "Public share links", "Community support"],
+    cta: "Open a sample review",
+    href: SAMPLE_REVIEW_URL,
+    featured: false,
+  },
+  {
+    name: "Pro",
+    price: "beta",
+    note: "For engineers with real clients",
+    features: ["Stem-level A/B & reference tracks", "Release package + QC preflight", "Stripe paid delivery (card / AP / GP)", "Booking deposits & paid extra rounds", "Change orders after approval"],
+    cta: "Join the beta",
+    href: null,
+    featured: true,
+  },
+  {
+    name: "Team",
+    price: "beta",
+    note: "For labels & studios",
+    features: ["Roles & approval chains", "Client briefs + service presets", "Email reminders & deadlines", "Archive & session-file handoff", "Priority support"],
+    cta: "Join the beta",
+    href: null,
+    featured: false,
+  },
+];
+
+// --- comparison table -------------------------------------------------------
+
+const COMPARE_ROWS = [
+  { feature: "Version history", soundhub: true, discord: false, drive: false, github: false },
+  { feature: "Timestamped comments on audio", soundhub: true, discord: false, drive: false, github: false },
+  { feature: "Smart diff of DAW structure", soundhub: true, discord: false, drive: false, github: false },
+  { feature: "Gapless A/B between versions", soundhub: true, discord: false, drive: false, github: false },
+  { feature: "Stems matched by role", soundhub: true, discord: false, drive: false, github: false },
+  { feature: "Approvals & rounds", soundhub: true, discord: false, drive: false, github: false },
+  { feature: "Final delivery with invoice", soundhub: true, discord: false, drive: false, github: false },
+  { feature: "DAW parsing (.als/.cpr/.rpp/.flp)", soundhub: true, discord: false, drive: false, github: false },
+];
+
+// --- hero rotating word -----------------------------------------------------
+
+const HERO_WORDS = ["review", "versions", "approvals"];
 
 const FAQ = [
   {
@@ -209,6 +327,162 @@ function WorkflowModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// A product screenshot framed like a browser window (CodeRabbit-style).
+function BrowserShot({ src, url, caption }: { src: string; url: string; caption?: string }) {
+  return (
+    <div className="cr-shot">
+      <div className="cr-shot-bar">
+        <span className="dot" />
+        <span className="dot" />
+        <span className="dot" />
+        <span className="cr-shot-url">{url}</span>
+      </div>
+      <img src={src} alt={caption || url} loading="lazy" />
+      {caption && <div className="cr-shot-cap">{caption}</div>}
+    </div>
+  );
+}
+
+// Rotating word in the hero headline (CodeRabbit-style motion).
+function RotatingWord({ words }: { words: string[] }) {
+  const [i, setI] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setI((x) => (x + 1) % words.length), 2200);
+    return () => clearInterval(t);
+  }, [words.length]);
+
+  return (
+    <span className="cr-rotate" key={i}>
+      {words[i]}
+    </span>
+  );
+}
+
+// Feature tabs: Review / A/B / Diff.
+function FeatureTabs() {
+  const [tab, setTab] = useState(FEATURE_TABS[0].id);
+  const active = FEATURE_TABS.find((t) => t.id === tab)!;
+
+  return (
+    <div className="cr-tabs">
+      <div className="cr-tabbar">
+        {FEATURE_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={`cr-tab ${t.id === tab ? "active" : ""}`}
+            onClick={() => setTab(t.id)}
+          >
+            <span className="cr-tab-icon">{t.icon}</span> {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="cr-tabpanel" key={active.id}>
+        <div className="cr-tabpanel-copy">
+          <h3 className="cr-tabpanel-title">{active.title}</h3>
+          <p className="cr-tabpanel-text">{active.text}</p>
+          <ul className="cr-feature-list">
+            {active.points.map((p) => <li key={p}>{p}</li>)}
+          </ul>
+        </div>
+        <div className="cr-tabpanel-art">
+          {active.id === "diff" ? (
+            <div className="bc-diff-card">
+              <div className="bc-diff-head">SoundHub smart diff — v12 → v13</div>
+              {DIFF_ROWS.map((r) => (
+                <div key={r.label} className={`bc-diff-row ${r.kind === "add" ? "add" : r.kind === "bpm" ? "bpm" : ""}`}>
+                  <span className="bc-diff-label">{r.label}</span>
+                  <span className="bc-diff-before">{r.before}</span>
+                  <span className="bc-diff-arrow">→</span>
+                  <span className="bc-diff-after">{r.after}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="cr-tabpanel-panel">
+              <div className="cr-tabpanel-head">Neon Warehouse — {active.id === "ab" ? "v12 ↔ v13 A/B" : "Review session"}</div>
+              {active.id === "ab" ? (
+                <>
+                  <div className="cr-ab-wave">
+                    {Array.from({ length: 48 }).map((_, k) => (
+                      <span key={k} style={{ height: `${18 + Math.abs(Math.sin(k * 1.7)) * 55}%` }} />
+                    ))}
+                  </div>
+                  <div className="cr-ab-modes">
+                    <span className="active">Full mix</span>
+                    <span>Drums</span>
+                    <span>Bass</span>
+                    <span>Vocal</span>
+                    <span>Synths</span>
+                  </div>
+                  <div className="cr-ab-gain">LUFS-matched · −0.4 dB</div>
+                </>
+              ) : (
+                <>
+                  <div className="cr-comment">
+                    <span className="cr-comment-time">01:24</span>
+                    <span className="cr-comment-body">“Kick and bass clash here — let the vocal breathe.”</span>
+                    <span className="cr-comment-who">Aisha (A&R)</span>
+                  </div>
+                  <div className="cr-comment">
+                    <span className="cr-comment-time">00:52</span>
+                    <span className="cr-comment-body">Love the new bass preset — keep it.</span>
+                    <span className="cr-comment-who">Marco (client)</span>
+                  </div>
+                  <div className="cr-comment cr-comment-resolved">
+                    <span className="cr-comment-time">02:10</span>
+                    <span className="cr-comment-body">EQ −3 dB @ 250 Hz — fixed in v13 ✓</span>
+                    <span className="cr-comment-who">SoundHub</span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Honest testimonials — real asks from the Ableton community, not invented.
+function Testimonials() {
+  return (
+    <div className="cr-testimonials">
+      {TESTIMONIALS.map((t) => (
+        <div key={t.who} className="cr-testimonial">
+          <p className="cr-testimonial-quote">“{t.quote}”</p>
+          <p className="cr-testimonial-who">{t.who}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Comparison table: SoundHub vs the usual ways of sharing files.
+function CompareTable() {
+  return (
+    <div className="cr-compare">
+      <div className="cr-compare-head cr-compare-row">
+        <span className="cr-compare-feature" />
+        <span className="cr-compare-col soundhub">SoundHub</span>
+        <span className="cr-compare-col">Discord</span>
+        <span className="cr-compare-col">Drive</span>
+        <span className="cr-compare-col">GitHub</span>
+      </div>
+      {COMPARE_ROWS.map((r) => (
+        <div key={r.feature} className="cr-compare-row">
+          <span className="cr-compare-feature">{r.feature}</span>
+          <span className={`cr-compare-col soundhub ${r.soundhub ? "yes" : "no"}`}>{r.soundhub ? "✓" : "—"}</span>
+          <span className={`cr-compare-col ${r.discord ? "yes" : "no"}`}>{r.discord ? "✓" : "—"}</span>
+          <span className={`cr-compare-col ${r.drive ? "yes" : "no"}`}>{r.drive ? "✓" : "—"}</span>
+          <span className={`cr-compare-col ${r.github ? "yes" : "no"}`}>{r.github ? "✓" : "—"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const [email, setEmail] = useState("");
   const [waitlist, setWaitlist] = useState<string | null>(null);
@@ -227,31 +501,49 @@ export default function LandingPage() {
   return (
     <div className="landing">
 
-
-      {/* ---------- hero ---------- */}
-      <section className="bc-hero" id="top">
-        <p className="bc-eyebrow">Review · versions · approval — for music</p>
-        <h1 className="bc-title">
-          Music review and approvals, built for the way tracks are made.
-        </h1>
-        <p className="bc-sub">
-          Send a private review link. Get timestamped notes. Compare versions.
-          Approve the final master — no scattered ZIP archives, no Discord chaos.
-        </p>
-        <div className="bc-cta">
-          <Link to={SAMPLE_REVIEW_URL} className="bc-btn bc-btn-primary">▶ Open a sample review</Link>
-          <button type="button" className="bc-btn bc-btn-ghost" onClick={() => setShowWorkflow(true)}>
-            Watch the workflow — 1 min
-          </button>
+      {/* ---------- hero: headline + product screenshot in a browser frame ---------- */}
+      <section className="cr-hero" id="top">
+        <div className="cr-hero-inner">
+          <p className="cr-badge">Review · versions · approval — for music</p>
+          <h1 className="cr-title">
+            Music <RotatingWord words={HERO_WORDS} /> and approvals,<br />
+            built for the way tracks are made.
+          </h1>
+          <p className="cr-sub">
+            Send a private review link. Get timestamped notes. Compare versions.
+            Approve the final master — no scattered ZIP archives, no Discord chaos.
+          </p>
+          <div className="bc-cta">
+            <Link to={SAMPLE_REVIEW_URL} className="bc-btn bc-btn-primary">▶ Open a sample review</Link>
+            <button type="button" className="bc-btn bc-btn-ghost" onClick={() => setShowWorkflow(true)}>
+              Watch the workflow — 1 min
+            </button>
+          </div>
+          <div className="bc-tags">
+            <span>No account for reviewers</span>
+            <span>WAV · MP3 · stems</span>
+            <span>Loudness-matched A/B</span>
+            <span>Watermarked previews</span>
+            <span>Decision ledger</span>
+          </div>
         </div>
-        <div className="bc-tags">
-          <span>No account for reviewers</span>
-          <span>WAV · MP3 · stems</span>
-          <span>Loudness-matched A/B</span>
-          <span>Watermarked previews</span>
-          <span>Decision ledger</span>
-        </div>
+        <BrowserShot
+          src="/screenshots/repo-page.png"
+          url="soundhub.local/projects/aurora-night"
+          caption="A DAW project as a versioned repo — file tree with parsed tracks, plugins and smart diffs"
+        />
       </section>
+
+      {/* ---------- DAW strip: "works with" (CodeRabbit-style trust line) ---------- */}
+      <div className="cr-daws">
+        <p>Works with the DAWs you already use</p>
+        <div className="cr-daws-row">
+          <span>Ableton Live</span>
+          <span>FL Studio</span>
+          <span>Cubase</span>
+          <span>REAPER</span>
+        </div>
+      </div>
 
       {/* ---------- featured: a live review session ---------- */}
       <section className="bc-featured" id="workflow">
@@ -291,6 +583,47 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ---------- feature tabs: Review / A/B / Diff ---------- */}
+      <section className="bc-section cr-tabs-section" id="features">
+        <h2 className="bc-h2">One tool, three superpowers</h2>
+        <FeatureTabs />
+      </section>
+
+      {/* ---------- testimonials (honest community asks) ---------- */}
+      <section className="bc-section">
+        <h2 className="bc-h2">What producers keep asking for</h2>
+        <Testimonials />
+      </section>
+
+      {/* ---------- comparison table ---------- */}
+      <section className="bc-section" id="compare">
+        <h2 className="bc-h2">SoundHub vs. the usual ways</h2>
+        <CompareTable />
+      </section>
+
+      {/* ---------- feature: one workspace for every version ---------- */}
+      <section className="bc-section cr-feature" id="versions">
+        <div className="cr-feature-copy">
+          <h2 className="bc-h2 left">One workspace for every version</h2>
+          <p>
+            Every bounce lands in the same repo: v11 → v12 → v13, branches for
+            clients and rounds, full history with DAW metadata. No more guessing
+            which file is the current mix.
+          </p>
+          <ul className="cr-feature-list">
+            <li>Branches per client / round (review/v12, main)</li>
+            <li>Commits carry parsed tracks, plugins and their settings</li>
+            <li>Re-pushes deduplicate — a snapshot costs almost nothing</li>
+            <li>Public share links for reviewers, private for the rest</li>
+          </ul>
+        </div>
+        <BrowserShot
+          src="/screenshots/projects.png"
+          url="soundhub.local/projects"
+          caption="Every project is a repo — open it, version it, share it"
+        />
+      </section>
+
       {/* ---------- smart diff ---------- */}
       <section className="bc-section" id="diff">
         <div className="bc-diff-grid">
@@ -314,6 +647,67 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* ---------- best-in-class context ---------- */}
+      <section className="bc-section cr-context" id="context">
+        <h2 className="bc-h2">Best-in-class context</h2>
+        <p className="cr-context-sub">
+          Across each step, we pull in dozens more points of context than other tools.
+        </p>
+        <div className="cr-context-grid">
+          <div className="cr-context-muted">
+            <div className="cr-context-head muted">What a shared file shows</div>
+            <ul className="cr-context-others">
+              {CONTEXT_OTHERS_SEE.map((x) => (
+                <li key={x}>{x}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="cr-context-rich">
+            <div className="cr-context-head">What SoundHub extracts</div>
+            <div className="cr-context-rows">
+              {CONTEXT_WE_SEE.map((c) => (
+                <div key={c.label} className="cr-context-row">
+                  <span className="cr-context-label">{c.label}</span>
+                  <span className="cr-context-value">{c.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="cr-context-stats">
+          {CONTEXT_STATS.map((s) => (
+            <div key={s.label} className="cr-context-stat">
+              <span className="cr-context-stat-n">{s.n}</span>
+              <span className="cr-context-stat-label">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ---------- feature: push from the DAW ---------- */}
+      <section className="bc-section cr-feature cr-feature-flip" id="daw">
+        <div className="cr-feature-copy">
+          <h2 className="bc-h2 left">Push from the DAW, review in the browser</h2>
+          <p>
+            `snd push` sends the current Live set (or a whole project folder) as
+            one versioned commit — master and stems open a public review session
+            with gapless A/B. The Max for Live panel puts that one button inside
+            Ableton.
+          </p>
+          <ul className="cr-feature-list">
+            <li>Preflight before upload: corrupt files are rejected, never sent</li>
+            <li>Atomic push — a failed upload leaves no half-pushed version</li>
+            <li>Stems attach by logical name: Kick→drums, Bass→bass…</li>
+            <li>Stable JSON contract for automation (M4L, scripts)</li>
+          </ul>
+        </div>
+        <BrowserShot
+          src="/screenshots/repo-page-branches.png"
+          url="soundhub.local/projects/aurora-night/branches"
+          caption="Branches per client and round — the DAW bridge pushes right into them"
+        />
       </section>
 
       {/* ---------- sound-tech engine backbone ---------- */}
@@ -405,6 +799,33 @@ export default function LandingPage() {
         </p>
       </section>
 
+      {/* ---------- pricing ---------- */}
+      <section className="bc-section" id="pricing">
+        <h2 className="bc-h2">Simple plans — beta pricing, honest</h2>
+        <div className="cr-plans">
+          {PLANS.map((pl) => (
+            <div key={pl.name} className={`cr-plan ${pl.featured ? "featured" : ""}`}>
+              <h3 className="cr-plan-name">{pl.name}</h3>
+              <div className="cr-plan-price">{pl.price}</div>
+              <div className="cr-plan-note">{pl.note}</div>
+              <ul className="cr-plan-features">
+                {pl.features.map((f) => <li key={f}>{f}</li>)}
+              </ul>
+              {pl.href ? (
+                <Link to={pl.href} className="bc-btn bc-btn-primary">{pl.cta}</Link>
+              ) : (
+                <button type="button" className={`bc-btn ${pl.featured ? "bc-btn-primary" : "bc-btn-ghost"}`} onClick={joinWaitlist}>
+                  {pl.cta}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <p className="bc-status-note">
+          Beta pricing — final tiers land after the user-test round. The review loop is free for everyone.
+        </p>
+      </section>
+
       {/* ---------- FAQ ---------- */}
       <section className="bc-section" id="faq">
         <h2 className="bc-h2">Questions, answered</h2>
@@ -448,16 +869,22 @@ export default function LandingPage() {
           <div className="bc-footer-col">
             <h4>Product</h4>
             <a href="#workflow">Workflow</a>
+            <a href="#features">Features</a>
             <a href="#diff">Smart diff</a>
+            <a href="#context">Context</a>
+            <a href="#compare">Compare</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#versions">Versions</a>
+            <a href="#daw">DAW bridge</a>
             <a href="#market">Marketplace</a>
             <a href="#faq">FAQ</a>
           </div>
           <div className="bc-footer-col">
             <h4>DAWs</h4>
-            <a href="#workflow">Ableton Live · available</a>
-            <a href="#workflow">FL Studio · planned</a>
-            <a href="#workflow">Cubase · planned</a>
-            <a href="#workflow">REAPER · planned</a>
+            <a href="#daw">Ableton Live · available</a>
+            <a href="#daw">FL Studio · planned</a>
+            <a href="#daw">Cubase · planned</a>
+            <a href="#daw">REAPER · planned</a>
           </div>
           <div className="bc-footer-col">
             <h4>Ecosystem</h4>

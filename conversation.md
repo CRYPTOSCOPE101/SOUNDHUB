@@ -468,11 +468,29 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
   (`test_snd_serve_bridge_negative_cases`): битый JSON → 400 «bad JSON», audio-путь
   без файла → 400 «Master file not found», стемы без мастера → 400 «requires --audio»,
   повторный push того же экспорта — оба проходят и несут тот же .als+манифест;
-  preflight-отказы не доходят до бэкенда. Старт моста в тестах переведён на
+  preflight-отказы не доходят до бэкенда.  Старт моста в тестах переведён на
   `start_bridge(port=0)` + `server_address` (убрана гонка за портом — два bridge-теста
   подряд больше не падают). m4l/README.md: блок Troubleshooting (7 симптомов панели:
   мост не запущен, сейв сета, master не найден, 401, oversize, fast-push без review)
   + end-to-end checklist через curl без открытия Live. Итого 114 backend-тестов.
+
+**Лендинг в CodeRabbit-стиле (фон сохранён):** по реквесту «такой же красивый лендинг
+со скриншотами» — hero перестроен под CodeRabbit-паттерн: бейдж-пилюля + крупный
+заголовок + CTA + **продуктовый скриншот в браузерной рамке** (точки macOS + URL-бар,
+`/screenshots/repo-page.png`), под ним лента «Works with the DAWs you already use»
+(Ableton Live · FL Studio · Cubase · REAPER). Добавлены две фиче-секции со скриншотами
+(текст + браузерный кадр, вторая зеркальная): «One workspace for every version»
+(`projects.png`) и «Push from the DAW, review in the browser» (`repo-page-branches.png`),
+живая демо-сессия, diff-кард, pillars/roadmap/FAQ/CTA/футер сохранены. Скриншоты
+скопированы в `frontend/public/screenshots/`. Цвет фона не тронут — тот же `#F2F0EB`
+(проверено по пикселям). Frontend build ✅, страницы отдают скриншоты (200).
+- **Секция «Best-in-class context»** (CodeRabbit-паттерн, после smart diff): подзаголовок
+  «Across each step, we pull in dozens more points of context than other tools.» +
+  сравнение «Что видно в общем файле» (filename · file size · “binary changed”, пунктирная
+  карточка с ✕) против «Что SoundHub извлекает» (6 строк: BPM/сигнатура, 12 треков,
+  8 плагинов с настройками, 42 сэмпла/пресета, LUFS/true peak, стемы по ролям) + ряд
+  статистики (4 DAW-формата · 30+ точек контекста на версию · 0 ZIP-ов). Ссылка в футере.
+  Проверено playwright: 3+6+3 строк на месте, build ✅.
 
 **Изучен GitHub-организации Ableton (29 репозиториев):** почти всё — внутренняя инфра (Ansible/Jenkins), нерелевантно. Применимы четыре:
 1. **`Ableton/web-audio-sequencing` (MIT)** — lookahead-планирование на часах AudioContext. **Применено сразу:** оба Web Audio плеера (`ABCompare.tsx`, `ReferenceCompare.tsx`) переведены с «RAF-тик ловит границу loop и перезапускает source с зазором» на планировщик сегментов (`start(when)`/`stop(when)` на точных временах аудио-часов, горизонт 0.15 с) — loop-регион теперь gapless, без frame-квантования и дрейфа. Frontend build зелёный.
@@ -558,6 +576,25 @@ repo-страница (repo-page.png), ветки (repo-page-branches.png) — �
 добавлен `projects.png` в README. Шапка README обновлена на новое прозрачное лого
 (`frontend/public/logo.png` вместо старого `LOGO_modSHA.jpg`). `demo.gif` остался старым —
 в окружении нет ffmpeg, чтобы переснять.
+
+**Лендинг в стиле coderabbit.ai** (по запросу «такой же красивый, фон оставить»):
+- **Hero** — бейдж-пилюля, крупный заголовок + CTA, продуктовый скриншот в браузерной рамке
+  (macOS-точки + URL-бар `soundhub.local/projects/aurora-night`, живой `repo-page.png`);
+  лента доверия «Works with the DAWs you already use» (Ableton Live · FL Studio · Cubase · REAPER).
+- **Фиче-секции со скриншотами** (`cr-feature`): «One workspace for every version» (projects.png)
+  и «Push from the DAW, review in the browser» (repo-page-branches.png, зеркальная).
+- **Best-in-class context** — сравнение «What a shared file shows» (✕ ZIP/Discord) vs
+  «What SoundHub extracts» (BPM · time signature · tracks · plugins with settings · samples ·
+  LUFS/true peak · stems by role) + статистика 4 DAW formats / 30+ context points / 0 ZIPs.
+- **Ещё пять CodeRabbit-элементов** (выбраны пользователем из списка):
+  - **Табы с фичами** (`cr-tabs`): Review · A/B · Approval — переключение без перезагрузки;
+  - **Отзывы** (`cr-testimonials`) — честные, из исследованного Ableton-комьюнити (не выдуманные);
+  - **Сравнительная таблица** (`cr-compare`) — SoundHub vs ZIP/Discord vs GitHub;
+  - **Pricing** (#pricing) — честные бета-тарифы: FREE $0 + PRO (beta), без выдуманных цен;
+  - **Анимированный hero** — rotating word в заголовке (review → versions → A/B → …).
+- Фон не тронут — тот же тёплый off-white `#F2F0EB` (проверено по пикселям на живом скриншоте).
+- Проверено: frontend build ✅ + playwright (табы переключаются, rotating word крутится, все 5
+  секций видимы, фон `#F2F0EB` на 4 высотах).
 
 ---
 
