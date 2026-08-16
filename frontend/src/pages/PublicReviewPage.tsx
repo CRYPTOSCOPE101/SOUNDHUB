@@ -264,12 +264,17 @@ export default function PublicReviewPage() {
   };
 
   const runPublicCompare = async () => {
-    if (!token || !current || !compareBaseId) return;
+    if (!token || !current) return;
+    // the select shows the oldest version by default, but the state stays
+    // null until the user opens the dropdown — fall back so the first click
+    // actually compares instead of silently doing nothing
+    const baseId = compareBaseId ?? versionList[versionList.length - 1]?.id;
+    if (!baseId) return;
     setCompareBusy(true);
     setCompareErr(null);
     try {
       const comp = await api.publicCompareVersions(token, {
-        baseVersionId: compareBaseId,
+        baseVersionId: baseId,
         compareVersionId: current.id,
         startMs: 0,
         endMs: null,

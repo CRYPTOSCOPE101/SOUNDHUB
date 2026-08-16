@@ -85,8 +85,12 @@ export default function ABCompare({
 
   const endMs = (comp.end_ms ?? comp.start_ms + 20000) / 1000;
 
-  // load stems for both versions (for the picker)
+  // load stems for both versions (for the picker) — owner context only.
+  // Guests get full-mix comparisons (backend rejects stem mode for guests),
+  // and the stems endpoints are owner-only: calling them would 401 and the
+  // api layer redirects the whole public review page to /login.
   useEffect(() => {
+    if (audioUrls) return; // guest mode — skip owner-only stems
     let cancelled = false;
     const load = async () => {
       try {
@@ -105,7 +109,7 @@ export default function ABCompare({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [comp.base_version_id, comp.compare_version_id]);
+  }, [comp.base_version_id, comp.compare_version_id, audioUrls]);
 
   // stems available in BOTH versions (matched by logical name)
   const sharedStems = STEM_LOGICAL_NAMES.filter(
