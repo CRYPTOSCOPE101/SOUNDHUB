@@ -1093,6 +1093,34 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ---------- docs ---------- */}
+      <section className="bc-section" id="docs">
+        <p className="bc-eyebrow center" style={{ display: "block", marginBottom: 14 }}>Documentation</p>
+        <h2 className="bc-h2">Read the docs</h2>
+        <div className="docs-landing-grid">
+          <Link to="/docs" className="docs-landing-card docs-landing-primary">
+            <strong>📚 Docs hub</strong>
+            <span>Core loop, snd push, review sessions, roles and honest limits — a user guide on one page.</span>
+            <em>Open the guide →</em>
+          </Link>
+          <a href="/Whitepaper.pdf" className="docs-landing-card">
+            <strong>📄 Whitepaper (PDF)</strong>
+            <span>18 pages — architecture, formulas, tokenomics, governance.</span>
+            <em>Read the whitepaper →</em>
+          </a>
+          <a href="https://github.com/CRYPTOSCOPE101/SoundHub/blob/snd-project-push/LITEPAPER.md" target="_blank" rel="noopener noreferrer" className="docs-landing-card">
+            <strong>📝 Litepaper</strong>
+            <span>The product in one page: problem, solution, layers, roadmap.</span>
+            <em>Read the litepaper →</em>
+          </a>
+          <a href="https://github.com/CRYPTOSCOPE101/SoundHub/blob/snd-project-push/CHANGELOG.md" target="_blank" rel="noopener noreferrer" className="docs-landing-card">
+            <strong>🗒️ Changelog</strong>
+            <span>Release notes — what changed, how to test, known limits.</span>
+            <em>See the changelog →</em>
+          </a>
+        </div>
+      </section>
+
       {/* ---------- footer ---------- */}
       <footer className="bc-footer">
         <div className="bc-footer-grid">
@@ -1112,6 +1140,7 @@ export default function LandingPage() {
             <a href="#daw">DAW bridge</a>
             <a href="#market">Marketplace</a>
             <a href="#faq">FAQ</a>
+            <Link to="/docs">Docs</Link>
           </div>
           <div className="bc-footer-col">
             <h4>DAWs</h4>

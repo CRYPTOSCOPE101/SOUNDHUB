@@ -18,6 +18,7 @@ import ReviewSessionPage from "./pages/ReviewSessionPage";
 import ProjectPage from "./pages/ProjectPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import DawIntegrationPage from "./pages/DawIntegrationPage";
+import DocsPage from "./pages/DocsPage";
 
 // Integration pages for individual DAWs — same layout, per-DAW accent color.
 const CUBASE = {
@@ -114,6 +115,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/kettle" element={<KettlePage />} />
+          <Route path="/docs" element={<DocsPage />} />
           <Route path="/p/:username" element={<PortfolioPage />} />
           <Route path="/session" element={<ReviewSessionPage />} />
           <Route path="/sessions" element={<ReviewSessionPage />} />

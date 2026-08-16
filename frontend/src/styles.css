@@ -5159,6 +5159,163 @@ pre.diff-raw code {
   font-size: 13px;
 }
 
+/* ---------- docs page (/docs) ---------- */
+.docs-page {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 0 24px 60px;
+}
+.docs-hero {
+  text-align: center;
+  padding: 56px 24px 30px;
+}
+.docs-lead {
+  max-width: 760px;
+  margin: 0 auto 22px;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.docs-cmd-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 18px 0;
+}
+.docs-cmd-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: var(--paper, #fff);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+.docs-cmd-row code {
+  flex: none;
+  white-space: nowrap;
+  background: #16150f;
+  color: #f2f0eb;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+.docs-cmd-row span {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.docs-note {
+  max-width: 760px;
+  margin: 16px auto 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.docs-table-wrap {
+  max-width: 760px;
+  margin: 18px auto 0;
+}
+.docs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.docs-table th,
+.docs-table td {
+  border: 1px solid var(--border);
+  padding: 9px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.docs-table th {
+  background: var(--bg3);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.docs-limits {
+  max-width: 760px;
+  margin: 18px auto 0;
+}
+.docs-limits li {
+  margin-bottom: 10px;
+  line-height: 1.55;
+}
+.docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+.docs-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px;
+  background: var(--paper, #fff);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s, transform 0.15s;
+}
+.docs-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.docs-card strong {
+  font-size: 15px;
+}
+.docs-card span {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ---------- docs section on the landing ---------- */
+.docs-landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+.docs-landing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px;
+  background: var(--paper, #fff);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s, transform 0.15s;
+}
+.docs-landing-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.docs-landing-card strong {
+  font-size: 15px;
+}
+.docs-landing-card span {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.docs-landing-card em {
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-top: 4px;
+}
+.docs-landing-primary {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--paper, #fff));
+}
+
 /* ==========================================================================
    Bandcamp-style landing + shared overrides
    (appended on top of the token-based system above)
