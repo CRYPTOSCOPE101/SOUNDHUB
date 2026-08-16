@@ -1,5 +1,5 @@
 
-![SoundHub repo page](screenshots/LOGO_modSHA.jpg)
+![SoundHub](frontend/public/logo.png)
 
 <div align="center" style="margin: 20px 0px;">
 <a href="https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/ci.yml">
@@ -33,6 +33,7 @@ Ableton Live (Max for Live prototype in `m4l/`) or the web app.
 ![SoundHub demo](screenshots/demo.gif)
 
 ![SoundHub main page](screenshots/main-light.png)
+![SoundHub projects](screenshots/projects.png)
 ![SoundHub repo page](screenshots/repo-page.png)
 ![SoundHub branch selector](screenshots/repo-page-branches.png)
 
