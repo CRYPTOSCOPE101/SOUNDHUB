@@ -116,6 +116,32 @@ A fast push (just the `.als`) creates the versioned commit; adding a master
 render path (`audio`) opens the review session so the client can do gapless
 A/B — see the Phase 16 contract in the README.
 
+### Push button — UX spec (states)
+
+The push button is a small state machine; the panel text must always
+reflect exactly one of these four states:
+
+| State | Panel shows | Triggered by | Next state |
+|---|---|---|---|
+| `Idle` | `Push current export` | device load, after success/error | press → `Pushing` |
+| `Pushing` | `Pushing… (project + master + stems)` | press while `Idle` | bridge responds → `Success` or `Error` |
+| `Success` | `✓ pushed commit #N · open review` (link) | bridge `{"ok": true, "commit_id": N}` | auto-idle after ~4s or click → `Idle` |
+| `Error` | `Push failed: <reason>` (see troubleshooting table) | bridge `{"ok": false, "error": …}` or unreachable / timeout | click or 5s → `Idle` |
+
+Rules: the button is disabled in `Pushing` (no double-push); `Error` never
+times out silently — the reason text stays until dismissed; `Success` is
+only reached with a `commit_id` in the response (any other body is an
+`Error`).
+
+### Idempotency
+
+Pushing the **same export twice** is safe and predictable: the bridge runs
+the real pipeline, blobs are content-addressed (SHA-256), so an identical
+`.als` + manifest creates **no new blobs** and the server returns the
+`deduplicated` count with a deterministic `commit_id`. The button therefore
+never needs a “force” path — a re-push after a failed confirmation is just
+another push of the same bytes.
+
 ## Backend endpoints the device uses
 
 | Endpoint | Purpose |
