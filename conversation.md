@@ -414,6 +414,36 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
 - UX-фикс: `--project "Имя"` на первой заливке авто-создаёт проект (было «not found»). Парсер REAPER: `<TEMPO 128 4 4` без `>` — regex исправлен.
 - Проверено на живом сервере: `✓ pushed “Neon Warehouse” — commit #1 · 3 files · main; RPP: Neon.rpp — 2 tracks, 3 plugins, 3 plugins with settings`. 96 backend-тестов зелёные.
 
+**Контракт Фазы 16 — `snd push` как безопасная, предсказуемая команда (проект → версия → review):**
+
+- **CLI принимает `.als` файл напрямую** (`snd push ./Track_v12.als`) или каталог (старый режим сохранён);
+  новые флаги: `--audio <master.wav>` (открывает review-версию для gapless A/B), `--stems <dir>`
+  (каталог стемов прикрепляется как набор StemAsset по logical name из имени файла), `--round N`,
+  `--open` (открыть review URL в браузере), `--json` (машинный контракт).
+- **Preflight до upload**: существование файла/каталога, размер (MAX_UPLOAD_SIZE), расширение
+  (только .als/.rpp/.flp/.cpr для проекта; аудио/стемы — по белому списку), читаемость `.als`
+  (детект + реальный парсинг — битый файл отклоняется с понятной ошибкой), в review-режиме
+  обязателен master (`--audio`) — стемы без мастера отклоняются.
+- **Атомарность**: блобы пишутся первыми (content-addressed → повторный пуш идентичных файлов
+  дедуплицируется), затем commit + review session/version/stems создаются в **одной транзакции**
+  (`create_commit(commit_transaction=False)`) — ошибка на середине загрузки не оставляет
+  пользователю «полу-запушенной» версии (тест: валидный .als+master + битый stem → 400, сессий/коммитов ноль).
+- **Связка с review**: первый пуш с `--audio` создаёт (или переиспользует) review-сессию проекта
+  (`share_permission=download` — гости слушают A/B без пароля), версия получает waveform,
+  `round_number` из `--round`, стемы — `_guess_stem_name` (Kick→drums, Bass→bass, Vocals→vocal…);
+  второй пуш в ту же сессию даёт v1/v2 → level-matched A/B работает. Ledger: `version.created` +
+  `stem.uploaded`.
+- **Стабильный JSON-контракт** (для M4L/автоматизации): `{"ok", "project_id", "branch",
+  "commit_id", "version_id", "session_id", "share_token", "review_url", "uploaded":
+  {"als", "master", "stems"}, "deduplicated"}`; при ошибке с `--json` — `{"ok": false, "error": …}`.
+- **Фикс по пути**: `versioning.ensure_branch` не создавал новую не-default ветку (`--branch review/v12`
+  падал `AttributeError`) — теперь ветка синтезируется при первом пуше.
+- **Тесты: 111 backend** (12 новых: fast-mode контракт, audio→review-версия для A/B, две версии
+  → сравнение 201, стемы как набор с logical names, дедуп повторного пуша без новых блобов,
+  атомарность при mid-upload ошибке, 401/404/400/413, CLI single-.als + `--json` контракт,
+  preflight-отказы, `--json` ошибка, `--open`) + frontend build + живой smoke
+  (`.als`+master+3 стема → `deduplicated: 6` при ре-пуше, review URL 200, стемы прикреплены).
+
 **Изучен GitHub-организации Ableton (29 репозиториев):** почти всё — внутренняя инфра (Ansible/Jenkins), нерелевантно. Применимы четыре:
 1. **`Ableton/web-audio-sequencing` (MIT)** — lookahead-планирование на часах AudioContext. **Применено сразу:** оба Web Audio плеера (`ABCompare.tsx`, `ReferenceCompare.tsx`) переведены с «RAF-тик ловит границу loop и перезапускает source с зазором» на планировщик сегментов (`start(when)`/`stop(when)` на точных временах аудио-часов, горизонт 0.15 с) — loop-регион теперь gapless, без frame-квантования и дрейфа. Frontend build зелёный.
 2. **`Ableton/m4l-connection-kit` (MIT)** — примеры M4L-устройств, связывающих Live с внешним миром через **OSC** и **JSON API**; зафиксирован как референс транспорта для будущего «review comments in the DAW» панели (не интегрируется сейчас).

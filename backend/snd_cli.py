@@ -7,9 +7,27 @@ settings where the format stores them — REAPER PARAM lines, Ableton preset
 refs), and pushes the whole snapshot as one versioned commit with a
 SOUNDHUB-MANIFEST.json describing the structure.
 
+`snd push <mix.als>` pushes a single DAW project file (fast mode: project +
+extracted DAW metadata). With `--audio <master.wav> --stems <dir>` the push
+also opens a review version (gapless A/B + stems) and returns the review URL.
+
     snd login --user producer --password '…'
     snd push ~/Projects/Neon --project "Neon Warehouse" --message "v12 bounce"
     snd push ~/Projects/Neon --include-media   # also upload audio/media files
+    snd push ./Track_v12.als --audio ./master.wav --stems ./stems \
+        --project "artist-track" --branch review/v12 --round 3 \
+        --message "Round 3 candidate" --open --json
+
+Preflight before upload: file existence, size, extension, .als readability,
+and — in review mode — at least one listenable audio file. The upload itself
+is atomic: blobs first (content-addressed → dedup), then commit + review
+version in one transaction, so a failed push never leaves a half-pushed
+version. `--json` prints a stable contract for automation (M4L panel etc.):
+
+    {"ok": true, "project_id": 1, "branch": "review/v12", "version_id": 3,
+     "review_url": "http://localhost:5173/r/…",
+     "uploaded": {"als": true, "master": true, "stems": 12},
+     "deduplicated": 4}
 
 Reuses the same config/token as the `soundhub` CLI (~/.soundhub.json,
 SOUNDHUB_TOKEN, --api/--token).
@@ -20,11 +38,11 @@ import argparse
 import json
 import os
 import sys
-import urllib.parse
+import uuid
+import webbrowser
 
 from soundhub_cli import (
     CliError,
-    _multipart,
     api_base,
     cmd_login,
     http_json,
@@ -41,6 +59,9 @@ MEDIA_EXTS = {
     ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff",
 }
 SKIP_NAMES = {".ds_store", "thumbs.db", ".git", ".svn", "__pycache__"}
+
+ALLOWED_AUDIO = {"wav", "mp3", "flac", "ogg", "aif", "aiff", "m4a"}
+ALLOWED_STEM_AUDIO = {"wav", "mp3", "flac", "aif", "aiff", "m4a", "ogg"}
 
 
 def find_project_files(root: str, include_media: bool) -> list[str]:
@@ -125,17 +146,89 @@ def _find_project(http, api: str, token: str, name: str) -> dict | None:
     return None
 
 
+def _preflight_size(path: str, max_size: int) -> None:
+    size = os.path.getsize(path)
+    if size > max_size:
+        raise CliError(f"File too large: {path} ({size} bytes > {max_size} max)")
+
+
+def _preflight_daw_readable(path: str) -> None:
+    """Check a single DAW file can actually be parsed before uploading it."""
+    from app.services.daw.registry import detect_format, get_daw_info
+
+    with open(path, "rb") as f:
+        data = f.read()
+    fmt = detect_format(path, data)
+    if fmt is None:
+        raise CliError(f"Cannot read {path} as a DAW project file — unknown format")
+    if get_daw_info(path, data) is None:
+        raise CliError(f"Cannot parse {path} as {fmt.upper()} — the file looks corrupt or truncated")
+
+
+def _preflight_audio(path: str, allowed: set[str], kind: str, max_size: int) -> None:
+    if not os.path.isfile(path):
+        raise CliError(f"{kind.capitalize()} file not found: {path}")
+    ext = os.path.splitext(path)[1].lower().lstrip(".")
+    if ext not in allowed:
+        raise CliError(f"Unsupported {kind} audio format '{ext}'. Allowed: {', '.join(sorted(allowed))}")
+    _preflight_size(path, max_size)
+
+
+def _preflight_stems_dir(path: str, max_size: int) -> list[str]:
+    if not os.path.isdir(path):
+        raise CliError(f"Stems directory not found: {path}")
+    stems: list[str] = []
+    for fn in sorted(os.listdir(path)):
+        full = os.path.join(path, fn)
+        if not os.path.isfile(full):
+            continue
+        ext = os.path.splitext(fn)[1].lower().lstrip(".")
+        if ext not in ALLOWED_STEM_AUDIO:
+            continue
+        _preflight_size(full, max_size)
+        stems.append(full)
+    if not stems:
+        raise CliError(
+            f"No audio stems found in {path} (allowed: {', '.join(sorted(ALLOWED_STEM_AUDIO))})"
+        )
+    return stems
+
+
 def cmd_push(args, http=None) -> int:
+    from app.config import MAX_UPLOAD_SIZE
+
     cfg = load_config()
     token = resolve_token(args, cfg)
     api = api_base(args)
-    root = os.path.abspath(args.dir)
-    if not os.path.isdir(root):
-        raise CliError(f"Not a directory: {root}")
+    target = os.path.abspath(args.target)
 
-    files = find_project_files(root, args.include_media)
-    if not files:
-        raise CliError(f"No project files found in {root} (add --include-media to upload audio too)")
+    # ---- resolve what to push: a DAW file or a project directory ----
+    if os.path.isdir(target):
+        root = target
+        project_files = find_project_files(root, args.include_media)
+        if not project_files:
+            raise CliError(f"No project files found in {root} (add --include-media to upload audio too)")
+    elif os.path.isfile(target):
+        ext = os.path.splitext(target)[1].lower()
+        if ext not in DAW_EXTS:
+            raise CliError(f"Unsupported project file type '{ext}' — expected one of: {', '.join(sorted(DAW_EXTS))}")
+        _preflight_size(target, MAX_UPLOAD_SIZE)
+        _preflight_daw_readable(target)
+        root = os.path.dirname(target) or "."
+        project_files = [target]
+    else:
+        raise CliError(f"Not found: {target}")
+
+    for p in project_files:
+        _preflight_size(p, MAX_UPLOAD_SIZE)
+
+    # ---- review materials preflight ----
+    audio_path = os.path.abspath(args.audio) if args.audio else None
+    if audio_path:
+        _preflight_audio(audio_path, ALLOWED_AUDIO, "master", MAX_UPLOAD_SIZE)
+    stem_files = _preflight_stems_dir(args.stems, MAX_UPLOAD_SIZE) if args.stems else []
+    if (audio_path or stem_files) and audio_path is None:
+        raise CliError("Review mode requires --audio (the master) — stems attach to the master version")
 
     project_name = args.project or os.path.basename(root.rstrip(os.sep)) or "SoundHub project"
     project = None
@@ -160,29 +253,32 @@ def cmd_push(args, http=None) -> int:
         )
         project = created
 
-    manifest = build_manifest(project_name, files, root, args.include_media)
-    parts: list[tuple[bytes, str]] = []
-    for path in files:
-        rel = os.path.relpath(path, root).replace(os.sep, "/")
+    manifest = build_manifest(project_name, project_files, root, args.include_media)
+    boundary = "----snd" + uuid.uuid4().hex
+    body = bytearray()
+    fields = [("message", args.message or "snd push"), ("manifest", json.dumps(manifest)), ("branch", args.branch)]
+    if args.round:
+        fields.append(("round", str(args.round)))
+    for key, value in fields:
+        body += f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode()
+
+    def _add_file(field: str, path: str, rel: str | None = None) -> None:
         with open(path, "rb") as f:
             data = f.read()
-        content_type = "application/octet-stream"
-        if os.path.splitext(path)[1].lower() in (".als", ".cpr"):
-            content_type = "application/xml"
-        parts.append((rel, data, content_type))
-
-    # multipart: message + manifest + branch + one file per part
-    boundary = "----snd" + __import__("uuid").uuid4().hex
-    body = bytearray()
-    for key, value in (("message", args.message or "snd push"), ("manifest", json.dumps(manifest)), ("branch", args.branch)):
-        body += f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode()
-    for rel, data, ctype in parts:
-        body += (
-            f'--{boundary}\r\nContent-Disposition: form-data; name="files"; filename="{rel}"\r\n'
-            f"Content-Type: {ctype}\r\n\r\n".encode()
+        name = rel or os.path.basename(path)
+        body.extend(
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{field}"; filename="{name}"\r\n'
+            f"Content-Type: application/octet-stream\r\n\r\n".encode()
         )
-        body += data
-        body += b"\r\n"
+        body.extend(data)
+        body.extend(b"\r\n")
+
+    for path in project_files:
+        _add_file("files", path, rel=os.path.relpath(path, root).replace(os.sep, "/"))
+    if audio_path:
+        _add_file("audio", audio_path)
+    for p in stem_files:
+        _add_file("stems", p)
     body += f"--{boundary}--\r\n".encode()
 
     result = http_json(
@@ -193,7 +289,16 @@ def cmd_push(args, http=None) -> int:
         content_type=f"multipart/form-data; boundary={boundary}",
         http=http,
     )
-    print(f"✓ pushed “{project_name}” — commit #{result['commit_id']} · {result['file_count']} files · {result['branch']}")
+
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    print(f"✓ pushed “{project_name}” — commit #{result.get('commit_id', '?')} · {result.get('file_count', '?')} files · {result.get('branch', '?')}")
+    if result.get("review_url"):
+        print(f"  review: {result['review_url']}")
+        if args.open:
+            webbrowser.open(result["review_url"])
     if manifest["daws"]:
         print(_summary(manifest["daws"]))
     else:
@@ -214,12 +319,21 @@ def build_parser() -> argparse.ArgumentParser:
     login.add_argument("--user", required=True)
     login.add_argument("--password", required=True)
 
-    push = sub.add_parser("push", parents=[common], help="push a project directory as one versioned commit")
-    push.add_argument("dir", help="project directory with DAW files (.als/.rpp/.flp/.cpr)")
+    push = sub.add_parser(
+        "push",
+        parents=[common],
+        help="push a DAW project file (.als/.rpp/.flp/.cpr) or a project directory as one versioned commit",
+    )
+    push.add_argument("target", help="DAW project file, or a project directory with DAW files")
     push.add_argument("--project", help="existing project name/id, or a name to auto-create")
     push.add_argument("--message", default="snd push", help="commit message, e.g. \"v12 bounce\"")
     push.add_argument("--branch", default="main", help="branch to commit to")
-    push.add_argument("--include-media", action="store_true", help="also upload audio/video/image files")
+    push.add_argument("--include-media", action="store_true", help="also upload audio/video/image files (directory mode)")
+    push.add_argument("--audio", help="master audio export (wav/mp3/…) — opens a review version for gapless A/B")
+    push.add_argument("--stems", help="directory of stem renders to attach to the review version")
+    push.add_argument("--round", type=int, default=0, help="review round number for the version (default: session round)")
+    push.add_argument("--open", action="store_true", help="open the review URL in the browser after a successful push")
+    push.add_argument("--json", action="store_true", help="machine-readable JSON output (stable contract for automation)")
     return p
 
 
@@ -231,10 +345,16 @@ def main(argv: list[str] | None = None, http=None) -> int:
         if args.command == "push":
             return cmd_push(args, http=http)
     except CliError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        if getattr(args, "json", False):
+            print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
+        else:
+            print(f"error: {exc}", file=sys.stderr)
         return 1
     except OSError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        if getattr(args, "json", False):
+            print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
+        else:
+            print(f"error: {exc}", file=sys.stderr)
         return 1
     return 0
 

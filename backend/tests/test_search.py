@@ -64,7 +64,9 @@ def _set_public(client, token: str, sid: int):
 
 def test_search_finds_public_engineer_and_session(client):
     token = _register(client, "neonproducer")
-    _set_public(client, token, _create_session(client, token, "Neon Warehouse")["id"])
+    # name that the seeded demo review ("Neon Warehouse — sample review") can't
+    # collide with, so the count assertions stay deterministic
+    _set_public(client, token, _create_session(client, token, "Aurora Night Mix")["id"])
 
     # engineer match by username
     r = client.get("/api/search", params={"q": "neon"})
@@ -74,11 +76,11 @@ def test_search_finds_public_engineer_and_session(client):
     assert body["engineers"][0]["session_count"] == 1
 
     # session match by name
-    r = client.get("/api/search", params={"q": "warehouse"})
+    r = client.get("/api/search", params={"q": "aurora"})
     body = r.json()
     assert len(body["sessions"]) == 1
     s = body["sessions"][0]
-    assert s["name"] == "Neon Warehouse"
+    assert s["name"] == "Aurora Night Mix"
     assert s["owner_username"] == "neonproducer"
     assert s["share_token"]
     assert s["status"] == "in_review"
