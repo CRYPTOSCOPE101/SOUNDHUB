@@ -884,6 +884,15 @@ MathJax через jsDelivr CDN с ожиданием mjx-container. Прове�
   idempotent re-push deduped → negative JSON — с пометкой, что это ручное
   подтверждение того, что уже проверяет CI.
 
+## Фаза 26 — Tagged release v0.2.0
+
+- CHANGELOG: «[Unreleased]» → «[v0.2.0] — 2026-08-16».
+- Коммит `690f388`, тег `v0.2.0` запушен → release.yml отработал успешно
+  (run 31948972777): собрал M4L-девайс (build_amxd.py, SoundHub.amxd 806 B)
+  и создал **GitHub Release v0.2.0** с ассетами: SoundHub.amxd,
+  soundhub-device.js, M4L-README.md, soundhub-m4l-v0.2.0.tar.gz.
+- Release: https://github.com/CRYPTOSCOPE101/SoundHub/releases/tag/v0.2.0
+
 ---
 
 ## Запуск
