@@ -17,6 +17,71 @@ import MarketplacePage from "./pages/MarketplacePage";
 import ReviewSessionPage from "./pages/ReviewSessionPage";
 import ProjectPage from "./pages/ProjectPage";
 import ProjectsPage from "./pages/ProjectsPage";
+import DawIntegrationPage from "./pages/DawIntegrationPage";
+
+// Integration pages for individual DAWs — same layout, per-DAW accent color.
+const CUBASE = {
+  name: "Cubase",
+  tagline: "Push the session, review every bounce — without leaving Steinberg's world.",
+  intro:
+    "SoundHub reads .cpr files directly: tempo, time signature, tracks, VST/VST3 plugins with their settings, and referenced samples. The `snd push` CLI turns a Cubase session into one versioned commit — and with a master export, into a shareable review with gapless A/B.",
+  status: "Cubase 13 parsed · push via snd",
+  accentVar: "#2e6bd6",
+  shot: "/screenshots/cubase-integration.png",
+  shotUrl: "soundhub.local/projects/cubase-sessions",
+  shotCaption:
+    "A real Cubase 13 session pushed to SoundHub — 126 BPM, five tracks, eight plugins (Serum, FabFilter, SSL, Waves…) parsed from the .cpr.",
+  parsed: [
+    { label: "Format", value: ".cpr — Cubase project XML" },
+    { label: "Project version", value: "13.0.40 (any 6–14 read)" },
+    { label: "Tempo & signature", value: "TempoTrack → BPM, time sig" },
+    { label: "Tracks", value: "midi · audio · instrument · group · folder" },
+    { label: "Plugins", value: "VST3 / VST2 / VST by name + inserts" },
+    { label: "Samples", value: "referenced paths from Sample tags" },
+  ],
+  workflow: [
+    "`snd push track.cpr` — one command, one versioned commit, DAW metadata extracted",
+    "`--audio master.wav` opens a public review session with gapless A/B",
+    "`--stems stems/` attaches renders by logical name (Kick→drums, Bass→bass…)",
+    "Preflight rejects corrupt .cpr before anything is uploaded",
+    "Atomic: a failed upload leaves no half-pushed version behind",
+  ],
+  formats: [".cpr", ".cpr.backup", ".cprx"],
+  next:
+    "A native Cubase panel (same pattern as the Max for Live device) is the next step — for now the CLI bridge covers push, open requests and the locator helper.",
+};
+
+const FL_STUDIO = {
+  name: "FL Studio",
+  tagline: "From the playlist to a review link — versioned, shared, approved.",
+  intro:
+    "SoundHub reads .flp project files: FL version, tempo, project name and channel structure. The `snd push` CLI commits the project, attaches the rendered master and stems, and opens a review where clients hear the difference — not just a file name.",
+  status: "FL 21 parsed · push via snd",
+  accentVar: "#ff7a1a",
+  shot: "/screenshots/fl-integration.png",
+  shotUrl: "soundhub.local/projects/fl-sessions",
+  shotCaption:
+    "A real FL Studio 21 project pushed to SoundHub — 140 BPM, FL 21, three channels (Kick, Lead, Sub Bass) parsed from the binary .flp.",
+  parsed: [
+    { label: "Format", value: ".flp — binary chunk format (FL 21+)" },
+    { label: "Project version", value: "FL 11 · 12 · 20 · 21 detected" },
+    { label: "Tempo", value: "project BPM from FLPI info" },
+    { label: "Channels", value: "FLCh channel chunks counted" },
+    { label: "Project info", value: "name · author · comment" },
+    { label: "Structure", value: "chunk map — FLhd / FLPI / FLdt" },
+  ],
+  workflow: [
+    "`snd push track.flp` — one command, one versioned commit, DAW metadata extracted",
+    "`--audio master.wav` opens a public review session with gapless A/B",
+    "`--stems stems/` attaches renders by logical name for stem-level compare",
+    "Preflight validates the .flp before anything is uploaded",
+    "Atomic: a failed upload leaves no half-pushed version behind",
+  ],
+  formats: [".flp"],
+  next:
+    "Deep event parsing (per-channel plugins, patterns) is the next step — today we read the header, tempo and channel structure from the binary.",
+};
+
 
 const THEME_KEY = "soundhub_theme";
 
@@ -55,6 +120,14 @@ export default function App() {
           <Route path="/r/:token" element={<PublicReviewPage />} />
           <Route path="/d/:token" element={<PublicDeliveryPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/integrations/cubase"
+            element={<DawIntegrationPage daw={CUBASE} />}
+          />
+          <Route
+            path="/integrations/fl-studio"
+            element={<DawIntegrationPage daw={FL_STUDIO} />}
+          />
           <Route
             path="/projects"
             element={
