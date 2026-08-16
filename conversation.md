@@ -709,6 +709,82 @@ Frontend build ✅ (backend не тронут). Это pre-flight, а не за�
 Урок по размеру: мягкая тень и дизеринг раздувают GIF (13MB) — для веба убраны
 (рамка + серый фон достаточно), иначе README не загрузится.
 
+## Фаза 22 — Анимированные скриншоты в лендинге + табы в стиле CodeRabbit
+
+Два запроса: (1) анимированные скриншоты на сером фоне прямо в лендинге,
+(2) анимированный элемент как на coderabbit.ai ниже «Best-in-class context».
+
+**Записи (playwright record_video → ffmpeg GIF через imageio-ffmpeg в venv):**
+
+- `screenshots/repo-page-demo.gif` — hero: repo-страница + открытие smart diff (клики),
+  300KB / 45 кадров.
+- `screenshots/projects-demo.gif` — список проектов → repo (клик по проекту), 672KB / 42 кадра.
+- `screenshots/branches-demo.gif` — ветки (branches tab), 556KB / 45 кадров.
+- Все три — **серый канвас `#DCDCDC`** 880×560 (как README-гифы), 8fps, без дизеринга
+  (с ним было бы 13MB+). Логин-пролог срезан (`-ss 2`), длительность ограничена
+  `-frames:v 45` (баг: `-t 5` попадал на палитру, а не на вывод).
+- Скопированы в `frontend/public/screenshots/` и подключены в `BrowserShot`
+  (`LandingPage.tsx`): hero — `repo-page-demo.gif`, фиче-фреймы — `projects-demo.gif`
+  и `branches-demo.gif`. `loading="lazy"` оставлен — ниже фолда грузятся при скролле
+  (проверено playwright: все 3 complete 880×560).
+
+**Табы в стиле CodeRabbit (`cr-engine`, ниже «Best-in-class context»):**
+
+- 5 табов: ⚙️ DAW parsing engine · 🔄 Smart diff · 📜 Decision ledger · 🧱 Content-addressed
+  storage · ✅ Review & approval — как у них (Review generation / Ensemble / Codegraph / …).
+- У каждого таба — **анимированный визуал**: `EngineVisual`-компоненты — каскад чипов
+  `eng-chip` (128 BPM, 4/4, 12 tracks, 8 plugins, 42 samples, −14 LUFS) с staggered
+  `animation-delay`, diff-строки с подсветкой +/−, ledger-записи, blob-дедуп, approval-чейн.
+- Проверено playwright: 5 табов переключаются, активный подсвечен, 6 чипов на месте,
+  ноль JS-ошибок.
+
+**Апгрейд: GIF → видео в полном разрешении.** Пользователь: «скриншоты не устраивают,
+нужны чёткие с максимальным разрешением, чтобы было видно все детали». GIF ограничен
+256 цветами и 880×560 — детали мылись. Решение:
+
+- Клипы перезаписаны playwright (viewport 1440×900, device_scale_factor=2) — исходный
+  webm уже 1440×900 (VP8, 25fps). Логин-пролог (~3.2s) срезан, конвертация в **H.264 MP4**
+  (libx264, crf 20, yuv420p, +faststart) — полный цвет, все детали, ~200KB на клип.
+  `screenshots/{repo-page,projects,branches}-demo.mp4` + копии в `frontend/public/screenshots/`.
+- `BrowserShot` переведён на `<video autoPlay muted loop playsInline preload="metadata"
+  poster=…>` со статическим PNG-постером (`repo-page.png` / `projects.png` /
+  `repo-page-branches.png`) и `<img>`-фолбэком для браузеров без видео. CSS: `.cr-shot
+  video` = те же правила, что у img.
+- Старые GIF-версии клипов удалены из обоих каталогов.
+- Проверено playwright: все 3 видео 1440×900, readyState 4, играют, постеры на месте,
+  ноль ошибок/сорвавшихся запросов; яркость кадра ~90% (не чёрный блок). Build ✅.
+
+## Фаза 23 — Страницы интеграций Cubase и FL Studio (синий / оранжевый)
+
+Запрос: «добавь ещё страницы про интеграции Cubase и FL Studio также со скриншотами,
+только другим цветом». Выбор: отдельные страницы + карточки на лендинге, реальные
+скриншоты SoundHub, фирменные цвета DAW.
+
+**Реальные данные:** в живой БД созданы два проекта через `snd push`:
+
+- `Cubase Sessions` (id 6) — .cpr: 126 BPM, Cubase 13.0.40, 5 треков (midi/audio/group),
+  8 плагинов (Serum, Vital, FabFilter Pro-Q 3 / Pro-L 2, SSL Bus Comp, CLA-76, deesser,
+  ValhallaVintageVerb), 4 сэмпла.
+- `FL Sessions` (id 7) — .flp: 140 BPM, FL Studio 21 (marker 0x65), 3 канала (Kick,
+  Lead, Sub Bass) из FLCh-чанков.
+
+**Скриншоты:** страницы проекта с раскрытым DawInfoBox (клик по .cpr/.flp, скролл
+к последнему .daw-box — первый это NFT-блок), deviceScaleFactor=2 → 2880×1800,
+сохранены как `cubase-integration.png` / `fl-integration.png`.
+
+**Страницы:** новый `DawIntegrationPage.tsx` — переиспользуемый макет с темой через
+`--daw-accent` (CSS-переменная): hero с пульсирующим бейджем, скриншот в браузерной
+рамке с цветной тенью, сетка «что парсим» (6 ячеек), workflow `snd push`, чипы
+форматов, честный next-step. Маршруты `/integrations/cubase` (синий #2e6bd6) и
+`/integrations/fl-studio` (оранжевый #ff7a1a).
+
+**Лендинг:** секция «Where you make music» — FL Studio и Cubase стали `available`
+с деталями и ссылкой «Page →»; футер — ссылки на обе страницы (REAPER остался planned).
+
+**Проверено (playwright):** обе страницы — акцент применён, скриншот 2880×1800
+complete, 6 ячеек, 0 ошибок; клик «Page →» с лендинга открывает /integrations/cubase;
+build ✅.
+
 ---
 
 ## Запуск

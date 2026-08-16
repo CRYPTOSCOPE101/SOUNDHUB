@@ -92,6 +92,46 @@ const CONTEXT_STATS = [
   { n: "0", label: "ZIPs to unzip" },
 ];
 
+// CodeRabbit-style engine tabs: what the engine actually does per step,
+// with a small animated visual per tab (pure CSS, loops forever).
+const ENGINE_TABS = [
+  {
+    id: "parse",
+    icon: "⚙️",
+    title: "DAW parsing engine",
+    text: "Reads Ableton, REAPER, Cubase and FL Studio projects and extracts BPM, time signature, tracks, plugins with their settings, samples and loudness — the context everything else runs on.",
+    points: ["4 DAW formats, one parser", "Plugins with the actual state of each instance", "Loudness measured per version and stem"],
+  },
+  {
+    id: "diff",
+    icon: "🔀",
+    title: "Smart diff",
+    text: "Compares two bounces at the project level: tempo, tracks, plugins, samples. A revision is a story — never \"binary file changed\".",
+    points: ["BPM and time-signature changes", "Tracks and plugins added / removed", "Raw normalized diff for the curious"],
+  },
+  {
+    id: "ledger",
+    icon: "📜",
+    title: "Decision ledger",
+    text: "Every request, approval and delivery is hashed into a tamper-evident chain — proof without trusting anyone.",
+    points: ["Each event links to the previous hash", "Tampering invalidates the whole chain", "Verifiable end-to-end in one click"],
+  },
+  {
+    id: "dedup",
+    icon: "🧱",
+    title: "Content-addressed storage",
+    text: "Identical files are stored once; re-pushing the same .als costs nothing. Dedup is automatic, so a snapshot is almost free.",
+    points: ["Same file, one blob, any number of commits", "Re-pushes report what was deduplicated", "A locked delivery can never be silently swapped"],
+  },
+  {
+    id: "approval",
+    icon: "✅",
+    title: "Review & approval",
+    text: "Timestamped notes, structured rounds and role-based sign-offs — the loop that actually ships a track.",
+    points: ["Guests comment at the exact moment, no account", "Draft notes consolidate into one round", "Role-gated approvals (artist, A&R, label)"],
+  },
+];
+
 const DAW_ASSETS = [
   {
     icon: "🎚",
@@ -123,10 +163,10 @@ const MARKET_BENEFITS = [
 ];
 
 const INTEGRATIONS = [
-  { name: "Ableton Live", status: "available", detail: "`soundhub` CLI bridge — push bounces, export open requests, locator helper · Max for Live panel: catalog + push current export" },
-  { name: "FL Studio", status: "planned", detail: "Planned — no timeline yet" },
-  { name: "Cubase", status: "planned", detail: "Planned — no timeline yet" },
-  { name: "REAPER", status: "planned", detail: "Planned — no timeline yet" },
+  { name: "Ableton Live", status: "available", href: null, detail: "`soundhub` CLI bridge — push bounces, export open requests, locator helper · Max for Live panel: catalog + push current export" },
+  { name: "FL Studio", status: "available", href: "/integrations/fl-studio", detail: ".flp parsed (FL 11–21) · `snd push` commits project + master + stems → review" },
+  { name: "Cubase", status: "available", href: "/integrations/cubase", detail: ".cpr parsed (tracks, VST3 plugins, samples) · `snd push` commits project + master + stems → review" },
+  { name: "REAPER", status: "planned", href: null, detail: "Planned — no timeline yet" },
 ];
 
 // --- feature tabs (CodeRabbit-style) ---------------------------------------
@@ -328,7 +368,9 @@ function WorkflowModal({ onClose }: { onClose: () => void }) {
 }
 
 // A product screenshot framed like a browser window (CodeRabbit-style).
-function BrowserShot({ src, url, caption }: { src: string; url: string; caption?: string }) {
+// `src` is a full-resolution MP4 (sharp, full color); `poster` is a static
+// PNG fallback shown while the video loads / in browsers without video.
+function BrowserShot({ src, url, caption, poster }: { src: string; url: string; caption?: string; poster?: string }) {
   return (
     <div className="cr-shot">
       <div className="cr-shot-bar">
@@ -337,7 +379,18 @@ function BrowserShot({ src, url, caption }: { src: string; url: string; caption?
         <span className="dot" />
         <span className="cr-shot-url">{url}</span>
       </div>
-      <img src={src} alt={caption || url} loading="lazy" />
+      <video
+        src={src}
+        poster={poster}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        aria-label={caption || url}
+      >
+        <img src={poster || src} alt={caption || url} loading="lazy" />
+      </video>
       {caption && <div className="cr-shot-cap">{caption}</div>}
     </div>
   );
@@ -445,6 +498,170 @@ function FeatureTabs() {
   );
 }
 
+/* ---------- engine tabs: what the engine does per step (CodeRabbit-style) ---------- */
+
+// DAW parsing — a project file, then context chips cascade out of it.
+function ParseVisual() {
+  const chips = ["128 BPM", "4/4", "12 tracks", "8 plugins", "42 samples", "−14 LUFS"];
+  return (
+    <div className="eng-vis eng-parse">
+      <div className="eng-file">
+        <span className="eng-file-icon">🎛</span>
+        <span className="eng-file-name">Neon_v13.als</span>
+        <span className="eng-file-pulse" />
+      </div>
+      <div className="eng-chips">
+        {chips.map((c, i) => (
+          <span key={c} className="eng-chip" style={{ animationDelay: `${i * 0.32}s` }}>
+            {c}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Smart diff — v12 → v13 rows: old value fades out, new value fades in.
+function DiffVisual() {
+  const rows = [
+    { label: "Tempo", old: "128 BPM", neu: "132 BPM" },
+    { label: "Track", old: "—", neu: "+ Pad" },
+    { label: "Plugin", old: "—", neu: "+ Vital" },
+    { label: "Sample", old: "—", neu: "+ Clap.wav" },
+  ];
+  return (
+    <div className="eng-vis eng-diff">
+      <div className="eng-diff-head">v12 → v13</div>
+      {rows.map((r, i) => (
+        <div key={r.label} className="eng-diff-row" style={{ animationDelay: `${i * 0.4}s` }}>
+          <span className="eng-diff-label">{r.label}</span>
+          <span className="eng-diff-old">{r.old}</span>
+          <span className="eng-diff-arrow">→</span>
+          <span className="eng-diff-new">{r.neu}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Decision ledger — hash blocks chain together, then verify.
+function LedgerVisual() {
+  const blocks = ["a1f9…", "77c2…", "e4b0…", "9d31…"];
+  return (
+    <div className="eng-vis eng-ledger">
+      <div className="eng-ledger-chain">
+        {blocks.map((h, i) => (
+          <span key={h} className="eng-ledger-link" style={{ animationDelay: `${i * 0.45}s` }}>
+            {i > 0 && <span className="eng-ledger-join" />}
+            <span className="eng-ledger-block">{h}</span>
+          </span>
+        ))}
+      </div>
+      <div className="eng-ledger-ok">✓ chain verified</div>
+    </div>
+  );
+}
+
+// Content-addressed storage — three identical files merge into one blob.
+function DedupVisual() {
+  return (
+    <div className="eng-vis eng-dedup">
+      <div className="eng-dedup-row">
+        <div className="eng-dedup-blobs">
+          <span className="eng-blob" />
+          <span className="eng-blob" />
+          <span className="eng-blob" />
+        </div>
+        <span className="eng-dedup-eq">→</span>
+        <div className="eng-dedup-one">
+          <span className="eng-blob eng-blob-merged" />
+        </div>
+      </div>
+      <div className="eng-dedup-meta">
+        <span className="eng-dedup-count">3 pushes · 1 blob</span>
+        <span className="eng-dedup-badge">deduplicated: 2</span>
+      </div>
+    </div>
+  );
+}
+
+// Review & approval — reviewers check off, status flips to Approved.
+function ApprovalVisual() {
+  const people = ["AR", "AV", "LP"];
+  return (
+    <div className="eng-vis eng-approval">
+      <div className="eng-approvers">
+        {people.map((who, i) => (
+          <span key={who} className="eng-approver" style={{ animationDelay: `${i * 0.45}s` }}>
+            <span className="eng-avatar">{who}</span>
+            <svg viewBox="0 0 16 16" className="eng-check" aria-hidden="true">
+              <path d="M3 8.5 L6.5 12 L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        ))}
+      </div>
+      <div className="eng-approval-status">
+        <span className="eng-status-before">in review</span>
+        <span className="eng-status-arrow">→</span>
+        <span className="eng-status-after">Approved ✓</span>
+      </div>
+    </div>
+  );
+}
+
+function EngineVisual({ id }: { id: string }) {
+  switch (id) {
+    case "parse":
+      return <ParseVisual />;
+    case "diff":
+      return <DiffVisual />;
+    case "ledger":
+      return <LedgerVisual />;
+    case "dedup":
+      return <DedupVisual />;
+    default:
+      return <ApprovalVisual />;
+  }
+}
+
+// CodeRabbit-style tabs under "Best-in-class context": a title per engine
+// step plus a looping animated preview that switches when you click.
+function EngineTabs() {
+  const [tab, setTab] = useState(ENGINE_TABS[0].id);
+  const active = ENGINE_TABS.find((t) => t.id === tab)!;
+  return (
+    <div className="cr-engine">
+      <div className="cr-engine-tabs">
+        {ENGINE_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={`cr-engine-tab ${t.id === tab ? "active" : ""}`}
+            onClick={() => setTab(t.id)}
+          >
+            <span className="cr-engine-tab-icon">{t.icon}</span>
+            <span className="cr-engine-tab-title">{t.title}</span>
+          </button>
+        ))}
+      </div>
+      <div className="cr-engine-panel" key={active.id}>
+        <div className="cr-engine-copy">
+          <h3 className="cr-engine-title">{active.title}</h3>
+          <p className="cr-engine-text">{active.text}</p>
+          <ul className="cr-feature-list">
+            {active.points.map((pt) => (
+              <li key={pt}>{pt}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="cr-engine-visual">
+          <EngineVisual id={active.id} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Honest testimonials — real asks from the Ableton community, not invented.
 function Testimonials() {
   return (
@@ -528,7 +745,8 @@ export default function LandingPage() {
           </div>
         </div>
         <BrowserShot
-          src="/screenshots/repo-page.png"
+          src="/screenshots/repo-page-demo.mp4"
+          poster="/screenshots/repo-page.png"
           url="soundhub.local/projects/aurora-night"
           caption="A DAW project as a versioned repo — file tree with parsed tracks, plugins and smart diffs"
         />
@@ -618,7 +836,8 @@ export default function LandingPage() {
           </ul>
         </div>
         <BrowserShot
-          src="/screenshots/projects.png"
+          src="/screenshots/projects-demo.mp4"
+          poster="/screenshots/projects.png"
           url="soundhub.local/projects"
           caption="Every project is a repo — open it, version it, share it"
         />
@@ -686,6 +905,15 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ---------- engine tabs: what the engine does per step ---------- */}
+      <section className="bc-section cr-engine-section" id="engine">
+        <h2 className="bc-h2">The engine behind every review</h2>
+        <p className="cr-context-sub">
+          Across each step, we extract dozens more points of context than a shared ZIP ever shows.
+        </p>
+        <EngineTabs />
+      </section>
+
       {/* ---------- feature: push from the DAW ---------- */}
       <section className="bc-section cr-feature cr-feature-flip" id="daw">
         <div className="cr-feature-copy">
@@ -704,7 +932,8 @@ export default function LandingPage() {
           </ul>
         </div>
         <BrowserShot
-          src="/screenshots/repo-page-branches.png"
+          src="/screenshots/branches-demo.mp4"
+          poster="/screenshots/repo-page-branches.png"
           url="soundhub.local/projects/aurora-night/branches"
           caption="Branches per client and round — the DAW bridge pushes right into them"
         />
@@ -767,7 +996,7 @@ export default function LandingPage() {
       </section>
 
       {/* ---------- integrations ---------- */}
-      <section className="bc-section">
+      <section className="bc-section" id="integrations">
         <h2 className="bc-h2">Where you make music</h2>
         <div className="bc-int">
           {INTEGRATIONS.map((i) => (
@@ -775,6 +1004,11 @@ export default function LandingPage() {
               <span className="bc-int-name">{i.name}</span>
               <span className="bc-int-detail">{i.detail}</span>
               <span className={`bc-status ${i.status}`}>{i.status}</span>
+              {i.href && (
+                <Link to={i.href} className="bc-int-link">
+                  Page →
+                </Link>
+              )}
             </div>
           ))}
         </div>
@@ -882,8 +1116,8 @@ export default function LandingPage() {
           <div className="bc-footer-col">
             <h4>DAWs</h4>
             <a href="#daw">Ableton Live · available</a>
-            <a href="#daw">FL Studio · planned</a>
-            <a href="#daw">Cubase · planned</a>
+            <Link to="/integrations/fl-studio">FL Studio · available</Link>
+            <Link to="/integrations/cubase">Cubase · available</Link>
             <a href="#daw">REAPER · planned</a>
           </div>
           <div className="bc-footer-col">
