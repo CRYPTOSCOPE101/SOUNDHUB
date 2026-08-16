@@ -20,6 +20,9 @@
 <a href="LICENSE">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" />
 </a>
+<a href="Whitepaper.pdf">
+  <img src="https://img.shields.io/badge/Whitepaper-PDF-orange.svg" />
+</a>
 </div>
 
 # 🎛 What is SoundHub?

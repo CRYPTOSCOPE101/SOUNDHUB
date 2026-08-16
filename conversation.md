@@ -811,6 +811,29 @@ coderabbit.ai — внизу огромный на всю ширину лого�
 CodeRabbit. Hover — opacity 0.75. Проверено: контейнер 1352×240, маска применена,
 лого видно; светлая и тёмная темы ок, build ✅.
 
+## Фаза 24 — Whitepaper.pdf (подробный, с формулами, графиками и скриншотами)
+
+Создан **`Whitepaper.pdf`** (18 стр., A4, 1.3MB) + исходник `docs/whitepaper.html`
+и 6 графиков в `docs/`. Фактура — из LITEPAPER.md / DESCRIPTION.md / README
+(честно, без выдумок).
+
+**Формулы (MathJax 3 → SVG, 22 рендера, 8 нумерованных):** (1) SHA-256 blob key,
+(2) commit = path→hash, (3) smart diff Δ(A,B), (4) EIP-191 ecrecover,
+(5) order-independent collaborator claim, (6) кусочная vesting-функция (cliff 6,
+24 мес), (7) quorum-условие Governor, (8) fee/seller payout.
+
+**Графики (matplotlib в venv):** time.png (часы на звук vs покупка), daw.png
+(покрытие парсеров), escrow.png (жизненный цикл эскроу), tokenomics.png (donut
+35/25/20/10/10), vesting.png (кривая разблокировки 800k + team 24m/6m cliff),
+dao.png (Governor-таймлайн).
+
+**Скриншоты (из живого продукта):** Cubase-проект с распарсенными данными,
+repo-страница, лендинг, FL Studio-проект.
+
+**Сборка:** HTML → playwright page.pdf() (A4, print_background, поля 14/16мм),
+MathJax через jsDelivr CDN с ожиданием mjx-container. Проверено: 22 формулы,
+0 пустых SVG, сырого LaTeX в PDF нет, 18 страниц, изображения и шрифты на месте.
+
 ---
 
 ## Запуск
