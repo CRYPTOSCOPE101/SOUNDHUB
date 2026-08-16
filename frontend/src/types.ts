@@ -330,6 +330,25 @@ export interface Portfolio {
   tracks: PortfolioTrack[];
 }
 
+export interface SearchEngineer {
+  username: string;
+  session_count: number;
+}
+
+export interface SearchSessionHit {
+  name: string;
+  owner_username: string;
+  share_token: string;
+  status: string;
+  updated_at?: string;
+}
+
+export interface SearchResults {
+  query: string;
+  engineers: SearchEngineer[];
+  sessions: SearchSessionHit[];
+}
+
 export const APPROVAL_SCOPES = ["mix", "master", "arrangement", "release"] as const;
 export type ApprovalScope = (typeof APPROVAL_SCOPES)[number];
 

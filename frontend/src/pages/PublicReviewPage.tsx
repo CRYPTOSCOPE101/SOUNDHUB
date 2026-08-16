@@ -359,7 +359,7 @@ export default function PublicReviewPage() {
     <div className="public-review">
       <div className="public-review-head">
         <div className="public-review-brand">
-          <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" /> SoundHub
+          <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" />
           <span className="public-review-sep">·</span>
           <span className="public-review-for">review for {session.name}</span>
         </div>

@@ -8,10 +8,10 @@ function KettleLogo({ size = 96 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 120 120" fill="none" aria-label="Kettle" role="img">
       {/* steam */}
-      <path d="M52 22c0-6 8-6 8-12M70 18c0-5 7-5 7-10M88 22c0-6 8-6 8-12" stroke="#ffd04a" strokeWidth="5" strokeLinecap="round" />
+      <path d="M52 22c0-6 8-6 8-12M70 18c0-5 7-5 7-10M88 22c0-6 8-6 8-12" stroke="#ff5e1a" strokeWidth="5" strokeLinecap="round" />
       {/* lid + knob */}
       <ellipse cx="70" cy="38" rx="34" ry="8" fill="#2b3148" />
-      <circle cx="70" cy="30" r="6" fill="#ffd04a" />
+      <circle cx="70" cy="30" r="6" fill="#ff5e1a" />
       {/* body */}
       <path d="M36 42h68a30 30 0 0 1-30 36H66a30 30 0 0 1-30-36Z" fill="#3a4157" />
       {/* spout */}
@@ -19,7 +19,7 @@ function KettleLogo({ size = 96 }: { size?: number }) {
       {/* handle */}
       <path d="M42 50c-12 4-16-6-8-10" stroke="#2b3148" strokeWidth="9" strokeLinecap="round" />
       {/* shine */}
-      <path d="M48 52a18 18 0 0 0 8 20" stroke="#ffd04a" strokeWidth="4" strokeLinecap="round" opacity="0.7" />
+      <path d="M48 52a18 18 0 0 0 8 20" stroke="#ff5e1a" strokeWidth="4" strokeLinecap="round" opacity="0.7" />
     </svg>
   );
 }
@@ -91,51 +91,39 @@ const FAQ = [
 export default function KettlePage() {
   return (
     <div className="landing kettle">
-      <nav className="landing-nav">
-        <Link to="/" className="landing-nav-brand">
-          <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" /> SoundHub
-        </Link>
-        <div className="landing-nav-links">
-          <a href="#steps">How it works</a>
-          <a href="#glossary">Glossary</a>
-          <a href="#faq">FAQ</a>
-        </div>
-        <div className="landing-nav-cta">
-          <Link to="/login">Sign in</Link>
-          <Link to="/session" className="landing-nav-get">Try the demo</Link>
-        </div>
-      </nav>
 
-      <section className="kettle-hero">
+      <section className="kettle-hero" id="top">
         <div className="kettle-logo">
           <KettleLogo size={110} />
         </div>
-        <p className="landing-eyebrow center">🫖 Kettle — the newbie corner</p>
-        <h1 className="landing-title">
-          Music review & approvals,
+        <p className="bc-eyebrow">🫖 Kettle — the newbie corner</p>
+        <h1 className="bc-title">
+          Music review &amp; approvals,
           <br />
-          <span className="landing-title-accent">explained like you're new.</span>
+          explained like you're new.
         </h1>
-        <p className="landing-subtitle kettle-sub">
+        <p className="bc-sub kettle-sub">
           You make music. Maybe you've never “sent a mix for approval” before. This page
           explains the whole SoundHub loop in plain words — what everything means, what
           each button does, and what not to worry about.
         </p>
-        <div className="landing-cta">
-          <a href="#steps" className="landing-btn-primary">Show me how it works</a>
-          <Link to="/session" className="landing-btn-ghost">Skip to the demo</Link>
+        <div className="bc-cta">
+          <a href="#steps" className="bc-btn bc-btn-primary">Show me how it works</a>
+          <Link to="/session" className="bc-btn bc-btn-ghost">Skip to the demo</Link>
         </div>
       </section>
 
-      <section className="landing-section" id="steps">
-        <p className="landing-eyebrow center">The loop, step by step</p>
-        <h2 className="landing-h2">Your first review session in 5 steps</h2>
-        <div className="landing-steps-grid">
+      <section className="bc-section" id="steps">
+        <p className="bc-eyebrow center" style={{ display: "block", marginBottom: 14 }}>The loop, step by step</p>
+        <h2 className="bc-h2">Your first review session in 5 steps</h2>
+        <div className="bc-steps">
           {STEPS.map((s) => (
-            <div key={s.n} className="landing-step">
-              <span className="landing-step-n">{s.n}</span>
-              <h3>{s.title}</h3>
-              <p>{s.text}</p>
+            <div key={s.n} className="bc-step">
+              <span className="bc-step-n">{s.n}</span>
+              <div className="bc-step-body">
+                <h3>{s.title}</h3>
+                <p>{s.text}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -148,9 +136,9 @@ export default function KettlePage() {
         </div>
       </section>
 
-      <section className="landing-section" id="glossary">
-        <p className="landing-eyebrow center">The glossary</p>
-        <h2 className="landing-h2">Every word, translated</h2>
+      <section className="bc-section" id="glossary">
+        <p className="bc-eyebrow center" style={{ display: "block", marginBottom: 14 }}>The glossary</p>
+        <h2 className="bc-h2">Every word, translated</h2>
         <div className="kettle-glossary">
           {GLOSSARY.map((g) => (
             <div key={g.term} className="kettle-term">
@@ -161,12 +149,12 @@ export default function KettlePage() {
         </div>
       </section>
 
-      <section className="landing-section landing-faq" id="faq">
-        <p className="landing-eyebrow center">Still curious?</p>
-        <h2 className="landing-h2">Questions you might actually have</h2>
-        <div className="landing-faq-list">
+      <section className="bc-section" id="faq">
+        <p className="bc-eyebrow center" style={{ display: "block", marginBottom: 14 }}>Still curious?</p>
+        <h2 className="bc-h2">Questions you might actually have</h2>
+        <div className="bc-faq">
           {FAQ.map((f) => (
-            <details key={f.q} className="landing-faq-item" open>
+            <details key={f.q} className="bc-faq-item" open>
               <summary>{f.q}</summary>
               <p>{f.a}</p>
             </details>
@@ -174,29 +162,29 @@ export default function KettlePage() {
         </div>
       </section>
 
-      <section className="landing-cta-final">
-        <h2 className="landing-h2">Ready to stop emailing audio files?</h2>
+      <section className="bc-cta-final">
+        <h2 className="bc-h2">Ready to stop emailing audio files?</h2>
         <p>Create a session, upload a bounce, and see the loop yourself.</p>
-        <div className="landing-cta-final-alts">
+        <div className="bc-cta-final-alts">
           <Link to="/session">try the demo session now →</Link>
           <Link to="/">or go back to the main page →</Link>
         </div>
       </section>
 
-      <footer className="landing-footer">
-        <div className="landing-footer-grid">
-          <div className="landing-footer-brand">
-            <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" /> SoundHub
-            <p className="landing-footer-tag">Review, versions and approvals for music.</p>
+      <footer className="bc-footer">
+        <div className="bc-footer-grid">
+          <div className="bc-footer-brand">
+            <img src="/logo.png" alt="SoundHub" className="bc-logo" />
+            <p>Review, versions and approvals for music.</p>
           </div>
-          <div className="landing-footer-col">
+          <div className="bc-footer-col">
             <h4>Learn</h4>
             <a href="#steps">How it works</a>
             <a href="#glossary">Glossary</a>
             <Link to="/session">Demo session</Link>
           </div>
         </div>
-        <p className="landing-footer-bottom muted">
+        <p className="bc-footer-bottom">
           Kettle · the friendliest room in SoundHub · © {new Date().getFullYear()}
         </p>
       </footer>

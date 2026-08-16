@@ -55,7 +55,7 @@ export default function PortfolioPage() {
   return (
     <div className="portfolio">
       <div className="public-delivery-brand">
-        <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" /> SoundHub
+        <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" />
         <span className="public-review-sep">·</span>
         <span className="public-review-for">public portfolio</span>
       </div>
