@@ -30,7 +30,9 @@ SoundHub is a tokenized marketplace where music producers buy and sell finished 
 loops, stems and packs, paid for with SND — from the SoundHub panel in
 Ableton Live (Max for Live prototype in `m4l/`) or the web app.
 
-![SoundHub demo](screenshots/demo.gif)
+![SoundHub demo — landing walkthrough](screenshots/demo.gif)
+
+![SoundHub demo — landing scroll](screenshots/landing-demo.gif)
 
 ![SoundHub main page](screenshots/main-light.png)
 ![SoundHub projects](screenshots/projects.png)
