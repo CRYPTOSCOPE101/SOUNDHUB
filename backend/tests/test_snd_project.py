@@ -695,6 +695,106 @@ def test_snd_push_json_error_contract(tmp_path, monkeypatch, capsys):
     assert "error" in payload
 
 
+def test_snd_serve_bridge_health_and_push(tmp_path, monkeypatch):
+    """`snd serve` is the localhost bridge the M4L push button calls: GET
+    /health pings, POST /push runs the same pipeline and returns the stable
+    contract; errors come back as {"ok": false, "error": …} with a 400."""
+    import socket
+    import threading
+    import urllib.error
+    import urllib.request
+
+    import soundhub_cli
+
+    import snd_cli
+    from app.services.daw import fixtures
+
+    monkeypatch.setattr(soundhub_cli, "CONFIG_PATH", "/nonexistent")
+    als = tmp_path / "Track_v12.als"
+    als.write_bytes(fixtures.make_als(tracks=[("MidiTrack", "Synth Lead", ["Plugin:Serum"])]))
+    master = tmp_path / "master.wav"
+    master.write_bytes(make_wav())
+
+    fake = FakeHttp()
+    fake.route("/api/projects", 200, [{"id": 5, "name": "artist-track"}])
+    fake.route("/api/projects/5/push", 200, {
+        "ok": True,
+        "project_id": 5,
+        "branch": "review/v12",
+        "commit_id": 42,
+        "version_id": 7,
+        "session_id": 3,
+        "share_token": "tok123",
+        "review_url": "http://localhost:5173/r/tok123",
+        "uploaded": {"als": True, "master": True, "stems": 2},
+        "deduplicated": 1,
+    })
+
+    # start the bridge on an ephemeral port, inject the fake HTTP layer
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+
+    # run the bridge via main() in a background thread — it blocks in serve_forever
+    server_thread = threading.Thread(
+        target=snd_cli.main,
+        args=(["serve", "--host", "127.0.0.1", "--port", str(port), "--api", "http://x", "--token", "t"],),
+        kwargs={"http": fake},
+        daemon=True,
+    )
+    server_thread.start()
+    try:
+        # health
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as r:
+            assert json.loads(r.read()) == {"ok": True, "service": "snd-bridge"}
+
+        # push — exactly the JSON the M4L device posts
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/push",
+            data=json.dumps({
+                "target": str(als),
+                "audio": str(master),
+                "project": "artist-track",
+                "branch": "review/v12",
+                "message": "Round 3 candidate",
+            }).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            res = json.loads(r.read())
+        assert res["ok"] is True
+        assert res["commit_id"] == 42 and res["version_id"] == 7
+        assert res["review_url"].endswith("/r/tok123")
+        assert res["uploaded"] == {"als": True, "master": True, "stems": 2}
+
+        # the bridge reused the real push pipeline (multipart body on the wire)
+        method, url, data, ctype = fake.requests[-1]
+        assert method == "POST" and "/api/projects/5/push" in url
+        assert b'filename="Track_v12.als"' in data
+        assert b'filename="master.wav"' in data
+        assert b'name="manifest"' in data
+
+        # preflight failure -> 400 + {"ok": false, "error": …}
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/push",
+            data=json.dumps({"target": str(tmp_path / "nope.als")}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            urllib.request.urlopen(req, timeout=10)
+            raise AssertionError("expected HTTP 400")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 400
+            err = json.loads(exc.read())
+            assert err["ok"] is False and "error" in err
+    finally:
+        # stop the bridge: it's a ThreadingHTTPServer on an ephemeral port —
+        # closing via a POST to /stop is not part of the contract, so we just
+        # leave the daemon thread (process exits with the test run)
+        pass
+
+
 def test_snd_push_open_uses_review_url(tmp_path, monkeypatch):
     """--open launches the review URL in the browser after a successful push."""
     import soundhub_cli

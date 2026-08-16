@@ -25,12 +25,13 @@ def box(maxclass, objid, rect, text=None, **extra):
     return b
 
 # --- boxes -------------------------------------------------------------------
-# js: two inlets (bang -> refresh, int -> 1 suggest / 2 buy), three outlets
+# js: two inlets (bang -> refresh, int -> 1 suggest / 2 buy / 3 push), four
+# outlets (catalog / status / match / push result)
 BOXES = [
     box("newobj", "core", [30.0, 100.0, 220.0, 24.0],
         text="js soundhub-device.js",
         numinlets=2, inlettype=["bang", "int"],
-        numoutlets=3, outlettype=["", "", ""]),
+        numoutlets=4, outlettype=["", "", "", ""]),
     box("newobj", "live", [300.0, 40.0, 140.0, 24.0],
         text="live.thisdevice",
         numinlets=1, inlettype=[""], numoutlets=1, outlettype=[""]),
@@ -59,14 +60,19 @@ BOXES = [
         numoutlets=1, outlettype=["bang"]),
     box("newobj", "mapBuy", [350.0, 50.0, 90.0, 24.0],
         text="prepend 2", numinlets=1, inlettype=[""], numoutlets=1, outlettype=[""]),
+    box("button", "btnPush", [450.0, 50.0, 30.0, 30.0],
+        numoutlets=1, outlettype=["bang"]),
+    box("newobj", "mapPush", [490.0, 50.0, 90.0, 24.0],
+        text="prepend 3", numinlets=1, inlettype=[""], numoutlets=1, outlettype=[""]),
     box("comment", "l1", [30.0, 20.0, 60.0, 16.0], text="refresh", **FONT),
     box("comment", "l2", [170.0, 20.0, 70.0, 16.0], text="suggest", **FONT),
     box("comment", "l3", [310.0, 20.0, 50.0, 16.0], text="load", **FONT),
-    box("comment", "l4", [30.0, 140.0, 420.0, 16.0],
-        text="SoundHub — don't generate, buy (Base Sepolia testnet)", **FONT),
-    box("text", "dispCatalog", [30.0, 160.0, 460.0, 140.0], text="catalog", **FONT),
-    box("text", "dispStatus", [30.0, 310.0, 460.0, 60.0], text="status", **FONT),
-    box("text", "dispMatch", [30.0, 380.0, 460.0, 40.0], text="match", **FONT),
+    box("comment", "l5", [450.0, 20.0, 60.0, 16.0], text="push", **FONT),
+    box("comment", "l4", [30.0, 140.0, 500.0, 16.0],
+        text="SoundHub — don't generate, buy · push current export (needs `snd serve` running)", **FONT),
+    box("text", "dispCatalog", [30.0, 160.0, 550.0, 140.0], text="catalog", **FONT),
+    box("text", "dispStatus", [30.0, 310.0, 550.0, 60.0], text="status", **FONT),
+    box("text", "dispMatch", [30.0, 380.0, 550.0, 40.0], text="match", **FONT),
 ]
 
 # (src_id, src_outlet, dst_id, dst_inlet)
@@ -77,10 +83,14 @@ LINES = [
     ("mapSuggest", 0, "core", 1),       # int 1 -> suggest for BPM
     ("btnBuy", 0, "mapBuy", 0),
     ("mapBuy", 0, "core", 1),           # int 2 -> buy last suggestion
+    ("btnPush", 0, "mapPush", 0),
+    ("mapPush", 0, "core", 1),          # int 3 -> push current export
     ("ctx", 0, "core", 1),              # live context -> js int inlet (spare)
     ("core", 0, "dispCatalog", 0),      # catalog json
     ("core", 1, "dispStatus", 0),       # status
-    ("core", 2, "dispMatch", 0),        # bpm match tag
+    ("core", 2, "dispMatch", 0),        # bpm match tag / push review url
+    # core outlet 3 (push JSON contract) is unwired in the patch — available
+    # for scripting; the human-readable result already lands on status/match
 ]
 
 

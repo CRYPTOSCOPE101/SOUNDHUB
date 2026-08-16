@@ -30,7 +30,10 @@ marketplace into Ableton Live:
 - starts a **purchase** with SND (testnet); the escrow contract already
   handles payment + dispute window;
 - **loads** the purchased asset into the project (drag-in; full
-  browser/rack import is the next iteration).
+  browser/rack import is the next iteration);
+- **pushes the current export** to SoundHub as a versioned commit (+ review
+  session for the master) via the local `snd serve` bridge — the DAW-to-
+  review pipeline from the Phase 16 contract, one button away from Live.
 
 ## Files
 
@@ -71,7 +74,47 @@ entries (not yet on-chain) so recommendations are meaningful.
   (`/api/assets/recommend`) for ranked matches — genre + BPM fit + device
   overlap, scored from DAW-verified asset metadata (see
   `backend/app/services/catalog.py`);
-- **load** — auto-imports the suggested asset into the Live **User Library**: fetches it through the backend's short-lived signed-token endpoint (`/api/assets/{id}/token` → `/download64`), decodes the base64 payload and writes it to `User Library/SoundHub/` with the Max `file` object, then refreshes Live's file browser (`live.browser`).
+- **load** — auto-imports the suggested asset into the Live **User Library**: fetches it through the backend's short-lived signed-token endpoint (`/api/assets/{id}/token` → `/download64`), decodes the base64 payload and writes it to `User Library/SoundHub/` with the Max `file` object, then refreshes Live's file browser (`live.browser`);
+- **push** — pushes the **current Live set** (`.als`) to SoundHub as one
+  versioned commit; if you also run `snd serve` locally it posts the JSON
+  payload to the bridge, which runs the full Phase 16 pipeline (preflight →
+  atomic upload → review session) and shows the **review URL** in the panel.
+
+### Push current export — how it works
+
+`shell` is blocked inside Live and `httprequest` mangles binary multipart, so
+push goes through a tiny localhost JSON bridge (a thin client over the
+already-tested `snd push --json` contract):
+
+```
+[push] button → live_set.current_song_path (.als)
+  → POST {target, project, branch, message} → http://127.0.0.1:8765/push
+  → snd serve runs the real push pipeline (preflight + dedup + atomic commit
+    + review session/version) → returns the stable JSON contract
+  → panel shows "✓ pushed commit #N" + the review URL
+```
+
+Run the bridge once (any terminal), then press **push** in Live:
+
+```bash
+cd backend
+./snd login --user demo --password demo123   # once
+./snd serve                                  # localhost:8765, keeps running
+```
+
+Configure via messages to the `js` object (optional — defaults use the Live
+set name as project and branch `main`):
+
+```
+bridge       http://127.0.0.1:8765
+pushProject  artist-track
+pushBranch   review/v12
+pushMessage  "Round 3 candidate"
+```
+
+A fast push (just the `.als`) creates the versioned commit; adding a master
+render path (`audio`) opens the review session so the client can do gapless
+A/B — see the Phase 16 contract in the README.
 
 ## Backend endpoints the device uses
 
@@ -82,6 +125,7 @@ entries (not yet on-chain) so recommendations are meaningful.
 | `GET /api/assets/{id}/token` | short-lived download token + asset metadata (prototype: public) |
 | `GET /api/assets/{id}/download?token=` | asset bytes with license headers |
 | `GET /api/assets/{id}/download64?token=` | text-safe base64 JSON variant (for M4L import) |
+| `POST /push` (local bridge, port 8765) | JSON `{target, audio?, stems?, project?, branch?, round?, message?}` → Phase 16 push contract |
 
 Run the backend locally for suggestions/loads: `cd backend && .venv/bin/uvicorn
 app.main:app --port 8000`, and point the device at it (`backend` message).
@@ -107,6 +151,13 @@ Configure the library folder if it's not the default macOS path:
 
 ## What's stubbed (honest)
 
+- **Push current export needs `snd serve` running** — the bridge is a thin
+  local process (`backend/snd serve`, stdlib only); the device shows a clear
+  error if it's not up. A bundled/sidecar process inside the device is the
+  next iteration.
+- **Push uploads the `.als` of the current set** (plus master/stems only if
+  paths are configured) — Live's own render-to-disk automation (export the
+  current scene as a master WAV before pushing) is the natural next step.
 - **One-click insert into a device** — the file is imported into the User
   Library and the browser, but dropping it onto a specific device/simpler
   still needs a drag (or a `live.object` insert step, next iteration).
