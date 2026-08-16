@@ -70,9 +70,9 @@ export function WaveformCanvas({
     if (loop) {
       const lx = (loop.start / dur) * w;
       const rx = (loop.end / dur) * w;
-      ctx.fillStyle = "rgba(255, 208, 74, 0.14)";
+      ctx.fillStyle = "rgba(255, 94, 26, 0.12)";
       ctx.fillRect(lx, 0, rx - lx, h);
-      ctx.fillStyle = "rgba(255, 208, 74, 0.8)";
+      ctx.fillStyle = "rgba(255, 94, 26, 0.7)";
       ctx.fillRect(lx, h - 3, Math.max(1, rx - lx), 3);
     }
 
@@ -81,7 +81,7 @@ export function WaveformCanvas({
       const val = peaks[i] ?? 0;
       const bh = Math.max(2, val * (h - 6));
       const played = i / n <= position / dur;
-      ctx.fillStyle = played ? "#ffd04a" : "#3a4157";
+      ctx.fillStyle = played ? "#ff5e1a" : "#9a958c";
       ctx.fillRect(x + 0.5, mid - bh / 2, Math.max(1, bw - 1), bh);
     }
 
@@ -90,17 +90,17 @@ export function WaveformCanvas({
       const isHi = c.id === highlightComment;
       ctx.beginPath();
       ctx.arc(x, 8, isHi ? 7 : 5, 0, Math.PI * 2);
-      ctx.fillStyle = c.resolved ? "#3a4157" : "#ff5d5d";
+      ctx.fillStyle = c.resolved ? "#9a958c" : "#e0533d";
       ctx.fill();
       if (isHi) {
-        ctx.strokeStyle = "#ffd04a";
+        ctx.strokeStyle = "#ff5e1a";
         ctx.lineWidth = 2;
         ctx.stroke();
       }
     });
 
     const px = (position / dur) * w;
-    ctx.fillStyle = "#ffd04a";
+    ctx.fillStyle = "#ff5e1a";
     ctx.fillRect(px - 1, 0, 2, h);
   }, [peaks, duration, position, playing, comments, loop, highlightComment]);
 

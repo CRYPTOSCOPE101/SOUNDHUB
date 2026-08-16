@@ -115,7 +115,7 @@ export default function PublicDeliveryPage() {
   return (
     <div className="public-delivery">
       <div className="public-delivery-brand">
-        <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" /> SoundHub
+        <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" />
         <span className="public-review-sep">·</span>
         <span className="public-review-for">final delivery</span>
       </div>

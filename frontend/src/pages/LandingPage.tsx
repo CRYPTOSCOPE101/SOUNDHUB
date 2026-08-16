@@ -1,18 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import ReviewSession from "../components/ReviewSession";
 
 // A fixed, live public demo session (seeded at startup) — both "Open a sample
 // review" CTAs point here so the promise "No account for reviewers" holds.
 const SAMPLE_REVIEW_URL = "/r/demo-review-token";
-
-const NAV_LINKS = [
-  { href: "#workflow", label: "Workflow" },
-  { href: "#diff", label: "Smart diff" },
-  { href: "#market", label: "Marketplace" },
-  { href: "#pricing", label: "Licenses" },
-  { href: "#faq", label: "FAQ" },
-];
 
 const WORKFLOW_STEPS = [
   {
@@ -44,6 +36,62 @@ const DIFF_ROWS = [
   { kind: "add", label: "Sample", before: "—", after: "+ VocalChop_01.wav" },
 ];
 
+const ENGINE_PILLARS = [
+  {
+    icon: "🧩",
+    title: "DAW parsing engine",
+    text: "Reads Ableton .als, Cubase .cpr, REAPER .rpp and FL Studio .flp — tracks, devices, plugins and their settings. No opaque blobs.",
+  },
+  {
+    icon: "📐",
+    title: "Smart diff",
+    text: "Between versions you see what actually moved: tempo, a bass preset replaced, EQ changed — not “binary file changed”.",
+  },
+  {
+    icon: "🔗",
+    title: "Decision ledger",
+    text: "Every decision is chained with SHA-256. Rewrite one event and every hash after it breaks — verifiable history, no trust needed.",
+  },
+  {
+    icon: "🗃",
+    title: "Content-addressed storage",
+    text: "Files are stored by SHA-256, so a full-snapshot version costs almost nothing when little changed — dedup by design.",
+  },
+  {
+    icon: "📊",
+    title: "Loudness analysis",
+    text: "Short-term LUFS, true peak, sample rate — measured per version and per stem, so A/B compares the mix, not the volume.",
+  },
+  {
+    icon: "🔊",
+    title: "Watermarking",
+    text: "An audible watermark is mixed into unapproved previews at the sample level — a leaked demo can't pass for the final file.",
+  },
+];
+
+const DAW_ASSETS = [
+  {
+    icon: "🎚",
+    title: "Tracks & plugins with settings",
+    text: "Project files are parsed into structure: tracks, instruments, plugins and the actual state of each instance — REAPER PARAM lines, Ableton preset refs.",
+  },
+  {
+    icon: "🧱",
+    title: "Stems by logical name",
+    text: "NeonBass_final_03.wav and bass_v13.wav both count as bass — stem-level A/B is matched by what the part is, not what it's called.",
+  },
+  {
+    icon: "🎛",
+    title: "Samples & presets",
+    text: "The samples a project references and the presets it uses are listed in the tree — you can see what a version is made of.",
+  },
+  {
+    icon: "📦",
+    title: "One-command push",
+    text: "`snd push` sends a whole project folder as one versioned commit with a SOUNDHUB-MANIFEST.json describing the structure.",
+  },
+];
+
 const MARKET_BENEFITS = [
   { icon: "🎛", title: "Buy without leaving the session", text: "A revision needs a tighter bass? The panel suggests verified, compatible patches — buy and load in place." },
   { icon: "🔒", title: "Escrow protected", text: "Payments sit in escrow until you confirm receipt. Dispute window and refunds are part of the purchase." },
@@ -52,17 +100,10 @@ const MARKET_BENEFITS = [
 ];
 
 const INTEGRATIONS = [
-  { name: "Ableton Live", status: "available", detail: "`soundhub` CLI bridge — push bounces, export open requests, locator helper · Max for Live catalog panel prototype", when: "available now" },
-  { name: "FL Studio", status: "planned", detail: "Planned — no timeline yet", when: "planned" },
-  { name: "Cubase", status: "planned", detail: "Planned — no timeline yet", when: "planned" },
-  { name: "REAPER", status: "planned", detail: "Planned — no timeline yet", when: "planned" },
-];
-
-const LICENSES = [
-  { name: "Personal", price: "1×", note: "one track, one producer", features: ["single non-commercial track", "credit the creator", "no resale, no remix distribution"], featured: false },
-  { name: "Commercial", price: "5×", note: "the default for releases", features: ["commercial releases & streaming", "YouTube / TikTok / Spotify OK", "no resale of the preset itself"], featured: true },
-  { name: "Sync", price: "10×", note: "for film, ads & games", features: ["everything in Commercial", "sync placements (film/TV/ads)", "negotiable exclusivity per placement"], featured: false },
-  { name: "Exclusive", price: "custom", note: "take it off the market", features: ["asset leaves the catalog", "full ownership of the sound", "one-to-one deal, escrowed"], featured: false },
+  { name: "Ableton Live", status: "available", detail: "`soundhub` CLI bridge — push bounces, export open requests, locator helper · Max for Live catalog panel prototype" },
+  { name: "FL Studio", status: "planned", detail: "Planned — no timeline yet" },
+  { name: "Cubase", status: "planned", detail: "Planned — no timeline yet" },
+  { name: "REAPER", status: "planned", detail: "Planned — no timeline yet" },
 ];
 
 const FAQ = [
@@ -138,16 +179,13 @@ const SCENES = [
 function WorkflowModal({ onClose }: { onClose: () => void }) {
   const [scene, setScene] = useState(0);
 
-  useEffect(() => {
-    const t = setInterval(() => setScene((s) => (s + 1) % SCENES.length), 2600);
-    return () => clearInterval(t);
-  }, []);
+  const next = () => setScene((s) => (s + 1) % SCENES.length);
 
   return (
     <div className="wm-overlay" onClick={onClose}>
       <div className="wm" onClick={(e) => e.stopPropagation()}>
         <div className="wm-head">
-          <span className="wm-title">🎬 The SoundHub workflow — 1 min</span>
+          <span className="wm-title">The SoundHub workflow — 1 min</span>
           <button type="button" className="wm-close" onClick={onClose}>✕</button>
         </div>
         <div className="wm-stage">
@@ -164,31 +202,9 @@ function WorkflowModal({ onClose }: { onClose: () => void }) {
               onClick={() => setScene(i)}
             />
           ))}
+          <button type="button" className="wm-next" onClick={next}>Next →</button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Reveal({ children }: { children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) e.target.classList.add("revealed");
-        }
-      },
-      { threshold: 0.12 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  return (
-    <div ref={ref} className="reveal">
-      {children}
     </div>
   );
 }
@@ -210,277 +226,247 @@ export default function LandingPage() {
 
   return (
     <div className="landing">
-      {/* ---------- sticky nav ---------- */}
-      <nav className="landing-nav">
-        <a href="#top" className="landing-nav-brand">
-          <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" /> SoundHub
-        </a>
-        <div className="landing-nav-links">
-          {NAV_LINKS.map((l) => (
-            <a key={l.href} href={l.href}>{l.label}</a>
-          ))}
-        </div>
-        <div className="landing-nav-cta">
-          <Link to="/login">Sign in</Link>
-          <Link to={SAMPLE_REVIEW_URL} className="landing-nav-get">Open a sample review</Link>
-        </div>
-      </nav>
+
 
       {/* ---------- hero ---------- */}
-      <section className="landing-hero" id="top">
-        <div className="landing-hero-inner">
-          <p className="landing-eyebrow">🎛 For producers, artists & A&R</p>
-          <h1 className="landing-title">
-            Music review and approvals,
-            <br />
-            built for the way <span className="landing-title-accent">tracks are made</span>.
-          </h1>
-          <p className="landing-subtitle">
-            Send a private review link. Get timestamped notes. Compare versions.
-            Approve the final master — no scattered ZIP archives, no Discord chaos.
-          </p>
-          <p className="landing-subtitle landing-subtitle-strong">
-            Set the brief. Review with context. Lock the approved master. Deliver with proof.
-          </p>
-          <div className="landing-cta">
-            <button type="button" className="landing-btn-primary" onClick={() => setShowWorkflow(true)}>
-              ▶ Watch the workflow
-            </button>
-            <Link to={SAMPLE_REVIEW_URL} className="landing-btn-ghost">
-              Open a sample review
-            </Link>
-          </div>
-          <div className="landing-proof">
-            <span>No account for reviewers</span>
-            <span>WAV, MP3 &amp; stems</span>
-            <span>Max for Live panel prototype</span>
-          </div>
+      <section className="bc-hero" id="top">
+        <p className="bc-eyebrow">Review · versions · approval — for music</p>
+        <h1 className="bc-title">
+          Music review and approvals, built for the way tracks are made.
+        </h1>
+        <p className="bc-sub">
+          Send a private review link. Get timestamped notes. Compare versions.
+          Approve the final master — no scattered ZIP archives, no Discord chaos.
+        </p>
+        <div className="bc-cta">
+          <Link to={SAMPLE_REVIEW_URL} className="bc-btn bc-btn-primary">▶ Open a sample review</Link>
+          <button type="button" className="bc-btn bc-btn-ghost" onClick={() => setShowWorkflow(true)}>
+            Watch the workflow — 1 min
+          </button>
         </div>
-
-        {/* live review session — the center of the page */}
-        <div className="landing-shot" id="workflow">
-          <ReviewSession />
+        <div className="bc-tags">
+          <span>No account for reviewers</span>
+          <span>WAV · MP3 · stems</span>
+          <span>Loudness-matched A/B</span>
+          <span>Watermarked previews</span>
+          <span>Decision ledger</span>
         </div>
       </section>
 
-      {/* ---------- workflow loop ---------- */}
-      <section className="landing-section landing-workflow">
-        <Reveal>
-          <p className="landing-eyebrow center">The loop</p>
-          <h2 className="landing-h2">From session to approved master</h2>
-          <div className="landing-steps-grid">
-            {WORKFLOW_STEPS.map((s) => (
-              <div key={s.n} className="landing-step">
-                <span className="landing-step-n">{s.n}</span>
+      {/* ---------- featured: a live review session ---------- */}
+      <section className="bc-featured" id="workflow">
+        <div className="bc-featured-label">
+          <span className="bc-featured-live">● Live sample</span>
+          <span>— a real review session, running in your browser</span>
+        </div>
+        <div className="bc-featured-grid">
+          <a href={SAMPLE_REVIEW_URL} className="bc-cover" title="Open the sample review">
+            <div className="bc-cover-art">
+              <img src="/logo.png" alt="" className="bc-cover-logo" />
+            </div>
+            <div className="bc-cover-meta">
+              <div className="bc-cover-title">Neon Warehouse</div>
+              <div className="bc-cover-sub">v13 · In review · stems included</div>
+            </div>
+          </a>
+          <div className="bc-featured-card">
+            <ReviewSession />
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- how it works ---------- */}
+      <section className="bc-section">
+        <h2 className="bc-h2">How it works</h2>
+        <div className="bc-steps">
+          {WORKFLOW_STEPS.map((s) => (
+            <div key={s.n} className="bc-step">
+              <span className="bc-step-n">{s.n}</span>
+              <div className="bc-step-body">
                 <h3>{s.title}</h3>
                 <p>{s.text}</p>
               </div>
-            ))}
-          </div>
-        </Reveal>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* ---------- smart diff ---------- */}
-      <section className="landing-section landing-diff" id="diff">
-        <Reveal>
-          <div className="landing-diff-grid">
-            <div className="landing-diff-copy">
-              <p className="landing-eyebrow">Smart diff</p>
-              <h2>Version your track like music, not bytes.</h2>
-              <p>
-                Between v12 and v13, GitHub would say “binary file changed”. SoundHub
-                reads the project file and tells you exactly what moved — so a revision
-                is a story, not a mystery.
-              </p>
-            </div>
-            <div className="landing-diff-card">
-              <div className="landing-diff-head">SoundHub smart diff — v12 → v13</div>
-              {DIFF_ROWS.map((r) => (
-                <div key={r.label} className={`landing-diff-row ${r.kind === "add" ? "add" : r.kind === "bpm" ? "bpm" : ""}`}>
-                  <span className="landing-diff-label">{r.label}</span>
-                  <span className="landing-diff-before">{r.before}</span>
-                  <span className="landing-diff-arrow">→</span>
-                  <span className="landing-diff-after">{r.after}</span>
-                </div>
-              ))}
-            </div>
+      <section className="bc-section" id="diff">
+        <div className="bc-diff-grid">
+          <div className="bc-diff-copy">
+            <h2 className="bc-h2 left">Version your track like music, not bytes.</h2>
+            <p>
+              Between v12 and v13, GitHub would say “binary file changed”. SoundHub
+              reads the project file and tells you exactly what moved — so a revision
+              is a story, not a mystery.
+            </p>
           </div>
-        </Reveal>
+          <div className="bc-diff-card">
+            <div className="bc-diff-head">SoundHub smart diff — v12 → v13</div>
+            {DIFF_ROWS.map((r) => (
+              <div key={r.label} className={`bc-diff-row ${r.kind === "add" ? "add" : r.kind === "bpm" ? "bpm" : ""}`}>
+                <span className="bc-diff-label">{r.label}</span>
+                <span className="bc-diff-before">{r.before}</span>
+                <span className="bc-diff-arrow">→</span>
+                <span className="bc-diff-after">{r.after}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- sound-tech engine backbone ---------- */}
+      <section className="bc-section">
+        <h2 className="bc-h2 bc-h2-tech">Sound-tech engine backbone</h2>
+        <p className="bc-lead">
+          Underneath the review loop sits a small engine that actually understands DAW
+          projects — parsing, diffing, hashing and measuring instead of guessing.
+        </p>
+        <div className="bc-pillars">
+          {ENGINE_PILLARS.map((p) => (
+            <div key={p.title} className="bc-pillar">
+              <span className="bc-pillar-icon">{p.icon}</span>
+              <h3>{p.title}</h3>
+              <p>{p.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ---------- daw-native track assets ---------- */}
+      <section className="bc-section">
+        <h2 className="bc-h2 bc-h2-tech">DAW-native track assets</h2>
+        <p className="bc-lead">
+          Versions aren't just audio files — SoundHub understands what a session is made
+          of: tracks, plugins, stems and samples, straight from the DAW.
+        </p>
+        <div className="bc-pillars bc-pillars-2">
+          {DAW_ASSETS.map((p) => (
+            <div key={p.title} className="bc-pillar">
+              <span className="bc-pillar-icon">{p.icon}</span>
+              <h3>{p.title}</h3>
+              <p>{p.text}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* ---------- built-in marketplace (second layer) ---------- */}
-      <section className="landing-section" id="market">
-        <Reveal>
-          <p className="landing-eyebrow center">Built-in marketplace</p>
-          <h2 className="landing-h2">When a revision needs a sound, buy it in place</h2>
-          <p className="landing-pricing-sub">
-            The review workflow comes first; the marketplace is the second layer — verified assets,
-            escrowed, licensed, right where you're working.
-          </p>
-          <div className="landing-trust">
-            {MARKET_BENEFITS.map((t) => (
-              <div key={t.title} className="landing-feature">
-                <div className="landing-feature-icon">{t.icon}</div>
+      <section className="bc-section" id="market">
+        <h2 className="bc-h2">When a revision needs a sound, buy it in place</h2>
+        <p className="bc-lead">
+          The review workflow comes first; the marketplace is the second layer — verified assets,
+          escrowed, licensed, right where you're working.
+        </p>
+        <div className="bc-benefits">
+          {MARKET_BENEFITS.map((t) => (
+            <div key={t.title} className="bc-benefit">
+              <span className="bc-benefit-icon">{t.icon}</span>
+              <div>
                 <h3>{t.title}</h3>
                 <p>{t.text}</p>
               </div>
-            ))}
-          </div>
-        </Reveal>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* ---------- integrations ---------- */}
-      <section className="landing-section">
-        <Reveal>
-          <p className="landing-eyebrow center">Integrations</p>
-          <h2 className="landing-h2">Where you make music</h2>
-          <div className="landing-integrations">
-            {INTEGRATIONS.map((i) => (
-              <div key={i.name} className="landing-integration">
-                <div className="landing-integration-head">
-                  <span className="landing-integration-name">{i.name}</span>
-                  <span className={`landing-status ${i.status.replace(/\s+/g, "-")}`}>{i.status}</span>
-                </div>
-                <p>{i.detail}</p>
-                <span className="landing-integration-when">{i.when}</span>
-              </div>
-            ))}
-          </div>
-        </Reveal>
+      <section className="bc-section">
+        <h2 className="bc-h2">Where you make music</h2>
+        <div className="bc-int">
+          {INTEGRATIONS.map((i) => (
+            <div key={i.name} className="bc-int-row">
+              <span className="bc-int-name">{i.name}</span>
+              <span className="bc-int-detail">{i.detail}</span>
+              <span className={`bc-status ${i.status}`}>{i.status}</span>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* ---------- roadmap ---------- */}
-      <section className="landing-section">
-        <Reveal>
-          <p className="landing-eyebrow center">Roadmap</p>
-          <h2 className="landing-h2">Honest about where we are</h2>
-          <div className="landing-roadmap">
-            {ROADMAP.map((r) => (
-              <div key={r.phase} className="landing-roadmap-col">
-                <div className={`landing-roadmap-phase ${r.state}`}>{r.phase}</div>
-                <ul>
-                  {r.items.map((it) => <li key={it}>{it}</li>)}
-                </ul>
-              </div>
-            ))}
-          </div>
-          <p className="landing-status-note">
-            Status: <strong>Private beta</strong> · testnet live · open-source contracts ·
-            security review in progress · not yet audited
-          </p>
-        </Reveal>
-      </section>
-
-      {/* ---------- licenses ---------- */}
-      <section className="landing-section" id="pricing">
-        <Reveal>
-          <p className="landing-eyebrow center">Licenses</p>
-          <h2 className="landing-h2">One purchase. Four license tiers.</h2>
-          <p className="landing-pricing-sub">
-            The tier is bound to the purchase on-chain — rights stay legible from checkout to the credits.
-          </p>
-          <div className="landing-licenses">
-            {LICENSES.map((l) => (
-              <div key={l.name} className={`landing-license ${l.featured ? "featured" : ""}`}>
-                {l.featured && <div className="landing-license-tag">Most popular</div>}
-                <h3>{l.name}</h3>
-                <div className="landing-license-price">{l.price}</div>
-                <div className="landing-license-note">{l.note}</div>
-                <ul>
-                  {l.features.map((f) => <li key={f}>{f}</li>)}
-                </ul>
-              </div>
-            ))}
-          </div>
-          <table className="landing-license-table">
-            <thead>
-              <tr>
-                <th>Use case</th><th>Personal</th><th>Commercial</th><th>Sync</th><th>Exclusive</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Non-commercial track</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
-              <tr><td>Commercial release &amp; streaming</td><td>—</td><td>✓</td><td>✓</td><td>✓</td></tr>
-              <tr><td>YouTube / TikTok / Spotify</td><td>—</td><td>✓</td><td>✓</td><td>✓</td></tr>
-              <tr><td>Film / TV / ad placements (sync)</td><td>—</td><td>—</td><td>✓</td><td>✓</td></tr>
-              <tr><td>Pass project to a client</td><td>—</td><td>✓</td><td>✓</td><td>✓</td></tr>
-              <tr><td>Resell the sound itself</td><td>—</td><td>—</td><td>—</td><td>✓</td></tr>
-            </tbody>
-          </table>
-          <p className="landing-license-note small">
-            Not legal advice — full terms live in each asset's license agreement. Disputes are
-            resolved in escrow; refunds follow the license's refund rules.
-          </p>
-        </Reveal>
+      <section className="bc-section">
+        <h2 className="bc-h2">Honest about where we are</h2>
+        <div className="bc-roadmap">
+          {ROADMAP.map((r) => (
+            <div key={r.phase} className="bc-roadmap-col">
+              <div className={`bc-roadmap-phase ${r.state}`}>{r.phase}</div>
+              <ul>
+                {r.items.map((it) => <li key={it}>{it}</li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <p className="bc-status-note">
+          Status: <strong>Private beta</strong> · testnet live · open-source contracts ·
+          security review in progress · not yet audited
+        </p>
       </section>
 
       {/* ---------- FAQ ---------- */}
-      <section className="landing-section landing-faq" id="faq">
-        <Reveal>
-          <p className="landing-eyebrow center">FAQ</p>
-          <h2 className="landing-h2">Questions, answered</h2>
-          <div className="landing-faq-list">
-            {FAQ.map((f) => (
-              <details key={f.q} className="landing-faq-item" open={f.open}>
-                <summary>{f.q}</summary>
-                <p>{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </Reveal>
+      <section className="bc-section" id="faq">
+        <h2 className="bc-h2">Questions, answered</h2>
+        <div className="bc-faq">
+          {FAQ.map((f) => (
+            <details key={f.q} className="bc-faq-item" open={f.open}>
+              <summary>{f.q}</summary>
+              <p>{f.a}</p>
+            </details>
+          ))}
+        </div>
       </section>
 
       {/* ---------- final CTA ---------- */}
-      <section className="landing-cta-final" id="waitlist">
-        <Reveal>
-          <h2 className="landing-h2">Stop sending final_final_2.wav.</h2>
-          <p>One workspace for review, versions and approvals — marketplace included.</p>
-          <form className="landing-waitlist" onSubmit={joinWaitlist}>
-            <input
-              type="email"
-              placeholder="you@studio.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              aria-label="Email"
-            />
-            <button type="submit" className="landing-btn-primary">Join the beta</button>
-          </form>
-          {waitlist && <div className="landing-waitlist-msg">{waitlist}</div>}
-          <div className="landing-cta-final-alts">
-            <Link to={SAMPLE_REVIEW_URL}>or open a sample review now →</Link>
-          </div>
-        </Reveal>
+      <section className="bc-cta-final">
+        <h2 className="bc-h2">Stop sending final_final_2.wav.</h2>
+        <p>One workspace for review, versions and approvals — marketplace included.</p>
+        <form className="bc-waitlist" onSubmit={joinWaitlist}>
+          <input
+            type="email"
+            placeholder="you@studio.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            aria-label="Email"
+          />
+          <button type="submit" className="bc-btn bc-btn-primary">Join the beta</button>
+        </form>
+        {waitlist && <div className="bc-waitlist-msg">{waitlist}</div>}
+        <div className="bc-cta-final-alts">
+          <Link to={SAMPLE_REVIEW_URL}>or open a sample review now →</Link>
+        </div>
       </section>
 
       {/* ---------- footer ---------- */}
-      <footer className="landing-footer">
-        <div className="landing-footer-grid">
-          <div className="landing-footer-brand">
-            <img src="/logo.png" alt="SoundHub" className="landing-nav-logo" /> SoundHub
-            <p className="landing-footer-tag">Review, versions and approvals for music — marketplace built in.</p>
+      <footer className="bc-footer">
+        <div className="bc-footer-grid">
+          <div className="bc-footer-brand">
+            <img src="/logo.png" alt="SoundHub" className="bc-logo" />
+            <p>Review, versions and approvals for music — marketplace built in.</p>
           </div>
-          <div className="landing-footer-col">
+          <div className="bc-footer-col">
             <h4>Product</h4>
             <a href="#workflow">Workflow</a>
             <a href="#diff">Smart diff</a>
             <a href="#market">Marketplace</a>
-            <a href="#waitlist">Beta</a>
+            <a href="#faq">FAQ</a>
           </div>
-          <div className="landing-footer-col">
+          <div className="bc-footer-col">
             <h4>DAWs</h4>
             <a href="#workflow">Ableton Live · available</a>
             <a href="#workflow">FL Studio · planned</a>
             <a href="#workflow">Cubase · planned</a>
             <a href="#workflow">REAPER · planned</a>
           </div>
-          <div className="landing-footer-col">
+          <div className="bc-footer-col">
             <h4>Ecosystem</h4>
             <Link to={SAMPLE_REVIEW_URL}>Open a sample review</Link>
             <Link to="/market">Marketplace</Link>
-            <Link to="/kettle">🫖 Kettle for beginners</Link>
+            <Link to="/kettle">Kettle for beginners</Link>
           </div>
         </div>
-        <p className="landing-footer-bottom muted">
+        <p className="bc-footer-bottom">
           Private beta on Base Sepolia · open-source contracts · © {new Date().getFullYear()} SoundHub
         </p>
       </footer>

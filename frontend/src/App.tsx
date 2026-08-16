@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, Route, Routes } from "react-router-dom";
-import { isLoggedIn, useAuth } from "./auth";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { isLoggedIn } from "./auth";
+import SiteHeader from "./components/SiteHeader";
 import BranchesPage from "./pages/BranchesPage";
 import CommitPage from "./pages/CommitPage";
 import DiffPage from "./pages/DiffPage";
@@ -31,7 +32,6 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 }
 
 export default function App() {
-  const { user, logout } = useAuth();
   const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
 
   useEffect(() => {
@@ -43,49 +43,8 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <Link to="/" className="logo" title="SoundHub">
-            <img src="/logo.png" alt="SoundHub" />
-          </Link>
-          <Link to="/">SoundHub</Link>
-          {!user && <span className="tagline">Marketplace</span>}
-          {user && <span className="tagline">version control for music</span>}
-        </div>
-        {user && (
-          <div className="userbox">
-            <Link to={`/p/${user.username}`} className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
-              🎚 Portfolio
-            </Link>
-            <Link to="/market" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
-              🛒 Market
-            </Link>
-            <Link to="/dao" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
-              🗳 DAO
-            </Link>
-            <Link to="/github" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
-              ◈ Repo
-            </Link>
-            <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-              {theme === "light" ? "🌙" : "☀️"}
-            </button>
-            <span className="username">{user.username}</span>
-            <button className="btn ghost" onClick={logout}>
-              logout
-            </button>
-          </div>
-        )}
-        {!user && (
-          <div className="userbox">
-            <Link to="/login" className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }}>
-              Sign in
-            </Link>
-            <Link to="/login" className="btn" style={{ padding: "6px 12px", fontSize: 13 }}>
-              Get started
-            </Link>
-          </div>
-        )}
-      </header>
+      {/* bandcamp-style global header: logo + search + auth, subnav below */}
+      <SiteHeader theme={theme} onToggleTheme={toggleTheme} />
       <main className="content">
         <Routes>
           <Route path="/" element={<LandingPage />} />

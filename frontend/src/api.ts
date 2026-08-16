@@ -16,6 +16,7 @@ import type {
   ReferenceComparison,
   ReferenceTrack,
   ReleasePackage,
+  SearchResults,
   ReleaseTemplate,
   ReminderSettings,
   RemindersEvalResult,
@@ -282,6 +283,8 @@ export const api = {
     fd.append("kind", kind);
     return request<CheckoutOut>(`/api/sessions/public/${token}/checkout`, { method: "POST", body: fd });
   },
+  // public search (bandcamp-style header search)
+  search: (q: string) => request<SearchResults>(`/api/search?q=${encodeURIComponent(q)}`),
   // public engineer portfolio
   portfolioGet: (username: string) => request<Portfolio>(`/api/portfolio/${encodeURIComponent(username)}`),
   portfolioPreviewUrl: (username: string, versionId: number) =>

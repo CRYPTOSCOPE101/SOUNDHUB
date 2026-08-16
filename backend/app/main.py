@@ -18,6 +18,7 @@ from .routers import (
     release_packages,
     reminders,
     roles,
+    search,
     sessions,
 )
 
@@ -49,6 +50,7 @@ app.include_router(portfolio.router)
 app.include_router(references.router)
 app.include_router(reminders.router)
 app.include_router(roles.router)
+app.include_router(search.router)
 
 # The landing page CTA "Open a sample review" points here directly — a fixed,
 # human-readable token so the demo review is always reachable at /r/demo-review-token
@@ -110,6 +112,7 @@ def _seed_sample_review() -> None:
             share_token=DEMO_REVIEW_TOKEN,
             status="in_review",
             share_permission="download",
+            portfolio_public=True,  # visible in header search + demo portfolio
             service_type="mix_master",
             genre="Neon warehouse / garage",
             goal="label",
