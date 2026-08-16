@@ -1133,6 +1133,12 @@ export default function LandingPage() {
         <div className="bc-footer-giant" aria-hidden="true">
           <img src="/logo.png" alt="" className="bc-footer-giant-img" />
         </div>
+        <div className="bc-footer-legal">
+          <a href="/terms">Terms of Service</a>
+          <span className="bc-footer-legal-sep">·</span>
+          <a href="/privacy">Privacy Policy</a>
+          <span className="bc-footer-legal-copy">SoundHub, Inc. © {new Date().getFullYear()}</span>
+        </div>
       </footer>
 
       {showWorkflow && <WorkflowModal onClose={() => setShowWorkflow(false)} />}

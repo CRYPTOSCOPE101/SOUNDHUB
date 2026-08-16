@@ -75,12 +75,16 @@
 body {
   margin: 0;
   background: var(--bg);
-  color: var(--text);
+  color: #000000;
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   transition: background 0.2s, color 0.2s;
+}
+
+:root[data-theme="dark"] body {
+  color: var(--text); /* keep light text on the dark theme */
 }
 
 a {
@@ -7545,6 +7549,36 @@ pre.diff-raw code {
   color: var(--muted);
   border-top: 1px solid var(--border);
   padding-top: 18px;
+}
+
+/* legal line — Terms / Privacy / company (CodeRabbit-style) */
+.bc-footer-legal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+
+.bc-footer-legal a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.bc-footer-legal a:hover {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+.bc-footer-legal-sep {
+  opacity: 0.6;
+}
+
+.bc-footer-legal-copy {
+  color: var(--muted);
 }
 
 /* giant wordmark at the very bottom — full-width, faded (CodeRabbit-style) */
