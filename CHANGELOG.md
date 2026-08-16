@@ -58,3 +58,17 @@ curl -s -X POST http://127.0.0.1:8765/push -H "Content-Type: application/json" \
   `.flp` currently reads header/tempo/channels (deep event parsing pending).
 - **Review A/B needs ≥ 2 versions** — the first push with `--audio` opens
   the session; gapless A/B appears once a second version exists.
+
+### Release checklist
+
+Run before tagging a release (same cases CI covers in `pytest -k bridge`):
+
+1. **Bridge up** — `./snd serve` starts and stays on `:8765`.
+2. **Health OK** — `curl -s http://127.0.0.1:8765/health` → `{"ok": true, "service": "snd-bridge"}`.
+3. **Fast push OK** — `POST /push` with a real `.als` → `{"ok": true, "commit_id": N}`.
+4. **Idempotent re-push deduped** — same payload again → same `commit_id`, `deduplicated` > 0, no new blobs.
+5. **Negative JSON fails as expected** — missing target / malformed body → `400` + `{"ok": false, "error": …}`.
+6. **CI green** — backend (incl. bridge smoke), contracts, frontend build.
+
+All five bridge checks are automated in `tests/test_snd_project.py` (`-k bridge`),
+so the checklist is a manual confirmation of what CI already asserts.
