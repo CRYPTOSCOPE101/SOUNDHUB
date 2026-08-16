@@ -181,6 +181,7 @@ class ReviewVersionOut(BaseModel):
     waveform_synthetic: bool = False
     comments: list[ReviewCommentOut] = []
     watermarked: bool = False  # guests hear an audible watermark on this preview
+    commit_id: int | None = None  # project commit this bounce was pushed from → smart diff
 
 
 class ReviewVersionCreate(BaseModel):
@@ -791,4 +792,17 @@ class DiffOut(BaseModel):
     summary: list[DiffChange] = []
     raw: str = ""
     binary: bool = False
+    truncated: bool = False
+
+
+class VersionDiffOut(BaseModel):
+    """Smart diff for a review version vs the previous one in the session."""
+
+    version_label: str
+    from_label: str | None = None  # "v11" / "parent commit" / None (first version)
+    path: str | None = None
+    format: str | None = None
+    has_daw: bool = False  # the pushed commit carried a parseable DAW file
+    summary: list[DiffChange] = []
+    raw: str = ""
     truncated: bool = False

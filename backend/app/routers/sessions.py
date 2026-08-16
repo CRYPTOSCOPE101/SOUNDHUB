@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from ..config import MAX_UPLOAD_SIZE
 from ..database import get_db
 from ..models import (
+    Commit,
     LedgerEvent,
     ReviewApproval,
     ReviewComment,
@@ -47,9 +48,13 @@ from ..schemas import (
     ShareSettingsUpdate,
     ReviewVersionCreate,
     ReviewVersionOut,
+    VersionDiffOut,
 )
 from ..security import get_current_user
-from ..services import ledger, storage, watermark, waveform
+from ..services import ledger, storage, versioning, watermark, waveform
+from ..services.daw import is_daw_path
+from ..services.daw.diff_engine import normalize_content, summary_diff, unified_diff
+from ..services.daw.registry import detect_format, get_daw_info
 
 router = APIRouter(prefix="/api/sessions", tags=["review sessions"])
 
@@ -80,6 +85,78 @@ def next_version_number(db: Session, session_id: int) -> int:
         )
         or 0
     ) + 1
+
+
+def _version_diff(db: Session, session: ReviewSession, version: ReviewVersion) -> dict:
+    """Smart diff for a review version vs the previous one in the session.
+
+    Comparison base: the previous session version that was pushed from a
+    commit (vN vs vN-1); falling back to the commit's parent when this is the
+    session's first pushed version. Returns the structured summary (BPM,
+    tracks, plugins, samples) + raw normalized diff of the DAW project file.
+    """
+    from ..schemas import VersionDiffOut
+
+    out: dict = {"version_label": version.label, "from_label": None}
+    if version.commit_id is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "This version has no linked DAW project — it was uploaded as plain audio, so there is nothing to diff",
+        )
+    commit_b = db.get(Commit, version.commit_id)
+    if commit_b is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project commit for this version not found")
+
+    # previous session version pushed from a commit
+    prev = db.scalar(
+        select(ReviewVersion)
+        .where(
+            ReviewVersion.session_id == session.id,
+            ReviewVersion.commit_id.is_not(None),
+            ReviewVersion.number < version.number,
+        )
+        .order_by(ReviewVersion.number.desc())
+        .limit(1)
+    )
+    commit_a: Commit | None = None
+    if prev is not None:
+        commit_a = db.get(Commit, prev.commit_id)
+        out["from_label"] = prev.label
+    elif commit_b.parent_id is not None:
+        commit_a = db.get(Commit, commit_b.parent_id)
+        out["from_label"] = "previous commit"
+
+    snaps_b = versioning.tree_files(db, commit_b)
+    daw_paths = [s.path for s in snaps_b if is_daw_path(s.path)]
+    if not daw_paths:
+        out["has_daw"] = False
+        return VersionDiffOut(**out)
+
+    path = daw_paths[0]
+    snap_a = versioning.file_in_commit(db, commit_a, path) if commit_a else None
+    snap_b = versioning.file_in_commit(db, commit_b, path)
+    data_a = storage.read_blob(snap_a.blob_sha) if snap_a else b""
+    data_b = storage.read_blob(snap_b.blob_sha) if snap_b else b""
+
+    fmt = detect_format(path, data_b or data_a)
+    info_a = get_daw_info(path, data_a) if data_a else None
+    info_b = get_daw_info(path, data_b) if data_b else None
+    summary = summary_diff(info_a, info_b)
+    text_a = normalize_content(path, data_a) if data_a else ""
+    text_b = normalize_content(path, data_b) if data_b else ""
+    raw, truncated = unified_diff(text_a, text_b)
+
+    out.update(
+        {
+            "path": path,
+            "format": fmt,
+            "has_daw": True,
+            "summary": summary,
+            "raw": raw,
+            "truncated": truncated,
+        }
+    )
+    return VersionDiffOut(**out)
 
 
 def _comment_out(c: ReviewComment) -> ReviewCommentOut:
@@ -129,6 +206,7 @@ def _version_out(db: Session, v: ReviewVersion, with_comments: bool = False) -> 
         waveform_synthetic=wf["synthetic"],
         comments=comments,
         watermarked=watermarked,
+        commit_id=v.commit_id,
     )
 
 
@@ -392,6 +470,23 @@ def public_download_audio(
         media_type=f"audio/{version.audio_format}",
         headers={"Content-Disposition": f'inline; filename="{version.filename}"'},
     )
+
+
+@router.get("/public/{share_token}/versions/{version_id}/diff", response_model=VersionDiffOut)
+def public_version_diff(
+    share_token: str,
+    version_id: int,
+    actor: str = "",
+    password: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """What changed in this bounce vs the previous one — right in the review."""
+    session = get_public_session(db, share_token)
+    _check_share_access(session, actor, password)
+    version = get_version_or_404(db, session.id, version_id)
+    _log_access(db, session, actor, "diffed", f"{version.label}")
+    db.commit()
+    return _version_diff(db, session, version)
 
 
 def _ascii_filename(name: str, ext: str) -> str:
@@ -1034,6 +1129,19 @@ def download_audio(
         media_type=f"audio/{version.audio_format}",
         headers={"Content-Disposition": f'inline; filename="{version.filename}"'},
     )
+
+
+@router.get("/{session_id}/versions/{version_id}/diff", response_model=VersionDiffOut)
+def version_diff(
+    session_id: int,
+    version_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """What changed in this bounce vs the previous one — owner view."""
+    session = get_session_or_404(db, user, session_id)
+    version = get_version_or_404(db, session.id, version_id)
+    return _version_diff(db, session, version)
 
 
 @router.post("/{session_id}/versions/{version_id}/comments", response_model=ReviewCommentOut, status_code=status.HTTP_201_CREATED)

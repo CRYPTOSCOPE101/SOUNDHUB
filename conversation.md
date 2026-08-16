@@ -598,6 +598,40 @@ repo-страница (repo-page.png), ветки (repo-page-branches.png) — �
 
 ---
 
+## Фаза 18 — П.2 roadmap: smart diff прямо в review-контексте
+
+**Боль (Reddit-сигнал):** «видеть, что именно изменилось между версиями» — не «binary changed»,
+а BPM / track / plugin-level diff. Раньше diff жил только на repo-странице, review — на `/r/:token`;
+теперь клиент видит изменения прямо в плеере.
+
+**Backend:**
+- `ReviewVersion.commit_id` (nullable FK на `commits`) — версия, запушенная через `snd push`,
+  теперь связана с DAW-коммитом (миграция `ALTER TABLE review_versions ADD COLUMN commit_id`).
+  У ручных audio-аплоадов — NULL, diff для них недоступен с понятной ошибкой.
+- `_version_diff()`: сравнивает версию с **предыдущей версией сессии**, запушенной из коммита
+  (vN vs vN-1), фолбэк на parent-коммит; первый пуш → «File created». Переиспользует движок
+  `summary_diff` + `normalize_content`/`unified_diff` — BPM, time signature, DAW version, треки,
+  плагины, сэмплы + raw diff (кап 400 строк).
+- Два эндпоинта: `GET /api/sessions/{id}/versions/{vid}/diff` (owner) и
+  `GET /api/sessions/public/{token}/versions/{vid}/diff` (гость, view-permission, лог `diffed`).
+- `ReviewVersionOut.commit_id` — фронт по нему решает, показывать ли кнопку.
+
+**Frontend:**
+- Общий компонент `VersionDiffPanel` (ReviewShared): заголовок «✦ What changed · v2 vs v1»,
+  строки с бейджами +/−/·, old→new (BPM 128→132), raw diff в `<details>`.
+- **PublicReviewPage** (клиент): блок «✦ What changed in this bounce» с кнопкой
+  «What changed in vN» — прямо под плеером, до секции A/B.
+- **ReviewSessionPage** (инженер): кнопка «✦ What changed» в панели версий + иконка ✦ у каждой
+  версии с `commit_id` в сайд-листе.
+
+**Проверено:** 116 backend-тестов ✅ (+2: smart summary owner+guest с bpm/track/plugin и
+from_label, plain-audio upload → 400 «no linked daw project», 404 для чужого токена); frontend
+build ✅; живой smoke: пуш v1(128) и v2(132, +Pad, +Vital) → diff `128→132`, `+Pad`, `+Vital`
+через оба эндпоинта; playwright: кнопка «What changed in v2» на `/r/:token` → панель с
+изменениями → закрытие. Backend перезапущен, миграция применена к живой БД.
+
+---
+
 ## Запуск
 
 ```bash

@@ -109,6 +109,10 @@ def _migrate() -> None:
             ap_cols = {c["name"] for c in inspector.get_columns("review_approvals")}
             if "role" not in ap_cols:
                 conn.execute(text("ALTER TABLE review_approvals ADD COLUMN role VARCHAR(32) DEFAULT ''"))
+        if inspector.has_table("review_versions"):
+            rv_cols = {c["name"] for c in inspector.get_columns("review_versions")}
+            if "commit_id" not in rv_cols:
+                conn.execute(text("ALTER TABLE review_versions ADD COLUMN commit_id INTEGER"))
         if inspector.has_table("change_orders"):
             co_cols = {c["name"] for c in inspector.get_columns("change_orders")}
             for col, ddl in (

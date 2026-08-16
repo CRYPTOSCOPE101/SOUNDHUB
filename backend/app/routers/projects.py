@@ -471,6 +471,7 @@ def push_project_files(
             duration_s=wf["duration_s"],
             audio_format=ext,
             round_number=round or session.round_number,
+            commit_id=commit.id,  # link this bounce to the DAW commit → smart diff in review
         )
         db.add(version)
         db.flush()

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, getToken } from "../api";
-import { fmtClock, WaveformCanvas, CommentComposer, ApprovalPanel } from "../components/ReviewShared";
+import { fmtClock, WaveformCanvas, CommentComposer, ApprovalPanel, VersionDiffPanel } from "../components/ReviewShared";
 import ABCompare from "../components/ABCompare";
 import ReferenceCompare from "../components/ReferenceCompare";
 import {
@@ -31,6 +31,7 @@ import {
   type SessionMember,
   type StemAsset,
   type VersionComparison,
+  type VersionDiff,
 } from "../types";
 
 /* ---------- helpers ---------- */
@@ -1629,6 +1630,9 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
   const [compare, setCompare] = useState<number | null>(null); // other version id in A/B
   const [comparison, setComparison] = useState<VersionComparison | null>(null); // loudness-matched A/B panel
   const [comparisonErr, setComparisonErr] = useState<string | null>(null);
+  const [diff, setDiff] = useState<VersionDiff | null>(null); // smart diff vs previous version
+  const [diffBusy, setDiffBusy] = useState(false);
+  const [diffErr, setDiffErr] = useState<string | null>(null);
   const [refCompare, setRefCompare] = useState<{ ref: ReferenceTrack; comp: ReferenceComparison } | null>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [srcVersion, setSrcVersion] = useState<number | null>(null);
@@ -1746,6 +1750,18 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
     setCurrentId(v.id);
     setPlaying(false);
     setCompare(null);
+  };
+
+  const showDiff = async (v: ReviewVersion) => {
+    setDiffBusy(true);
+    setDiffErr(null);
+    try {
+      setDiff(await api.versionDiff(session.id, v.id));
+    } catch (e) {
+      setDiffErr(e instanceof Error ? e.message : "Failed to load the project diff");
+    } finally {
+      setDiffBusy(false);
+    }
   };
 
   const upload = async (file: File) => {
@@ -1994,6 +2010,16 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                 {compare != null ? "✕ A/B off" : "A/B"}
               </button>
             )}
+            {current.commit_id && (
+              <button
+                type="button"
+                className={`rs-tab diff ${diff?.version_label === current.label ? "active" : ""}`}
+                onClick={() => (diff?.version_label === current.label ? setDiff(null) : void showDiff(current))}
+                disabled={diffBusy}
+              >
+                {diffBusy ? "…" : diff?.version_label === current.label ? "✕ What changed" : "✦ What changed"}
+              </button>
+            )}
           </div>
 
           {compare != null && compareVersion && (
@@ -2039,6 +2065,10 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
             />
           )}
           {comparisonErr && <div className="error">{comparisonErr}</div>}
+
+          {/* smart diff vs previous version — right in the review context */}
+          {diffErr && <div className="error">{diffErr}</div>}
+          {diff && <VersionDiffPanel diff={diff} onClose={() => setDiff(null)} />}
 
           {/* mix ↔ reference A/B panel */}
           {refCompare && (
@@ -2215,20 +2245,31 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
                 <div className="rs-versions">
                   <div className="rs-versions-head">Versions</div>
                   {versions.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      className={`rs-version ${current.id === v.id ? "active" : ""}`}
-                      onClick={() => switchVersion(v)}
-                    >
-                      <span className="rs-version-id">{v.label}</span>
-                      <span className="rs-version-info">
-                        <span className="rs-version-label">{v.message || v.filename}</span>
-                        <span className="rs-version-note">
-                          {fmtClock(v.duration_s)} · {v.comments.filter((c) => c.resolved).length} resolved
+                    <div key={v.id} className={`rs-version-row ${current.id === v.id ? "active" : ""}`}>
+                      <button
+                        type="button"
+                        className="rs-version"
+                        onClick={() => switchVersion(v)}
+                      >
+                        <span className="rs-version-id">{v.label}</span>
+                        <span className="rs-version-info">
+                          <span className="rs-version-label">{v.message || v.filename}</span>
+                          <span className="rs-version-note">
+                            {fmtClock(v.duration_s)} · {v.comments.filter((c) => c.resolved).length} resolved
+                          </span>
                         </span>
-                      </span>
-                    </button>
+                      </button>
+                      {v.commit_id && (
+                        <button
+                          type="button"
+                          className="rs-link rs-version-diff"
+                          title="What changed vs the previous version"
+                          onClick={() => (diff?.version_label === v.label ? setDiff(null) : void showDiff(v))}
+                        >
+                          {diff?.version_label === v.label ? "✕" : "✦"}
+                        </button>
+                      )}
+                    </div>
                   ))}
                   <label className="rs-upload">
                     {uploading ? "Uploading…" : "⬆ Upload new version"}

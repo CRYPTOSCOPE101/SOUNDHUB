@@ -146,6 +146,18 @@ export interface ReviewVersion {
   waveform_synthetic: boolean;
   comments: ReviewComment[];
   watermarked: boolean;
+  commit_id?: number | null;
+}
+
+export interface VersionDiff {
+  version_label: string;
+  from_label?: string | null;
+  path?: string | null;
+  format?: string | null;
+  has_daw: boolean;
+  summary: DiffChange[];
+  raw: string;
+  truncated: boolean;
 }
 
 export interface ReviewRound {
