@@ -341,19 +341,14 @@ def cmd_push(args, http=None) -> int:
     return 0
 
 
-def cmd_serve(args, http=None) -> int:
-    """Run a localhost JSON bridge the Max for Live device calls for pushes.
+def start_bridge(*, api: str, token: str, host: str = "127.0.0.1", port: int = 8765,
+                 http=None) -> ThreadingHTTPServer:
+    """Create (but don't serve) the localhost push bridge.
 
-    M4L can't run `shell` (blocked inside Live) and its `httprequest` mangles
-    binary multipart, so the device POSTs a small JSON payload here and this
-    tiny stdlib server runs the same `snd push` pipeline (preflight → atomic
-    upload → review) and returns the stable contract.
+    Separate from `cmd_serve` so tests can start it with port=0 (OS-assigned)
+    and read `server.server_address[1]` instead of racing for a fixed port.
     """
     import json as _json
-
-    cfg = load_config()
-    token = resolve_token(args, cfg)
-    api = api_base(args)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a):  # keep the console quiet
@@ -391,9 +386,24 @@ def cmd_serve(args, http=None) -> int:
             except OSError as exc:
                 self._send(400, {"ok": False, "error": str(exc)})
 
-    host, port = args.host, args.port
-    srv = ThreadingHTTPServer((host, port), Handler)
-    print(f"✓ snd bridge listening on http://{host}:{port} — point the M4L device at it (bridge message)", flush=True)
+    return ThreadingHTTPServer((host, port), Handler)
+
+
+def cmd_serve(args, http=None) -> int:
+    """Run a localhost JSON bridge the Max for Live device calls for pushes.
+
+    M4L can't run `shell` (blocked inside Live) and its `httprequest` mangles
+    binary multipart, so the device POSTs a small JSON payload here and this
+    tiny stdlib server runs the same `snd push` pipeline (preflight → atomic
+    upload → review) and returns the stable contract.
+    """
+    cfg = load_config()
+    token = resolve_token(args, cfg)
+    api = api_base(args)
+
+    srv = start_bridge(api=api, token=token, host=args.host, port=args.port, http=http)
+    port = srv.server_address[1]
+    print(f"✓ snd bridge listening on http://{args.host}:{port} — point the M4L device at it (bridge message)", flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

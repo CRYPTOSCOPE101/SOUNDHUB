@@ -149,6 +149,34 @@ the rack. If the browser doesn't refresh automatically, press **F5**.
 Configure the library folder if it's not the default macOS path:
 `libraryDir /path/to/User Library`.
 
+## Troubleshooting (Live user)
+
+| Symptom in the panel | Cause | Fix |
+|---|---|---|
+| `Push failed (bridge unreachable? run snd serve)` | `snd serve` isn't running | run `./snd serve` in a terminal and keep it open |
+| `Push failed: bad JSON body` | device ↔ bridge mismatch (shouldn't happen with the shipped patch) | reload the device, check `bridge` message points at `http://127.0.0.1:8765` |
+| `Push failed: save the Live set first` | set was never saved | save the Live set (Cmd/Ctrl+S) before pushing |
+| `Push failed: … Master file not found` | `audio` path configured but file missing | point `audio` at the real render path, or drop it to do a fast push |
+| `Push failed: HTTP 401/403` | no valid session | run `./snd login --user … --password …` once |
+| `Push failed: File too large` | .als above the upload limit | raise `MAX_UPLOAD_SIZE` in `backend/app/config.py` or trim media from the project |
+| panel says `fast push (no review)` | no master render attached | add an `audio <path>` message so the push opens a review session for A/B |
+
+Quick end-to-end check (without opening Live):
+
+```bash
+cd backend
+./snd login --user demo --password demo123      # 1. auth
+./snd serve &                                    # 2. bridge on :8765
+curl -s http://127.0.0.1:8765/health             # 3. {"ok": true, "service": "snd-bridge"}
+curl -s -X POST http://127.0.0.1:8765/push \
+  -H 'Content-Type: application/json' \
+  -d '{"target": "/path/to/Track.als", "project": "smoke", "branch": "main"}'
+# 4. {"ok": true, "commit_id": N, …} — then open the returned review_url
+```
+
+If step 4 fails, re-run with `--json` for the machine-readable error:
+`./snd push /path/to/Track.als --project smoke --json`.
+
 ## What's stubbed (honest)
 
 - **Push current export needs `snd serve` running** — the bridge is a thin

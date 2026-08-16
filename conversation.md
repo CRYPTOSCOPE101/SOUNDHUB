@@ -464,6 +464,15 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
   `test_snd_serve_bridge_health_and_push` (health + push контракт + 400 {"ok": false}).
   Итого 113 backend-тестов; живой smoke: push из моста → commit + review URL 200.
   m4l/README.md обновлён (кнопка, мост, «что застаблено»).
+- **Production-grade-закрепление пункта (по ревью):** негативные тесты bridge
+  (`test_snd_serve_bridge_negative_cases`): битый JSON → 400 «bad JSON», audio-путь
+  без файла → 400 «Master file not found», стемы без мастера → 400 «requires --audio»,
+  повторный push того же экспорта — оба проходят и несут тот же .als+манифест;
+  preflight-отказы не доходят до бэкенда. Старт моста в тестах переведён на
+  `start_bridge(port=0)` + `server_address` (убрана гонка за портом — два bridge-теста
+  подряд больше не падают). m4l/README.md: блок Troubleshooting (7 симптомов панели:
+  мост не запущен, сейв сета, master не найден, 401, oversize, fast-push без review)
+  + end-to-end checklist через curl без открытия Live. Итого 114 backend-тестов.
 
 **Изучен GitHub-организации Ableton (29 репозиториев):** почти всё — внутренняя инфра (Ansible/Jenkins), нерелевантно. Применимы четыре:
 1. **`Ableton/web-audio-sequencing` (MIT)** — lookahead-планирование на часах AudioContext. **Применено сразу:** оба Web Audio плеера (`ABCompare.tsx`, `ReferenceCompare.tsx`) переведены с «RAF-тик ловит границу loop и перезапускает source с зазором» на планировщик сегментов (`start(when)`/`stop(when)` на точных временах аудио-часов, горизонт 0.15 с) — loop-регион теперь gapless, без frame-квантования и дрейфа. Frontend build зелёный.
