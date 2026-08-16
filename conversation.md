@@ -898,6 +898,24 @@ Post-release note «After v0.2.0» добавлен в CHANGELOG: что пок�
 план v0.2.1 (native sidecar, deep .flp, diff-UI polish, trust layer) и
 оставшиеся лимиты (не аудировано, парсеры best-effort, A/B ≥2 версий).
 
+## Фаза 27 — Документация: страница /docs + раздел на лендинге
+
+Новый `DocsPage.tsx` (маршрут `/docs`): пользовательский гайд — core loop
+(5 шагов: create → push/upload → share → A/B → approve), команды `snd`
+(5 строк с описанием), таблица ролей (Engineer/Artist/A&R/Feedback owner/
+Client — кто что утверждает, 403 при чужой роли), честные лимиты (4),
+и 6 ссылок на документы (Whitepaper.pdf, LITEPAPER, README, ARCHITECTURE,
+CHANGELOG, m4l/README).
+
+Подключено: маршрут в App.tsx, пункт «Docs» в нижнюю панель навигации
+(иконка-книга), ссылка в футере (колонка Product). На лендинге — секция
+`#docs` «Read the docs»: 4 карточки (Docs hub → /docs, Whitepaper PDF,
+Litepaper, Changelog).
+
+Проверено (playwright): /docs — 6 карточек, 5 команд, 5 ролей, 4 лимита,
+0 ошибок; «Docs» в сабнаве; секция на лендинге 4 карточки; клик → /docs.
+Build ✅.
+
 ---
 
 ## Запуск
