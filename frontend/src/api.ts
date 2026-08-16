@@ -22,6 +22,7 @@ import type {
   RemindersEvalResult,
   SessionRemindersResponse,
   VersionComparison,
+  VersionDiff,
   GhBranch,
   GhCommit,
   Project,
@@ -461,6 +462,10 @@ export const api = {
     }),
   publicAudioUrl: (token: string, versionId: number) =>
     `/api/sessions/public/${token}/versions/${versionId}/audio`,
+  versionDiff: (sessionId: number, versionId: number) =>
+    request<VersionDiff>(`/api/sessions/${sessionId}/versions/${versionId}/diff`),
+  publicVersionDiff: (token: string, versionId: number) =>
+    request<VersionDiff>(`/api/sessions/public/${token}/versions/${versionId}/diff`),
   audioUrl: (path: string) => `${API_ORIGIN}${path}`,
   // change orders — late changes after approval/delivery
   listChangeOrders: (sessionId: number) => request<ChangeOrder[]>(`/api/sessions/${sessionId}/change-orders`),

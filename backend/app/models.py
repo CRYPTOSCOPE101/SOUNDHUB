@@ -236,6 +236,9 @@ class ReviewVersion(Base):
     stems: Mapped[list["StemAsset"]] = relationship(
         back_populates="version", cascade="all, delete-orphan"
     )
+    # Project commit this audio version was pushed from (snd push / API).
+    # NULL for plain audio uploads — no DAW diff is possible for those.
+    commit_id: Mapped[int | None] = mapped_column(ForeignKey("commits.id"), nullable=True, index=True)
 
 
 class SessionMember(Base):

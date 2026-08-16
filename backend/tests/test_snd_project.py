@@ -370,6 +370,118 @@ def test_push_two_versions_support_gapless_ab(client):
     assert r.json()["mode"] == "full_mix"
 
 
+# ---------- Phase 16 (cont.): smart diff in the review context ----------
+
+
+def test_version_diff_returns_smart_summary(client):
+    """v2 pushed from a changed .als shows the diff right in the review (owner + guest)."""
+    from app.services.daw import fixtures
+
+    token = _register(client)
+    pid = client.post("/api/projects", json={"name": "Neon"}, headers=_auth(token)).json()["id"]
+
+    def push(als: bytes, msg: str) -> dict:
+        r = client.post(
+            f"/api/projects/{pid}/push",
+            headers=_auth(token),
+            data={"message": msg},
+            files=[
+                ("files", ("Neon.als", als, "application/xml")),
+                ("audio", ("master.wav", make_wav(), "audio/wav")),
+            ],
+        )
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    v1 = push(
+        fixtures.make_als(
+            bpm=128.0,
+            tracks=[
+                ("MidiTrack", "Synth Lead", ["Plugin:Serum"]),
+                ("AudioTrack", "Drums", ["Compressor2"]),
+                ("MasterTrack", "Master", ["Limiter"]),
+            ],
+        ),
+        "v1",
+    )
+    v2 = push(
+        fixtures.make_als(
+            bpm=132.0,
+            tracks=[
+                ("MidiTrack", "Synth Lead", ["Plugin:Serum"]),
+                ("AudioTrack", "Drums", ["Compressor2"]),
+                ("MidiTrack", "Pad", ["Plugin:Vital"]),
+                ("MasterTrack", "Master", ["Limiter"]),
+            ],
+        ),
+        "v2 — BPM up, Pad added",
+    )
+    assert v1["session_id"] == v2["session_id"]
+
+    # owner view: structured summary vs the previous session version
+    r = client.get(
+        f"/api/sessions/{v2['session_id']}/versions/{v2['version_id']}/diff",
+        headers=_auth(token),
+    )
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["version_label"] == "v2"
+    assert d["from_label"] == "v1"
+    assert d["has_daw"] is True
+    assert d["path"] == "Neon.als" and d["format"] == "als"
+    kinds = {c["kind"]: c for c in d["summary"]}
+    assert kinds["bpm"]["old"] == "128" and kinds["bpm"]["new"] == "132"
+    assert kinds["track_added"]["new"] == "Pad"
+    assert kinds["plugin_added"]["new"] == "Vital"
+    assert "132" in d["raw"]
+
+    # guest sees the same diff through the public share link
+    pub = client.get(f"/api/sessions/public/{v2['share_token']}/versions/{v2['version_id']}/diff")
+    assert pub.status_code == 200, pub.text
+    assert pub.json()["summary"] == d["summary"]
+
+    # v1 is the session's first pushed version — "File created", no crash
+    d1 = client.get(
+        f"/api/sessions/{v1['session_id']}/versions/{v1['version_id']}/diff",
+        headers=_auth(token),
+    ).json()
+    assert d1["version_label"] == "v1" and d1["from_label"] is None
+    assert d1["has_daw"] is True
+    assert d1["summary"][0]["label"] == "File created"
+
+    # the review version row carries the linked commit (frontend shows the button)
+    session = client.get(f"/api/sessions/{v2['session_id']}", headers=_auth(token)).json()
+    v2_row = [x for x in session["versions"] if x["id"] == v2["version_id"]][0]
+    assert v2_row["commit_id"] is not None
+
+
+def test_version_diff_plain_audio_upload_has_no_diff(client):
+    """A plain audio upload (no project push) has nothing to diff — clear 400."""
+    token = _register(client)
+    pid = client.post("/api/projects", json={"name": "Neon"}, headers=_auth(token)).json()["id"]
+    s = client.post(
+        "/api/sessions",
+        json={"name": "Plain bounce", "project_id": pid},
+        headers=_auth(token),
+    ).json()
+    up = client.post(
+        f"/api/sessions/{s['id']}/versions",
+        headers=_auth(token),
+        data={"message": "plain wav"},
+        files=[("file", ("plain.wav", make_wav(), "audio/wav"))],
+    )
+    assert up.status_code == 201, up.text
+    vid = up.json()["id"]
+
+    r = client.get(f"/api/sessions/{s['id']}/versions/{vid}/diff", headers=_auth(token))
+    assert r.status_code == 400
+    assert "no linked daw project" in r.text.lower()
+
+    # unknown share token → 404
+    r = client.get("/api/sessions/public/nope/versions/1/diff")
+    assert r.status_code == 404
+
+
 def test_push_stems_attached_as_set(client):
     """`--stems` attaches stems as individual logical-name assets, not a ZIP."""
     token = _register(client)

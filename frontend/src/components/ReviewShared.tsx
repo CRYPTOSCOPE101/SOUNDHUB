@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import { shortDate, APPROVAL_SCOPES, type ReviewApproval, type ReviewComment, type ReviewVersion } from "../types";
+import { shortDate, APPROVAL_SCOPES, type ReviewApproval, type ReviewComment, type ReviewVersion, type VersionDiff } from "../types";
 
 export const fmtClock = (s: number) => {
   const m = Math.floor(s / 60);
@@ -322,6 +322,76 @@ export function ApprovalPanel({
         </button>
         {err && <div className="error">{err}</div>}
       </form>
+    </div>
+  );
+}
+
+/* ---------- smart diff in the review context ---------- */
+
+const DIFF_LABEL: Record<string, string> = {
+  bpm: "Tempo (BPM)",
+  info: "",
+  track_added: "Track added",
+  track_removed: "Track removed",
+  plugin_added: "Plugin added",
+  plugin_removed: "Plugin removed",
+  sample_added: "Sample referenced",
+  sample_removed: "Sample removed",
+};
+
+function diffKindBadge(kind: string): { cls: string; arrow: string } {
+  if (kind.endsWith("_added") || kind === "bpm") return { cls: "added", arrow: "→" };
+  if (kind.endsWith("_removed")) return { cls: "removed", arrow: "→" };
+  return { cls: "info", arrow: "→" };
+}
+
+export function VersionDiffPanel({ diff, onClose }: { diff: VersionDiff; onClose: () => void }) {
+  const changes = diff.summary;
+  const hasChanges = changes.length > 0;
+  return (
+    <div className="rs-diff-panel">
+      <div className="rs-diff-head">
+        <span className="rs-diff-title">
+          ✦ What changed · <strong>{diff.version_label}</strong>
+          {diff.from_label ? ` vs ${diff.from_label}` : " (first version)"}
+        </span>
+        <button type="button" className="rs-btn ghost sm" onClick={onClose}>
+          ✕
+        </button>
+      </div>
+      {!diff.has_daw ? (
+        <p className="rs-diff-empty">This version was pushed without a DAW project file — only the audio bounce, nothing to compare at project level.</p>
+      ) : !hasChanges ? (
+        <p className="rs-diff-empty">No project-level changes detected{diff.from_label ? ` vs ${diff.from_label}` : " — first version"}. Same tempo, tracks, plugins and samples.</p>
+      ) : (
+        <ul className="rs-diff-list">
+          {changes.map((c, i) => {
+            const b = diffKindBadge(c.kind);
+            const label = c.kind === "info" ? c.label : DIFF_LABEL[c.kind] || c.label;
+            return (
+              <li key={i} className={`rs-diff-row ${b.cls}`}>
+                <span className={`rs-diff-badge ${b.cls}`}>{b.cls === "added" ? "+" : b.cls === "removed" ? "−" : "·"}</span>
+                <span className="rs-diff-label">{label}</span>
+                <span className="rs-diff-change">
+                  {c.old != null && <span className="rs-diff-old">{c.old}</span>}
+                  <span className="rs-diff-arrow">{b.arrow}</span>
+                  {c.new != null && <span className="rs-diff-new">{c.new}</span>}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {diff.path && (
+        <div className="rs-diff-meta">
+          {diff.path} · {diff.format?.toUpperCase()}
+          {diff.truncated && " · raw diff truncated"}
+          <details className="rs-diff-raw">
+            <summary>Raw diff</summary>
+            <pre>{diff.raw || "(no raw diff)"}</pre>
+          </details>
+        </div>
+      )}
     </div>
   );
 }

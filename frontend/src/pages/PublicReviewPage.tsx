@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
 import ReferenceCompare from "../components/ReferenceCompare";
-import { fmtClock, WaveformCanvas, ApprovalPanel } from "../components/ReviewShared";
+import { fmtClock, WaveformCanvas, ApprovalPanel, VersionDiffPanel } from "../components/ReviewShared";
 import ABCompare from "../components/ABCompare";
 import VoiceRecorder from "../components/VoiceRecorder";
 import {
@@ -15,6 +15,7 @@ import {
   type ReviewSession,
   type ReviewVersion,
   type VersionComparison,
+  type VersionDiff,
 } from "../types";
 
 const FEEDBACK_TEMPLATES = [
@@ -94,6 +95,23 @@ export default function PublicReviewPage() {
   const [publicComp, setPublicComp] = useState<VersionComparison | null>(null);
   const [compareErr, setCompareErr] = useState<string | null>(null);
   const [compareBusy, setCompareBusy] = useState(false);
+  // smart diff vs previous version — visible to the reviewer right here
+  const [diff, setDiff] = useState<VersionDiff | null>(null);
+  const [diffBusy, setDiffBusy] = useState(false);
+  const [diffErr, setDiffErr] = useState<string | null>(null);
+
+  const showDiff = async (v: ReviewVersion) => {
+    if (!token) return;
+    setDiffBusy(true);
+    setDiffErr(null);
+    try {
+      setDiff(await api.publicVersionDiff(token, v.id));
+    } catch (e) {
+      setDiffErr(e instanceof Error ? e.message : "Failed to load the project diff");
+    } finally {
+      setDiffBusy(false);
+    }
+  };
   // email reminders — client can silence non-critical nudges
   const [optMsg, setOptMsg] = useState<string | null>(null);
 
@@ -526,6 +544,27 @@ export default function PublicReviewPage() {
               </div>
             )}
           </div>
+
+          {current.commit_id && (
+            <div className="public-compare">
+              <div className="public-compare-head">✦ What changed in this bounce</div>
+              <div className="rs-share-row">
+                <span className="public-review-note" style={{ flex: 1 }}>
+                  The engineer pushed this version from the DAW project — see what actually changed vs the previous one.
+                </span>
+                <button
+                  type="button"
+                  className="rs-btn approve sm"
+                  onClick={() => (diff?.version_label === current.label ? setDiff(null) : void showDiff(current))}
+                  disabled={diffBusy}
+                >
+                  {diffBusy ? "…" : diff?.version_label === current.label ? "✕ Hide diff" : `What changed in ${current.label}`}
+                </button>
+              </div>
+              {diffErr && <div className="error">{diffErr}</div>}
+              {diff && <VersionDiffPanel diff={diff} onClose={() => setDiff(null)} />}
+            </div>
+          )}
 
           {versionList.length > 1 && (
             <div className="public-compare">
