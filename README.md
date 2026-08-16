@@ -185,6 +185,77 @@ cd backend
  "deduplicated": 4}
 ```
 
+## Bridge contract — `snd serve` (localhost:8765)
+
+The Max for Live push button (and any local automation) talks to a tiny
+localhost JSON bridge, a thin client over the same `snd push --json`
+pipeline. `shell` is blocked inside Live and `httprequest` mangles binary
+multipart, so the device POSTs JSON and the bridge does the real work.
+
+```bash
+cd backend
+./snd login --user demo --password demo123   # once
+./snd serve                                  # bridge on http://127.0.0.1:8765
+```
+
+### `POST /push` — request
+
+```json
+{"target": "/path/to/Track_v12.als",
+ "audio": "/path/to/master.wav",
+ "stems": "/path/to/stems",
+ "project": "artist-track",
+ "branch": "review/v12",
+ "round": 3,
+ "message": "Round 3 candidate"}
+```
+
+Only `target` is required. `audio`/`stems` switch on review mode; `project`
+auto-creates when missing; `branch` defaults to `main`.
+
+### `POST /push` — response (stable contract for automation)
+
+```json
+{"ok": true, "project_id": 5, "branch": "review/v12", "commit_id": 42,
+ "version_id": 7, "session_id": 3, "share_token": "tok123",
+ "review_url": "http://localhost:5173/r/tok123",
+ "uploaded": {"als": true, "master": true, "stems": 2},
+ "deduplicated": 1}
+```
+
+### Error codes
+
+| HTTP | JSON | Meaning |
+|---|---|---|
+| `400` | `{"ok": false, "error": "bad JSON body…"}` | malformed request — never reaches the backend |
+| `400` | `{"ok": false, "error": "Target file not found…"}` | preflight: missing `.als` |
+| `400` | `{"ok": false, "error": "Master file not found…"}` | review mode without the audio file |
+| `400` | `{"ok": false, "error": "…requires --audio…"}` | stems given without a master |
+| `400` | `{"ok": false, "error": "unsupported extension…"}` | not a `.als`/`.cpr`/`.rpp`/`.flp` (or directory) |
+| `200` | `{"ok": false, "error": "…"}` | pipeline failed server-side (auth, missing project, …) |
+
+All preflight failures return `400` and never create a version — the bridge
+runs the same preflight as the CLI. `GET /health` → `{"ok": true, "service": "snd-bridge"}`.
+
+### Idempotency
+
+The push pipeline is **idempotent by construction**: blobs are stored
+content-addressed (SHA-256), so re-pushing an identical `.als` + manifest
+creates no new blobs (`deduplicated` counts them) and yields a predictable
+`commit_id`/`version_id`. Only a changed file produces new blobs and a new
+commit — same input, same result.
+
+### curl smoke
+
+```bash
+curl -s http://127.0.0.1:8765/health
+# {"ok": true, "service": "snd-bridge"}
+curl -s -X POST http://127.0.0.1:8765/push \
+  -H "Content-Type: application/json" \
+  -d '{"target": "/abs/path/Track_v12.als", "project": "artist-track", "message": "v12"}'
+# {"ok": true, "project_id": 5, "commit_id": 42, …}
+```
+
 ## DAW parsing engine (`backend/app/services/daw/`)
 
 | Format | File | Approach |

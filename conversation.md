@@ -834,6 +834,24 @@ repo-страница, лендинг, FL Studio-проект.
 MathJax через jsDelivr CDN с ожиданием mjx-container. Проверено: 22 формулы,
 0 пустых SVG, сырого LaTeX в PDF нет, 18 страниц, изображения и шрифты на месте.
 
+## Фаза 25 — Bridge-документация: контракт, CI-smoke, M4L UX-spec, идемпотентность
+
+По ревью зафиксированы 4 пункта:
+
+1. **README «Bridge contract — `snd serve`»**: `POST /push` request/response
+   JSON, таблица кодов ошибок (400 preflight / 200 ok:false), `GET /health`,
+   curl-smoke, идемпотентность.
+2. **CI**: отдельный шаг `Bridge smoke (snd serve on random port)` —
+   `pytest tests/test_snd_project.py -k "bridge"` (тесты уже были: health/push/
+   negative на OS-порту, теперь явно выделены в CI).
+3. **m4l/README «Push button — UX spec»**: state machine Idle / Pushing /
+   Success / Error с таблицей «state → panel text → trigger → next», правила
+   (disable в Pushing, Error не исчезает молча, Success только с commit_id).
+4. **Идемпотентность** — в README (SHA-256 блобы, `deduplicated`, детерминированный
+   commit_id) и в m4l/README («кнопке не нужен force-путь»).
+
+Проверено: bridge-smoke 2 теста ✅, полный набор 116/116 ✅.
+
 ---
 
 ## Запуск
