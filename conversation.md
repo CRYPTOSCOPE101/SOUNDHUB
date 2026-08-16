@@ -443,6 +443,12 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
   атомарность при mid-upload ошибке, 401/404/400/413, CLI single-.als + `--json` контракт,
   preflight-отказы, `--json` ошибка, `--open`) + frontend build + живой smoke
   (`.als`+master+3 стема → `deduplicated: 6` при ре-пуше, review URL 200, стемы прикреплены).
+- **Проверка риска (legacy dir-режим vs новый контракт)**: JSON-схема единая (оба режима →
+  один эндпоинт), дублей метаданных нет (один манифест), но **dir-режим обходил preflight
+  читаемости** — `_preflight_daw_readable` вызывался только для одиночного файла. Фикс: каталог
+  теперь прогоняет ту же проверку по каждому DAW-файлу (.als/.rpp/.flp/.cpr). Тест
+  `test_snd_push_dir_mode_preflights_daw_readability`: каталог с битым .als → rc 1 «Cannot
+  parse» и ноль HTTP-запросов; после удаления битого файла тот же каталог пушится. Итого 112 тестов.
 
 **Изучен GitHub-организации Ableton (29 репозиториев):** почти всё — внутренняя инфра (Ansible/Jenkins), нерелевантно. Применимы четыре:
 1. **`Ableton/web-audio-sequencing` (MIT)** — lookahead-планирование на часах AudioContext. **Применено сразу:** оба Web Audio плеера (`ABCompare.tsx`, `ReferenceCompare.tsx`) переведены с «RAF-тик ловит границу loop и перезапускает source с зазором» на планировщик сегментов (`start(when)`/`stop(when)` на точных временах аудио-часов, горизонт 0.15 с) — loop-регион теперь gapless, без frame-квантования и дрейфа. Frontend build зелёный.
