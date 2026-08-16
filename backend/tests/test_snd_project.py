@@ -628,6 +628,39 @@ def test_snd_push_preflight_rejects_bad_inputs(tmp_path, monkeypatch, capsys):
     assert fake.requests == []
 
 
+def test_snd_push_dir_mode_preflights_daw_readability(tmp_path, monkeypatch, capsys):
+    """Legacy directory mode applies the same readability preflight to DAW files
+    as single-file mode — a corrupt .als inside the folder never reaches the
+    server (Phase 16 risk check: dir path must not bypass preflight)."""
+    import soundhub_cli
+
+    import snd_cli
+    from app.services.daw import fixtures
+
+    monkeypatch.setattr(soundhub_cli, "CONFIG_PATH", "/nonexistent")
+    fake = FakeHttp()
+
+    proj = tmp_path / "Neon"
+    proj.mkdir()
+    (proj / "good.rpp").write_bytes(fixtures.make_rpp())
+    (proj / "broken.als").write_bytes(b"this is not an als file at all")
+    (proj / "README.md").write_text("notes")
+
+    rc = snd_cli.main(["push", str(proj), "--project", "Neon", "--api", "http://x", "--token", "t"], http=fake)
+    assert rc == 1
+    assert "Cannot parse" in capsys.readouterr().err
+    assert fake.requests == []  # preflight failed before any upload
+
+    # removing the corrupt file → the same directory pushes fine
+    (proj / "broken.als").unlink()
+    fake.route("/api/projects", 200, [{"id": 5, "name": "Neon"}])
+    fake.route("/api/projects/5/push", 200, {"commit_id": 42, "file_count": 3, "branch": "main"})
+    rc = snd_cli.main(["push", str(proj), "--project", "Neon", "--api", "http://x", "--token", "t"], http=fake)
+    assert rc == 0
+    _, _, data, _ = fake.requests[-1]
+    assert b"good.rpp" in data and b"README.md" in data
+
+
 def test_snd_push_preflight_oversized(tmp_path, monkeypatch, capsys):
     import soundhub_cli
 

@@ -208,6 +208,12 @@ def cmd_push(args, http=None) -> int:
         project_files = find_project_files(root, args.include_media)
         if not project_files:
             raise CliError(f"No project files found in {root} (add --include-media to upload audio too)")
+        # the same readability preflight as single-file mode applies to every
+        # DAW project file inside the folder — a corrupt .als must never slip
+        # through the directory path and end up on the server
+        for p in project_files:
+            if os.path.splitext(p)[1].lower() in DAW_EXTS:
+                _preflight_daw_readable(p)
     elif os.path.isfile(target):
         ext = os.path.splitext(target)[1].lower()
         if ext not in DAW_EXTS:
