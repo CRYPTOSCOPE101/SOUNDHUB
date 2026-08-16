@@ -1,4 +1,6 @@
+import hashlib
 import json
+import secrets
 import unicodedata
 from pathlib import PurePosixPath
 
@@ -6,9 +8,18 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import MAX_UPLOAD_SIZE
+from ..config import FRONTEND_URL, MAX_UPLOAD_SIZE
 from ..database import get_db
-from ..models import Commit, FileSnapshot, Project, User, utcnow
+from ..models import (
+    Commit,
+    FileSnapshot,
+    Project,
+    ReviewSession,
+    ReviewVersion,
+    StemAsset,
+    User,
+    utcnow,
+)
 from ..schemas import (
     BranchCreate,
     BranchOut,
@@ -21,10 +32,13 @@ from ..schemas import (
     ReleaseIn,
     TreeOut,
 )
-from ..services import storage, versioning
+from ..services import ledger, storage, versioning, waveform
 from ..services.daw import is_daw_path
 from ..services.daw.registry import get_daw_info
 from ..security import get_current_user
+
+ALLOWED_AUDIO = {"wav", "mp3", "flac", "ogg", "aif", "aiff", "m4a"}
+ALLOWED_STEM_AUDIO = {"wav", "mp3", "flac", "aif", "aiff", "m4a", "ogg"}
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -287,22 +301,87 @@ def get_commit(
     return out
 
 
+def _guess_stem_name(filename: str) -> str:
+    """Derive the canonical stem logical_name from a render filename.
+
+    `Bass_v13.wav` and `Kick_short_03.wav` both map to the same logical name
+    so stems compare across versions by role, not by filename.
+    """
+    lower = filename.lower()
+    for keywords, name in (
+        (("kick", "drum", "snare", "hat", "perc", "clap", "tom", "cymbal", "808"), "drums"),
+        (("bass", "sub"), "bass"),
+        (("vocal", "vox"), "vocal"),
+        (("synth", "key", "pad", "pluck", "lead", "arp", "string", "piano"), "synths"),
+    ):
+        if any(k in lower for k in keywords):
+            return name
+    return "other"
+
+
+def _next_version_number(db: Session, session_id: int) -> int:
+    return (
+        db.scalar(
+            select(ReviewVersion.number)
+            .where(ReviewVersion.session_id == session_id)
+            .order_by(ReviewVersion.number.desc())
+            .limit(1)
+        )
+        or 0
+    ) + 1
+
+
+def _read_audio(upload: UploadFile, allowed: set[str], kind: str) -> tuple[bytes, str, str]:
+    """Validate + read an audio upload (master or stem). Returns (data, filename, ext)."""
+    filename = PurePosixPath((upload.filename or f"{kind}.wav").replace("\\", "/")).name
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in allowed:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Unsupported {kind} audio format '{ext}'. Allowed: {', '.join(sorted(allowed))}",
+        )
+    data = upload.file.read()
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Empty {kind} audio file: {filename}")
+    if len(data) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, f"{kind.capitalize()} file too large: {filename}")
+    return data, filename, ext
+
+
+def _put_dedup(data: bytes) -> tuple[str, int]:
+    """Store a blob content-addressed; returns (sha, 1 if it was new else 0)."""
+    sha = hashlib.sha256(data).hexdigest()
+    if storage.blob_exists(sha):
+        return sha, 0
+    storage.put_blob(data)
+    return sha, 1
+
+
 @router.post("/{project_id}/push")
 def push_project_files(
     project_id: int,
     message: str = Form(""),
     manifest: str = Form(""),
     branch: str = Form("main"),
+    round: int = Form(0, alias="round"),
     files: list[UploadFile] = File(...),
+    audio: UploadFile | None = File(default=None),
+    stems: list[UploadFile] = File(default=[]),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Push a full project snapshot (DAW files + media) as one commit.
+    """Push a full project snapshot (DAW files + media) as one commit, and
+    optionally open a review version (master audio + stems) for gapless A/B.
 
-    Used by the `snd push` CLI: each uploaded file carries its project path
-    in the filename (e.g. "Neon/Bass.als"), and an optional JSON `manifest`
-    (tracks / instruments / plugins / settings) is stored as
-    SOUNDHUB-MANIFEST.json inside the commit tree.
+    Used by the `snd push` CLI. Atomic by construction: every blob is
+    content-addressed and stored FIRST (repeated pushes dedup), then the
+    commit + review session/version/stems are created in ONE transaction —
+    a mid-upload error never leaves a user-visible half-pushed version.
+
+    Returns a stable JSON contract for automation:
+      {"ok", "project_id", "branch", "commit_id", "version_id", "session_id",
+       "share_token", "review_url", "uploaded": {"als", "master", "stems"},
+       "deduplicated"}
     """
     project = get_project_or_404(db, user, project_id)
     tree: dict[str, bytes] = {}
@@ -324,16 +403,138 @@ def push_project_files(
         except json.JSONDecodeError as exc:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"manifest is not valid JSON: {exc}")
         tree["SOUNDHUB-MANIFEST.json"] = manifest.encode()
-    commit = versioning.create_commit(db, project, user, message.strip() or "snd push", tree, branch)
+
+    # optional review materials — validated BEFORE any blob is written
+    audio_data: tuple[bytes, str, str] | None = None
+    if audio is not None and (audio.filename or "").strip():
+        audio_data = _read_audio(audio, ALLOWED_AUDIO, "master")
+    stems_data: list[tuple[bytes, str, str]] = []
+    for s in stems:
+        if s.filename and s.filename.strip():
+            stems_data.append(_read_audio(s, ALLOWED_STEM_AUDIO, "stem"))
+    # review mode (--audio/--stems) requires at least one listenable audio file
+    if (audio_data is not None or stems_data) and audio_data is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Review mode requires --audio (the master) — stems attach to the master version",
+        )
+
+    # blobs first — content-addressed, so identical re-pushes dedup
+    deduplicated = 0
+    for path, data in sorted(tree.items()):
+        _, new = _put_dedup(data)
+        deduplicated += 0 if new else 1
+    if audio_data is not None:
+        _, new = _put_dedup(audio_data[0])
+        deduplicated += 0 if new else 1
+    for sdata, _sfn, _sext in stems_data:
+        _, new = _put_dedup(sdata)
+        deduplicated += 0 if new else 1
+
+    # one transaction: commit + session + version + stems
+    commit = versioning.create_commit(
+        db, project, user, message.strip() or "snd push", tree, branch, commit_transaction=False
+    )
+    session = None
+    version = None
+    if audio_data is not None:
+        session = db.scalar(
+            select(ReviewSession)
+            .where(ReviewSession.project_id == project.id, ReviewSession.owner_id == user.id)
+            .order_by(ReviewSession.created_at.desc())
+            .limit(1)
+        )
+        if session is None:
+            session = ReviewSession(
+                owner_id=user.id,
+                project_id=project.id,
+                name=project.name,
+                share_token=secrets.token_urlsafe(16),
+                # the review link is the whole point of a push — guests must be
+                # able to listen (gapless A/B) and download without a password
+                share_permission="download",
+            )
+            db.add(session)
+            db.flush()
+        data, filename, ext = audio_data
+        blob_sha = hashlib.sha256(data).hexdigest()
+        wf = waveform.generate(blob_sha, data, filename, ext)
+        number = _next_version_number(db, session.id)
+        version = ReviewVersion(
+            session_id=session.id,
+            number=number,
+            label=f"v{number}",
+            message=message.strip() or "snd push",
+            filename=filename,
+            blob_sha=blob_sha,
+            size=len(data),
+            duration_s=wf["duration_s"],
+            audio_format=ext,
+            round_number=round or session.round_number,
+        )
+        db.add(version)
+        db.flush()
+        for sdata, sfilename, sext in stems_data:
+            db.add(
+                StemAsset(
+                    version_id=version.id,
+                    logical_name=_guess_stem_name(sfilename),
+                    display_name=sfilename.rsplit(".", 1)[0][:128] or sfilename,
+                    blob_sha=hashlib.sha256(sdata).hexdigest(),
+                    size=len(sdata),
+                    audio_format=sext,
+                )
+            )
+        db.flush()  # assign stem ids before writing the ledger
+        for stem in db.scalars(
+            select(StemAsset).where(StemAsset.version_id == version.id).order_by(StemAsset.id)
+        ).all():
+            ledger.append(
+                db,
+                "stem.uploaded",
+                session_id=session.id,
+                actor=user.username,
+                entity_type="stem",
+                entity_id=stem.id,
+                payload={"version": version.label, "logical_name": stem.logical_name, "filename": stem.display_name},
+            )
+        session.updated_at = utcnow()
+        ledger.append(
+            db,
+            "version.created",
+            session_id=session.id,
+            actor=user.username,
+            entity_type="version",
+            entity_id=version.id,
+            payload={
+                "label": version.label,
+                "round": version.round_number,
+                "filename": version.filename,
+                "stems": len(stems_data),
+            },
+        )
     project.updated_at = utcnow()
     db.commit()
+    db.refresh(commit)
     return {
+        "ok": True,
+        "project_id": project.id,
+        "branch": branch,
         "commit_id": commit.id,
         "message": commit.message,
-        "branch": branch,
         "file_count": len(tree),
         "total_size": sum(len(d) for d in tree.values()),
         "manifest_stored": bool(manifest.strip()),
+        "version_id": version.id if version else None,
+        "session_id": session.id if session else None,
+        "share_token": session.share_token if session else None,
+        "review_url": f"{FRONTEND_URL}/r/{session.share_token}" if session else None,
+        "uploaded": {
+            "als": any(is_daw_path(p) for p in tree),
+            "master": audio_data is not None,
+            "stems": len(stems_data),
+        },
+        "deduplicated": deduplicated,
     }
 
 

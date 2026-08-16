@@ -21,8 +21,15 @@ def create_commit(
     message: str,
     files: dict[str, bytes],
     branch: str = "main",
+    commit_transaction: bool = True,
 ) -> Commit:
-    """Create a commit from a full tree mapping {path: bytes} on `branch`."""
+    """Create a commit from a full tree mapping {path: bytes} on `branch`.
+
+    With `commit_transaction=False` the commit rows are flushed but not
+    committed, so the caller can create the review version + stems in the
+    SAME transaction and commit once — a failed push never leaves a
+    half-pushed version visible to anyone.
+    """
     parent = head_commit(db, project, branch)
     commit = Commit(
         project_id=project.id,
@@ -54,34 +61,38 @@ def create_commit(
         db.add(branch_row)
     branch_row.head_commit_id = commit.id
 
-    db.commit()
-    db.refresh(commit)
+    if commit_transaction:
+        db.commit()
+        db.refresh(commit)
     return commit
 
 
 def ensure_branch(db: Session, project: Project, branch: str) -> Branch:
-    """Return the branch row, synthesizing it from the project head if the
-    default branch exists in commits but not yet as a pointer (legacy data)."""
+    """Return the branch row, synthesizing it if missing.
+
+    The default branch may exist in commits but not yet as a pointer (legacy
+    data); any other branch name is created empty so a first push to a fresh
+    branch (e.g. `snd push … --branch review/v12`) resolves cleanly.
+    """
     row = db.scalar(
         select(Branch).where(Branch.project_id == project.id, Branch.name == branch)
     )
     if row is not None:
         return row
-    if branch == project.default_branch:
-        head = (
-            db.query(Commit)
-            .filter(Commit.project_id == project.id)
-            .order_by(Commit.id.desc())
-            .first()
-        )
-        row = Branch(
-            project_id=project.id,
-            name=branch,
-            head_commit_id=head.id if head else None,
-        )
-        db.add(row)
-        db.commit()
-        db.refresh(row)
+    head = (
+        db.query(Commit)
+        .filter(Commit.project_id == project.id)
+        .order_by(Commit.id.desc())
+        .first()
+    )
+    row = Branch(
+        project_id=project.id,
+        name=branch,
+        head_commit_id=head.id if head else None,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
     return row
 
 
