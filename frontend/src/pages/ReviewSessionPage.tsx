@@ -1674,6 +1674,13 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
     });
   }, [session.id]);
 
+  // load full session detail on open — the list endpoint has no versions,
+  // so without this the player/share link stay empty until an action
+  useEffect(() => {
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.id]);
+
   const loadAudio = useCallback(
     async (version: ReviewVersion, keepTime: number | null = null) => {
       try {
