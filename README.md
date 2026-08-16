@@ -128,6 +128,9 @@ with the built Max for Live device:
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
+Per-version notes — what changed, how to test, known limits — live in
+[CHANGELOG.md](CHANGELOG.md).
+
 ## API overview
 
 | Method | Endpoint | Description |
@@ -228,10 +231,10 @@ auto-creates when missing; `branch` defaults to `main`.
 | HTTP | JSON | Meaning |
 |---|---|---|
 | `400` | `{"ok": false, "error": "bad JSON body…"}` | malformed request — never reaches the backend |
-| `400` | `{"ok": false, "error": "Target file not found…"}` | preflight: missing `.als` |
-| `400` | `{"ok": false, "error": "Master file not found…"}` | review mode without the audio file |
-| `400` | `{"ok": false, "error": "…requires --audio…"}` | stems given without a master |
-| `400` | `{"ok": false, "error": "unsupported extension…"}` | not a `.als`/`.cpr`/`.rpp`/`.flp` (or directory) |
+| `400` | `{"ok": false, "error": "Not found: …"}` | preflight: missing `.als` |
+| `400` | `{"ok": false, "error": "Master file not found: …"}` | review mode without the audio file |
+| `400` | `{"ok": false, "error": "Review mode requires --audio…"}` | stems given without a master |
+| `400` | `{"ok": false, "error": "Unsupported project file type…"}` | not a `.als`/`.cpr`/`.rpp`/`.flp` (or directory) |
 | `200` | `{"ok": false, "error": "…"}` | pipeline failed server-side (auth, missing project, …) |
 
 All preflight failures return `400` and never create a version — the bridge
@@ -245,16 +248,57 @@ creates no new blobs (`deduplicated` counts them) and yields a predictable
 `commit_id`/`version_id`. Only a changed file produces new blobs and a new
 commit — same input, same result.
 
-### curl smoke
+### curl smoke — golden path
 
 ```bash
+# 1. health
 curl -s http://127.0.0.1:8765/health
 # {"ok": true, "service": "snd-bridge"}
+
+# 2. fast push (project + DAW metadata)
 curl -s -X POST http://127.0.0.1:8765/push \
   -H "Content-Type: application/json" \
   -d '{"target": "/abs/path/Track_v12.als", "project": "artist-track", "message": "v12"}'
-# {"ok": true, "project_id": 5, "commit_id": 42, …}
+# {"ok": true, "project_id": 5, "commit_id": 42, "branch": "main", …}
+
+# 3. re-push the same export — idempotent, no new blobs
+curl -s -X POST http://127.0.0.1:8765/push \
+  -H "Content-Type: application/json" \
+  -d '{"target": "/abs/path/Track_v12.als", "project": "artist-track", "message": "v12"}'
+# {"ok": true, "commit_id": 42, "deduplicated": N > 0}
 ```
+
+### Negative smoke (must all return `400` + `{"ok": false, …}`)
+
+```bash
+# missing target
+curl -s -X POST http://127.0.0.1:8765/push -H "Content-Type: application/json" -d '{}'
+# {"ok": false, "error": "…target…"}
+
+# nonexistent .als
+curl -s -X POST http://127.0.0.1:8765/push -H "Content-Type: application/json" \
+  -d '{"target": "/abs/path/nope.als"}'
+# {"ok": false, "error": "Not found: /abs/path/nope.als"}
+
+# malformed JSON
+curl -s -X POST http://127.0.0.1:8765/push -H "Content-Type: application/json" -d '{not json'
+# {"ok": false, "error": "bad JSON body…"}
+```
+
+These are exactly the cases the CI bridge smoke covers
+(`pytest -k bridge`); the CI script and this README stay in sync.
+
+### Troubleshooting — symptom → cause → fix
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Push failed (bridge unreachable?)` | `snd serve` isn't running | run `./snd serve` and keep it open |
+| `Push failed: HTTP 401/403` | no valid session | run `./snd login --user … --password …` once |
+| `Push failed: bad JSON body` | device ↔ bridge mismatch | reload the device, check `bridge` points at `http://127.0.0.1:8765` |
+| `Push failed: Target file not found` | `.als` path wrong / unsaved set | save the Live set (Cmd/Ctrl+S), use the absolute path |
+| `Push failed: Master file not found` | `audio` configured but missing | point `audio` at the real render, or drop it for a fast push |
+| `Push failed: File too large` | `.als` above the upload limit | raise `MAX_UPLOAD_SIZE` in `backend/app/config.py` or trim media |
+| `fast push (no review)` | no master render attached | add `audio <path>` so the push opens a review session for A/B |
 
 ## DAW parsing engine (`backend/app/services/daw/`)
 

@@ -852,6 +852,22 @@ MathJax через jsDelivr CDN с ожиданием mjx-container. Прове�
 
 Проверено: bridge-smoke 2 теста ✅, полный набор 116/116 ✅.
 
+Добавка по ревью (ещё 3 пункта):
+
+5. **README troubleshooting-таблица** «симптом → причина → фикс» рядом с
+   bridge contract (7 строк: bridge unreachable / 401 / bad JSON / target /
+   master / too large / fast push no review) — у пользователя всё в одном
+   месте, не нужно искать в m4l/README.
+6. **Golden-path + negative smoke** в README: curl health → fast push →
+   idempotent re-push (золотой путь) и 3 негативных (пустой body, отсутствующий
+   .als → `Not found: …`, malformed JSON → `bad JSON body…`) с пометкой, что
+   CI покрывает те же случаи (`pytest -k bridge`). Сообщения ошибок сверены
+   с реальными текстами в snd_cli.py.
+7. **CHANGELOG.md** — release note «[Unreleased] — DAW-to-review pipeline»:
+   what changed (snd push/serve, smart diff, UX-spec, CI) / how to test
+   (команды) / known limits (локальный bridge, не аудировано, парсеры
+   best-effort, A/B нужны ≥2 версии). Ссылка из README в разделе Releases.
+
 ---
 
 ## Запуск
