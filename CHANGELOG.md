@@ -72,3 +72,40 @@ Run before tagging a release (same cases CI covers in `pytest -k bridge`):
 
 All five bridge checks are automated in `tests/test_snd_project.py` (`-k bridge`),
 so the checklist is a manual confirmation of what CI already asserts.
+
+## After v0.2.0 — post-release note
+
+### What the smoke showed
+
+Run against the live stack (backend :8000 + frontend :5173, Base Sepolia):
+
+- **`snd push` fast + full** — `.als` + master + 3 stems → complete JSON
+  contract (`ok`, `commit_id`, `version_id`, `review_url`, `uploaded`),
+  review URL returns 200, stems attached.
+- **Idempotency** — re-push of the same export → `deduplicated: 6`, no new
+  blobs.
+- **Smart diff** — v1 (128 BPM) → v2 (132, +Pad, +Vital) shows
+  `BPM 128 → 132`, `+Pad`, `+Vital` on both the owner and public endpoints.
+- **Bridge** — `GET /health`, `POST /push` golden path and all negative
+  cases (bad JSON, missing target/master, stems w/o master) behave as
+  documented; CI bridge smoke green.
+- **Landing / integrations** — full-res MP4 demo frames, Cubase/FL Studio
+  pages, footer wordmark render correctly; frontend build green.
+
+### Planned for v0.2.1
+
+- **Native sidecar / in-Live bridge** — remove the `snd serve` external
+  process requirement (Live blocks `shell`; multipart via `httprequest`
+  mangles binaries).
+- **Deep `.flp` parsing** — per-channel plugins and patterns (currently
+  header / tempo / channels only).
+- **Smart diff in review UI polish** — richer raw-diff rendering and
+  per-version «what changed» on the public page.
+- **Seller reputation & verification badges** — trust layer on top of the
+  DAW engine.
+
+### Remaining limits (unchanged)
+
+- Contracts are **not professionally audited** — testnet only.
+- Parser coverage is best-effort (reverse-engineered formats).
+- A/B needs ≥ 2 versions (first `--audio` push opens the session).

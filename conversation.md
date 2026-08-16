@@ -893,6 +893,11 @@ MathJax через jsDelivr CDN с ожиданием mjx-container. Прове�
   soundhub-device.js, M4L-README.md, soundhub-m4l-v0.2.0.tar.gz.
 - Release: https://github.com/CRYPTOSCOPE101/SoundHub/releases/tag/v0.2.0
 
+Post-release note «After v0.2.0» добавлен в CHANGELOG: что показал smoke
+(push fast/full, dedup 6, smart diff 128→132, bridge golden+negative, лендинг),
+план v0.2.1 (native sidecar, deep .flp, diff-UI polish, trust layer) и
+оставшиеся лимиты (не аудировано, парсеры best-effort, A/B ≥2 версий).
+
 ---
 
 ## Запуск
