@@ -136,26 +136,48 @@ git tag v0.1.0 && git push origin v0.1.0
 | GET | `/api/projects/{id}/files/{path}` | download a file |
 | GET | `/api/projects/{id}/diff?path=…&from=…&to=…` | smart diff |
 
-## `snd push` — push a complete DAW project (branch: `snd-push`)
+## `snd push` — push a complete DAW project (branch: `snd-project-push`)
 
-`backend/snd` is a small CLI that scans a project folder, parses the DAW
-files **locally** (tracks, instruments, plugins AND their settings where the
-format stores them — REAPER `PARAM` lines, Ableton preset refs), and pushes
-the whole snapshot as one versioned commit with a `SOUNDHUB-MANIFEST.json`
-describing the structure.
+`backend/snd` is a small CLI that pushes a DAW project to SoundHub as a
+versioned commit — fast mode (project + DAW metadata) or full review mode
+(master audio + stems → public review session with gapless A/B). DAW files
+are parsed **locally** (tracks, instruments, plugins AND their settings
+where the format stores them — REAPER `PARAM` lines, Ableton preset refs)
+and the parsed structure is stored as `SOUNDHUB-MANIFEST.json` inside the
+commit tree (also re-analyzed server-side by the tree/diff endpoints).
 
 ```bash
 cd backend
 ./snd login --user demo --password demo123
-./snd push ~/Projects/Neon --project "Neon Warehouse" --message "v12 bounce"
-./snd push ~/Projects/Neon --include-media     # also upload audio/video/image files
+# fast: project + extracted DAW metadata as one commit
+./snd push ./Track_v12.als --project "artist-track" --branch review/v12 --message "v12"
+# full: master + stems open a public review session (gapless A/B) and return the review URL
+./snd push ./Track_v12.als --audio ./master.wav --stems ./stems \
+    --project "artist-track" --branch review/v12 --round 3 \
+    --message "Round 3 candidate" --open --json
+# directory mode (legacy): scan a folder, media skipped unless --include-media
+./snd push ~/Projects/Neon --project "Neon Warehouse" --message "v12 bounce" --include-media
 ```
 
 - `--project` accepts an existing project name/id or a new name to auto-create.
-- Media files (`.wav`, `.mp3`, images…) are skipped unless `--include-media`.
-- The push lands on `POST /api/projects/{id}/push` as one commit; the parsed
-  structure is stored as `SOUNDHUB-MANIFEST.json` inside the tree and is also
-  re-analyzed server-side by the tree/diff endpoints.
+- **Preflight before upload**: file existence, size, extension and `.als`
+  readability (a corrupt file is rejected) — for single files and folders alike.
+- **Atomic**: blobs are stored first (content-addressed → re-pushes dedup),
+  then the commit + review session/version/stems are created in ONE
+  transaction — a failed push never leaves a half-pushed version.
+- `--audio` attaches the master as a review version (available for gapless
+  A/B once a second version exists), `--stems` attaches stem renders as
+  structured `StemAsset`s matched by logical name (Kick→drums, Bass→bass…),
+  `--round` sets the version's `round_number`.
+- `--json` prints a stable machine-readable contract for automation (M4L):
+
+```json
+{"ok": true, "project_id": 1, "branch": "review/v12", "commit_id": 5,
+ "version_id": 3, "session_id": 2, "share_token": "…",
+ "review_url": "http://localhost:5173/r/…",
+ "uploaded": {"als": true, "master": true, "stems": 12},
+ "deduplicated": 4}
+```
 
 ## DAW parsing engine (`backend/app/services/daw/`)
 

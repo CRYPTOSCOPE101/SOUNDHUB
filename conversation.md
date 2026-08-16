@@ -449,6 +449,9 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
   теперь прогоняет ту же проверку по каждому DAW-файлу (.als/.rpp/.flp/.cpr). Тест
   `test_snd_push_dir_mode_preflights_daw_readability`: каталог с битым .als → rc 1 «Cannot
   parse» и ноль HTTP-запросов; после удаления битого файла тот же каталог пушится. Итого 112 тестов.
+- **README обновлён**: секция `snd push` приведена к контракту Фазы 16 (два режима,
+  preflight, атомарность, дедуп, `--json` контракт с примером; исправлено имя ветки
+  `snd-push` → `snd-project-push`).
 
 **Изучен GitHub-организации Ableton (29 репозиториев):** почти всё — внутренняя инфра (Ansible/Jenkins), нерелевантно. Применимы четыре:
 1. **`Ableton/web-audio-sequencing` (MIT)** — lookahead-планирование на часах AudioContext. **Применено сразу:** оба Web Audio плеера (`ABCompare.tsx`, `ReferenceCompare.tsx`) переведены с «RAF-тик ловит границу loop и перезапускает source с зазором» на планировщик сегментов (`start(when)`/`stop(when)` на точных временах аудио-часов, горизонт 0.15 с) — loop-регион теперь gapless, без frame-квантования и дрейфа. Frontend build зелёный.
