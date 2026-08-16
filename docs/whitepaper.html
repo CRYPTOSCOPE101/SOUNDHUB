@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SoundHub Whitepaper — Don't Generate. Buy.</title>
+<meta name="description" content="SoundHub: a token-powered, DAW-native marketplace for verified finished sounds. Versioned, escrowed, governed.">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<style>
+  :root {
+    --accent: #ff5e1a; --accent-dark: #e8500e;
+    --navy: #3a4c6b; --green: #1f7a3d;
+    --ink: #16150f; --muted: #6b6761;
+    --paper: #ffffff; --page: #f2f0eb;
+    --border: #d8d3c8; --code-bg: #f7f5f0;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 15.5px; line-height: 1.62;
+  }
+  .page {
+    max-width: 860px; margin: 0 auto; padding: 0 28px 90px;
+  }
+  /* ---------- cover ---------- */
+  .cover {
+    padding: 74px 0 40px; text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .cover .logo { width: 240px; margin-bottom: 26px; }
+  .cover h1 { font-size: 44px; letter-spacing: -0.02em; margin: 0 0 12px; font-weight: 900; }
+  .cover .tagline { font-size: 20px; color: var(--muted); margin: 0 0 26px; }
+  .cover .meta { font-size: 12.5px; color: var(--muted); display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; }
+  .cover .meta b { color: var(--ink); }
+  .pill {
+    display: inline-block; background: #fdeee6; color: var(--accent-dark);
+    border: 1px solid #f7c9ae; font-size: 12px; font-weight: 700; letter-spacing: 0.4px;
+    padding: 5px 14px; border-radius: 999px; margin-bottom: 22px;
+  }
+  /* ---------- toc ---------- */
+  .toc { margin: 36px 0 44px; background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 26px 30px; }
+  .toc h2 { margin: 0 0 12px; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  .toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 40px; font-size: 14px; }
+  .toc li { margin-bottom: 6px; }
+  .toc a { color: var(--navy); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  /* ---------- sections ---------- */
+  section { margin-top: 52px; }
+  h2.sec {
+    font-size: 27px; font-weight: 900; letter-spacing: -0.01em; margin: 0 0 6px;
+    padding-bottom: 8px; border-bottom: 3px solid var(--accent); display: inline-block;
+  }
+  .secnum { color: var(--accent); }
+  h3 { font-size: 19px; margin: 30px 0 10px; font-weight: 800; }
+  h4 { font-size: 15.5px; margin: 22px 0 8px; font-weight: 800; color: var(--navy); }
+  p { margin: 0 0 13px; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 5px; }
+  strong { font-weight: 700; }
+  .lead { font-size: 17px; color: #3d3a33; }
+  blockquote {
+    margin: 16px 0; padding: 12px 18px; background: var(--code-bg);
+    border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0; font-size: 14.5px;
+  }
+  blockquote p { margin: 0; }
+  code, pre {
+    font-family: "JetBrains Mono", Consolas, monospace;
+  }
+  code { background: var(--code-bg); padding: 1.5px 5px; border-radius: 4px; font-size: 0.88em; }
+  pre {
+    background: #16150f; color: #f2f0eb; padding: 16px 18px; border-radius: 10px;
+    font-size: 12.5px; line-height: 1.55; overflow-x: auto; margin: 14px 0;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  /* ---------- tables ---------- */
+  table { border-collapse: collapse; width: 100%; margin: 14px 0 20px; font-size: 13.5px; background: var(--paper); }
+  th, td { border: 1px solid var(--border); padding: 8px 11px; text-align: left; vertical-align: top; }
+  th { background: var(--page); font-weight: 800; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  tr:nth-child(even) td { background: #faf9f5; }
+  /* ---------- figures ---------- */
+  figure { margin: 22px 0; text-align: center; }
+  figure img { max-width: 100%; border: 1px solid var(--border); border-radius: 10px; background: var(--paper); }
+  figure.chart img { box-shadow: 0 14px 40px rgba(31,31,31,0.14); }
+  figcaption { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  .figrow { display: flex; gap: 18px; }
+  .figrow figure { flex: 1; }
+  /* ---------- formulas ---------- */
+  .formula {
+    text-align: center; margin: 18px 0; font-size: 16px;
+    background: var(--paper); border: 1px solid var(--border); border-radius: 10px; padding: 18px 12px;
+  }
+  .formula .eqno { float: right; color: var(--muted); font-size: 13px; padding-top: 4px; }
+  /* ---------- callouts ---------- */
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0; font-size: 14px;
+  }
+  .callout.warn { background: #fdf3ec; border: 1px solid #f3c3a2; }
+  .callout.info { background: #eef3f7; border: 1px solid #c3d2e2; }
+  .callout.ok { background: #eef7f0; border: 1px solid #bfe0c9; }
+  .callout b:first-child { display: block; margin-bottom: 4px; }
+  /* ---------- math (fallback text) ---------- */
+  .mjx-container { overflow-x: auto; max-width: 100%; }
+  /* ---------- footer ---------- */
+  .docfoot {
+    margin-top: 70px; padding-top: 18px; border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--muted); text-align: center;
+  }
+  @media print {
+    body { background: #fff; font-size: 12.5pt; }
+    .page { max-width: 100%; padding: 0; }
+    section { margin-top: 30px; page-break-inside: auto; }
+    figure, table, .formula, .callout, pre { page-break-inside: avoid; }
+    h2.sec { page-break-after: avoid; }
+    .toc { page-break-after: always; }
+    .cover { page-break-after: always; border-bottom: none; padding-top: 40px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ================= COVER ================= -->
+<header class="cover">
+  <img src="https://raw.githubusercontent.com/CRYPTOSCOPE101/SoundHub/snd-project-push/frontend/public/logo.png" alt="SoundHub" class="logo">
+  <div class="pill">v1.0 · Whitepaper · Don&rsquo;t Generate. Buy.</div>
+  <h1>SoundHub</h1>
+  <p class="tagline">A token-powered, DAW-native marketplace for <strong>verified, finished sounds</strong>.</p>
+  <p class="lead" style="max-width:640px;margin:0 auto 26px;">
+    Versioned assets, escrowed purchases, automatic creator splits and DAO
+    governance — with a storefront that lives <em>inside</em> the DAW.
+  </p>
+  <div class="meta">
+    <span><b>Network:</b> Base (EVM, L2)</span>
+    <span><b>Token:</b> SND · ERC-20, 1,000,000 fixed</span>
+    <span><b>Status:</b> Private beta · testnet live</span>
+    <span><b>Version:</b> 1.0 — August 2026</span>
+  </div>
+</header>
+
+<!-- ================= TOC ================= -->
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#abstract">Abstract</a></li>
+    <li><a href="#problem">The problem: generation is cheap, time is not</a></li>
+    <li><a href="#solution">The solution: three layers, one product</a></li>
+    <li><a href="#studio">Studio layer — versioning &amp; the DAW engine</a></li>
+    <li><a href="#smartdiff">Smart diffs — structured, not "binary changed"</a></li>
+    <li><a href="#token">Tokenized layer — SND, escrow, NFTs</a></li>
+    <li><a href="#tokenomics">Tokenomics — fixed supply, governed allocation</a></li>
+    <li><a href="#governance">Governance — SoundHubGovernor</a></li>
+    <li><a href="#daw">Distribution — SoundHub inside Ableton Live</a></li>
+    <li><a href="#revenue">Revenue model</a></li>
+    <li><a href="#security">Security, risks &amp; disclaimers</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#contracts">Contract addresses (Base Sepolia)</a></li>
+  </ol>
+</nav>
+
+<!-- ================= 1 ABSTRACT ================= -->
+<section id="abstract">
+  <h2 class="sec"><span class="secnum">1.</span> Abstract</h2>
+  <p class="lead">
+    SoundHub is a marketplace where producers buy ready-made, human-made,
+    <strong>production-ready sounds</strong> — presets, sample packs, patches
+    and stems — paid for with the SND token on <strong>Base</strong>. What
+    makes the purchase trustworthy is not reputation alone but
+    <strong>verification</strong>: a DAW-parsing engine reads the project file
+    and proves what is inside the asset before the buyer pays. What makes it
+    fast is <strong>placement</strong>: the storefront is a native panel inside
+    Ableton Live, at the moment of intent.
+  </p>
+  <p>
+    The system is organised in three layers:
+  </p>
+  <table>
+    <tr><th>Layer</th><th>What it does</th><th>Trust mechanism</th></tr>
+    <tr><td><strong>Studio</strong> (off-chain)</td><td>DAW parsing &amp; verification, smart diffs, repos, versioning</td><td>Content-addressed storage (SHA-256), structured metadata</td></tr>
+    <tr><td><strong>Tokenized</strong> (on-chain)</td><td>SND payments, escrow marketplace, Release NFTs, DAO</td><td>Smart-contract escrow, ERC-2981 royalties, Governor + timelock</td></tr>
+    <tr><td><strong>Distribution</strong> (in-DAW)</td><td>SoundHub panel inside Ableton Live: catalog, BPM-aware suggestions, buy &amp; load</td><td>Same DAW engine — verify, recommend, version</td></tr>
+  </table>
+  <p>
+    This document specifies the architecture, the economic model, the
+    verification pipeline and the governance of the platform, and honestly
+    scopes what is live today versus what is proposed.
+  </p>
+</section>
+
+<!-- ================= 2 PROBLEM ================= -->
+<section id="problem">
+  <h2 class="sec"><span class="secnum">2.</span> The problem: generation is cheap, time is not</h2>
+  <p>
+    Music production's real bottleneck is <strong>time, not tools</strong>.
+    Two forces dominate:
+  </p>
+  <ul>
+    <li><strong>Generation is cheap; finished sound is expensive.</strong> AI
+      and endless preset-tweaking produce <em>a</em> sound — rarely <em>the</em>
+      sound. Producers burn hours per sound and still end up with
+      inconsistent, unverifiable results.</li>
+    <li><strong>Buying finished sound is untrusted.</strong> Marketplaces are
+      fragmented, licenses are unclear, contents are unverifiable, provenance
+      is missing, and creators get paid late or never.</li>
+  </ul>
+  <figure class="chart">
+    <img src="file:///tmp/wp/time.png" alt="Time to a usable sound">
+    <figcaption>Figure 1 — The core problem: hours spent generating vs. seconds spent buying a verified sound.</figcaption>
+  </figure>
+  <p>
+    There is no attribution infrastructure: independent producers and sound
+    designers have no lightweight way to prove authorship, set licenses, or get
+    paid for reuse. Code got repositories, attribution and licensing decades
+    ago; sound is still sold like loose files in random chats.
+  </p>
+</section>
+
+<!-- ================= 3 SOLUTION ================= -->
+<section id="solution">
+  <h2 class="sec"><span class="secnum">3.</span> The solution: three layers, one product</h2>
+  <p>
+    SoundHub flips the equation — <strong>don&rsquo;t generate, buy</strong>.
+    Finished, human-made sounds become a token-powered marketplace on Base.
+    The core loop:
+  </p>
+  <blockquote><p><strong>Create → List → Verify → Buy → Get paid.</strong></p></blockquote>
+  <ol>
+    <li>A sound designer creates a finished preset, kit, or pack (in Ableton, FL Studio, Cubase, REAPER).</li>
+    <li>SoundHub parses and verifies it — the DAW engine reads BPM, tracks, plugins, samples.</li>
+    <li>The asset is listed for SND with a license tier and version history.</li>
+    <li>A producer buys — SND goes into escrow; the buyer gets the asset + license.</li>
+    <li>Payment settles — buyer confirms, or the dispute window passes, and the creator is paid automatically.</li>
+  </ol>
+  <p>
+    The three layers share one engine: the DAW parsers that <em>verify</em>
+    assets for sale also power the in-DAW <em>recommendations</em> and the
+    <em>smart diffs</em> of project versions. Verification, recommendation and
+    versioning are three jobs of the same parsing pipeline.
+  </p>
+</section>
+
+<!-- ================= 4 STUDIO LAYER ================= -->
+<section id="studio">
+  <h2 class="sec"><span class="secnum">4.</span> Studio layer — versioning &amp; the DAW engine</h2>
+
+  <h3>4.1 Content-addressed versioning</h3>
+  <p>
+    Every commit stores a <strong>full snapshot</strong> of the project tree.
+    Files are stored <strong>content-addressed</strong>: the storage key is the
+    SHA-256 hash of the file bytes.
+  </p>
+  <div class="formula">
+    <span class="eqno">(1)</span>
+    $$\text{blob\_key} = \text{SHA-256}(\text{file bytes})$$
+  </div>
+  <p>
+    Because the key is a deterministic function of the content, identical files
+    deduplicate automatically — a snapshot in which little changed costs almost
+    nothing. A commit is then an immutable mapping from paths to blob keys:
+  </p>
+  <div class="formula">
+    <span class="eqno">(2)</span>
+    $$\text{commit}_n = \left\{\, \text{path} \mapsto \text{SHA-256}(\text{bytes}(\text{path})) \;\middle|\; \forall\, \text{path} \in \text{tree}_n \right\}$$
+  </div>
+  <p>
+    This gives history a simple, correct model with cheap snapshots; branches
+    are named pointers, and the move to a DAG (with merges) is the natural
+    next step. Every decision on the platform is additionally recorded in a
+    <strong>SHA-256 decision ledger</strong>.
+  </p>
+
+  <h3>4.2 The DAW engine — verification before purchase</h3>
+  <p>
+    The DAW engine is what makes buying finished sound trustworthy. SoundHub
+    parses the four major project formats instead of treating them as binary,
+    so a buyer sees exactly what is inside an asset <em>before</em> paying:
+  </p>
+  <table>
+    <tr><th>Format</th><th>DAW</th><th>Parsed data</th></tr>
+    <tr><td><code>.als</code></td><td>Ableton Live</td><td>BPM, time signature, tracks, devices, plugins, samples</td></tr>
+    <tr><td><code>.cpr</code></td><td>Cubase</td><td>tempo, tracks, VST3/VST plugins, referenced samples</td></tr>
+    <tr><td><code>.rpp</code></td><td>REAPER</td><td>tempo, signature, tracks, FX chain (PARAM lines)</td></tr>
+    <tr><td><code>.flp</code></td><td>FL Studio</td><td>version, project name, author, tempo, channel count</td></tr>
+  </table>
+  <figure class="chart">
+    <img src="file:///tmp/wp/daw.png" alt="DAW parsing coverage">
+    <figcaption>Figure 2 — Parsed metadata categories per DAW format.</figcaption>
+  </figure>
+  <p>
+    Each parser extracts a <code>DAWInfo</code> structure — BPM, time
+    signature, tracks (with kind and devices), plugins (with settings where the
+    format exposes them) and referenced samples. The same normalised structure
+    is used for asset verification, for smart diffs and for recommendations.
+  </p>
+
+  <h3>4.3 A worked example — a real Cubase session</h3>
+  <p>
+    The screenshot below is a real Cubase 13 session pushed to SoundHub via
+    <code>snd push</code>: 126 BPM, five tracks, eight plugins (Serum, Vital,
+    FabFilter, SSL, Waves…), four referenced samples — all parsed from the
+    <code>.cpr</code> XML.
+  </p>
+  <figure>
+    <img src="file:///home/scatter/SoundHub/frontend/public/screenshots/cubase-integration.png" alt="Cubase project parsed in SoundHub">
+    <figcaption>Figure 3 — DAW-parsed metadata for a Cubase 13 project in the SoundHub repo UI.</figcaption>
+  </figure>
+</section>
+
+<!-- ================= 5 SMART DIFF ================= -->
+<section id="smartdiff">
+  <h2 class="sec"><span class="secnum">5.</span> Smart diffs — structured, not "binary changed"</h2>
+  <p>
+    Where GitHub says <em>&ldquo;binary file changed&rdquo;</em>, SoundHub says:
+  </p>
+  <pre><code>BPM 128 → 132
++ track  Pad (midi)
++ track  Vocal Chops (audio)
++ plugin Vital
++ sample VocalChop_01.wav</code></pre>
+  <p>
+    The diff engine produces two views:
+  </p>
+  <ul>
+    <li><strong>Summary diff</strong> — structured metadata comparison: tempo,
+      time signature, DAW version, added/removed tracks, plugins and samples.</li>
+    <li><strong>Raw unified diff</strong> — over the normalised content
+      (pretty-printed XML, text, or hex for binary formats such as <code>.flp</code>).</li>
+  </ul>
+  <p>
+    Formally, for two versions $A$ and $B$, the summary diff is the symmetric
+    difference of their parsed feature sets:
+  </p>
+  <div class="formula">
+    <span class="eqno">(3)</span>
+    $$\Delta(A, B) = \left( \text{features}(A) \setminus \text{features}(B) \right)\ \cup\ \left( \text{features}(B) \setminus \text{features}(A) \right)$$
+  </div>
+  <p>
+    where $\text{features}(\cdot)$ includes the BPM, signature, track set,
+    plugin set and sample set extracted by the DAW engine. Scalar features like
+    BPM are reported as <code>old → new</code>; set features as
+    <code>+/−</code> entries. The same engine, two jobs: <strong>verify assets
+    for sale</strong> and <strong>version projects in collaboration</strong>.
+  </p>
+  <figure>
+    <img src="file:///home/scatter/SoundHub/frontend/public/screenshots/repo-page.png" alt="Repo page with parsed files">
+    <figcaption>Figure 4 — A DAW project as a versioned repo: file tree with parsed tracks and plugins.</figcaption>
+  </figure>
+</section>
+
+<!-- ================= 6 TOKENIZED LAYER ================= -->
+<section id="token">
+  <h2 class="sec"><span class="secnum">6.</span> Tokenized layer — SND, escrow, NFTs</h2>
+
+  <h3>6.1 Wallet identity</h3>
+  <p>
+    Users sign in with any EVM wallet via an EIP-191 personal-sign challenge
+    verified server-side. No password is needed; the wallet address becomes the
+    account. The server verifies that the recovered signer matches the claimed
+    address:
+  </p>
+  <div class="formula">
+    <span class="eqno">(4)</span>
+    $$\text{signer} = \text{ecrecover}(\text{hash}(\text{nonce}), \sigma) \;\wedge\; \text{signer} = \text{address}$$
+  </div>
+
+  <h3>6.2 The escrow marketplace — <code>SoundHubMarket.sol</code></h3>
+  <p>
+    Finished sounds are bought with SND, not generated. The lifecycle:
+  </p>
+  <figure class="chart">
+    <img src="file:///tmp/wp/escrow.png" alt="Escrow lifecycle">
+    <figcaption>Figure 5 — The escrow marketplace lifecycle.</figcaption>
+  </figure>
+  <ol>
+    <li><strong>List</strong> — a seller publishes a verified asset with a price in SND, a license tier (personal / commercial / sync / exclusive) and a pointer to the file.</li>
+    <li><strong>Buy</strong> — the buyer&rsquo;s SND goes into escrow; the buyer receives the asset and license.</li>
+    <li><strong>Settle</strong> — the buyer confirms receipt (instant payout to the seller) or the <strong>2-day dispute window</strong> passes (seller withdraws).</li>
+    <li><strong>Refund</strong> — inside the window a buyer can request a refund; the arbiter (owner today, DAO tomorrow) resolves it.</li>
+  </ol>
+  <p>
+    No trust-me selling. No chargebacks. Payment is automatic and on-chain.
+  </p>
+
+  <h3>6.3 SND — the platform token (<code>SND.sol</code>)</h3>
+  <ul>
+    <li>ERC-20 with <strong>permit</strong> (gasless approvals) and
+      <strong>ERC20Votes</strong> (on-chain governance voting).</li>
+    <li><strong>Fixed supply: 1,000,000 SND</strong>, minted once at
+      deployment. No mint function.</li>
+    <li><strong>Primary role: the payment rail</strong> — every marketplace
+      purchase is denominated in SND. Secondary roles: license fees, tips,
+      token-gated premium features, staking, and DAO voting power via
+      delegation.</li>
+  </ul>
+
+  <h3>6.4 Release NFTs — <code>SoundHubRelease.sol</code></h3>
+  <p>
+    A finished project can be minted into a <strong>Release NFT</strong>
+    (ERC-721 + ERC-2981):
+  </p>
+  <ul>
+    <li><strong>Royalty</strong> — configurable per release (default 5%), paid
+      to the minter on secondary sales via ERC-2981.</li>
+    <li><strong>Collaborator split</strong> — revenue split with basis-point
+      weights summing to 10,000, recorded on-chain at mint. E.g. producer 70% /
+      vocalist 30%.</li>
+    <li><strong>Treasury</strong> — fans fund a release directly with
+      <strong>ETH or SND</strong> (<code>fund</code> / <code>fundWithSND</code>).</li>
+    <li><strong>Order-independent claiming</strong> — collaborators claim their
+      proportional share of the treasury at any time; claiming early does not
+      short-change later claimers (per-collaborator accounted claims).</li>
+  </ul>
+  <p>
+    Formally, for a release with collaborator weights $w_i$ (summing to
+    10,000), the claimable amount for collaborator $i$ from a treasury
+    $\text{T}$ is:
+  </p>
+  <div class="formula">
+    <span class="eqno">(5)</span>
+    $$\text{claim}_i = \text{T} \cdot \frac{w_i}{\sum_j w_j} \;-\; \text{already\_claimed}_i$$
+  </div>
+  <p>
+    Because each claim records only the collaborator&rsquo;s own withdrawal, a
+    later claim is unaffected by earlier ones — the payout is
+    order-independent.
+  </p>
+</section>
+
+<!-- ================= 7 TOKENOMICS ================= -->
+<section id="tokenomics">
+  <h2 class="sec"><span class="secnum">7.</span> Tokenomics — fixed supply, governed allocation</h2>
+  <p>
+    SND has a <strong>fixed supply of 1,000,000</strong> — and its primary
+    demand driver is the marketplace itself: every purchase of a finished
+    sound is denominated in SND, so the token is the medium of exchange of the
+    platform.
+  </p>
+  <figure class="chart">
+    <img src="file:///tmp/wp/tokenomics.png" alt="Proposed SND allocation">
+    <figcaption>Figure 6 — Proposed allocation of the fixed 1,000,000 SND supply (subject to DAO ratification).</figcaption>
+  </figure>
+  <table>
+    <tr><th>Allocation</th><th>Share</th><th>Purpose</th></tr>
+    <tr><td>Ecosystem &amp; community</td><td>35%</td><td>airdrops to producers, bounties, faucets</td></tr>
+    <tr><td>DAO treasury</td><td>25%</td><td>governed by SND holders via proposals</td></tr>
+    <tr><td>Core team</td><td>20%</td><td>24-month linear vesting, 6-month cliff</td></tr>
+    <tr><td>Liquidity</td><td>10%</td><td>SND/ETH pool on Base</td></tr>
+    <tr><td>Early supporters</td><td>10%</td><td>testnet contributors, early testers</td></tr>
+  </table>
+  <p>
+    The initial deployment vests the full supply with the deployer;
+    distribution is <strong>subject to a DAO vote</strong> and should be
+    finalised before mainnet.
+  </p>
+  <figure class="chart">
+    <img src="file:///tmp/wp/vesting.png" alt="Unlock schedule">
+    <figcaption>Figure 7 — Illustrative unlock schedule: 800,000 SND unlocked at deployment, team tranche linear over 24 months with a 6-month cliff.</figcaption>
+  </figure>
+  <p>
+    The vesting schedule can be expressed as a piecewise function over months
+    $t$ since deployment, with cliff $c = 6$ and vesting end $v = 24$:
+  </p>
+  <div class="formula">
+    <span class="eqno">(6)</span>
+    $$\text{unlocked}(t) = \begin{cases} 0, & t &lt; c \\[4pt] \text{total} \cdot \dfrac{t - c}{v - c}, & c \le t \le v \\[4pt] \text{total}, & t &gt; v \end{cases}$$
+  </div>
+  <div class="callout warn">
+    <b>⚠️ Nothing above is finalised.</b>
+    The deployed testnet token has no pre-committed distribution; tokenomics
+    are a DAO decision.
+  </div>
+</section>
+
+<!-- ================= 8 GOVERNANCE ================= -->
+<section id="governance">
+  <h2 class="sec"><span class="secnum">8.</span> Governance — SoundHubGovernor</h2>
+  <p>
+    SND holders govern the platform through a standard OpenZeppelin Governor:
+  </p>
+  <ul>
+    <li>Voting delay <strong>1 day</strong> (blocks), voting period
+      <strong>3 days</strong>, quorum <strong>4% of supply</strong>.</li>
+    <li>Execution through a <strong>1-day timelock</strong> — no rug-pull
+      governance.</li>
+    <li>Proposals control platform parameters: fees, premium tiers, treasury
+      allocation, feature funding.</li>
+  </ul>
+  <figure class="chart">
+    <img src="file:///tmp/wp/dao.png" alt="Governance lifecycle">
+    <figcaption>Figure 8 — The governance lifecycle, from proposal to execution.</figcaption>
+  </figure>
+  <p>
+    A proposal passes if the votes-for exceed the quorum threshold
+    $\tau = 0.04 \cdot \text{supply}$ and votes-for exceed votes-against:
+  </p>
+  <div class="formula">
+    <span class="eqno">(7)</span>
+    $$\text{passes} \iff \text{votes\_for} &gt; \text{votes\_against} \;\wedge\; \text{votes\_for} + \text{votes\_against} \ge \tau$$
+  </div>
+  <p>
+    The timelock delay $d_{\text{lock}} = 1$ day between a successful vote and
+    execution gives token holders a final window to react before any
+    parameter change takes effect.
+  </p>
+</section>
+
+<!-- ================= 9 DISTRIBUTION ================= -->
+<section id="daw">
+  <h2 class="sec"><span class="secnum">9.</span> Distribution — SoundHub inside Ableton Live</h2>
+  <p>
+    A marketplace is only as good as its placement. The strongest distribution
+    channel for SoundHub is the DAW itself — the point of maximum intent:
+  </p>
+  <ul>
+    <li><strong>Point of maximum intent.</strong> The producer is already
+      inside Ableton, already hearing what&rsquo;s missing. Buying a finished
+      preset there is a 1–2 click action — no tab switch, no context break.</li>
+    <li><strong>Native panel, not a rewrite.</strong> A Max for Live device
+      (JS inside Live) reads the catalog straight from the chain via public
+      RPC, reads the Live set BPM for context-aware suggestions, and loads
+      purchased assets into the project. Prototype shipped in <code>m4l/</code>.</li>
+    <li><strong>Context-aware, not just a storefront.</strong> BPM → genre
+      matching today; key, tracks and devices (via the DAW engine) tomorrow —
+      &ldquo;bass presets for 128 BPM techno&rdquo; instead of a flat list.</li>
+    <li><strong>Invisible web3.</strong> The user sees <em>Buy &amp; Load</em>,
+      never <code>approve</code>/gas/RPC. WalletConnect pairing or a backend
+      relayer keeps the blockchain under the hood.</li>
+    <li><strong>One engine, three markets.</strong> The same DAW parsers that
+      verify assets for sale power the in-DAW recommendations and the smart
+      diffs.</li>
+  </ul>
+  <p>
+    Without the integration SoundHub is a good niche marketplace; with it, it
+    is part of the producer&rsquo;s workflow — the difference between a website
+    and a tool.
+  </p>
+  <figure>
+    <img src="file:///home/scatter/SoundHub/frontend/public/screenshots/main-light.png" alt="SoundHub landing">
+    <figcaption>Figure 9 — The SoundHub landing page (bandcamp-inspired studio UI).</figcaption>
+  </figure>
+  <figure>
+    <img src="file:///home/scatter/SoundHub/frontend/public/screenshots/fl-integration.png" alt="FL Studio project parsed">
+    <figcaption>Figure 10 — A real FL Studio 21 project parsed in SoundHub (140 BPM, FL 21, three channels).</figcaption>
+  </figure>
+</section>
+
+<!-- ================= 10 REVENUE ================= -->
+<section id="revenue">
+  <h2 class="sec"><span class="secnum">10.</span> Revenue model</h2>
+  <table>
+    <tr><th>Stream</th><th>Mechanism</th></tr>
+    <tr><td><strong>Marketplace fee</strong></td><td>small % on each escrow purchase (configurable via DAO): funds development, curation, grants, ecosystem rewards</td></tr>
+    <tr><td><strong>Sellers earn</strong></td><td>the core creator income: finished sounds sold for SND, settled automatically</td></tr>
+    <tr><td><strong>Premium tier</strong></td><td>token-gated (hold/stake SND): deeper verification, larger listings, analytics</td></tr>
+    <tr><td><strong>Release royalties</strong></td><td>creator-set ERC-2981 royalty on Release NFT secondary sales (default 5%)</td></tr>
+    <tr><td><strong>Tips</strong></td><td>fans tip producers in SND or ETH, fully on-chain</td></tr>
+  </table>
+  <p>
+    The marketplace fee is the platform&rsquo;s primary recurring revenue. For
+    a purchase of price $p$ and fee rate $f$, the fee and the seller payout are:
+  </p>
+  <div class="formula">
+    <span class="eqno">(8)</span>
+    $$\text{fee} = p \cdot f, \qquad \text{seller\_payout} = p \cdot (1 - f)$$
+  </div>
+  <p>
+    The fee rate $f$ is a DAO-controlled parameter, deliberately kept small
+    and transparent.
+  </p>
+</section>
+
+<!-- ================= 11 SECURITY ================= -->
+<section id="security">
+  <h2 class="sec"><span class="secnum">11.</span> Security, risks &amp; disclaimers</h2>
+  <div class="callout warn">
+    <b>⚠️ Unaudited contracts.</b>
+    The smart contracts pass an extensive test suite (token, royalties, splits,
+    full DAO lifecycle) but have <strong>not</strong> been through a
+    professional security audit. Test on testnet first.
+  </div>
+  <h3>11.1 What is tested</h3>
+  <ul>
+    <li><strong>SND token</strong> — ERC-20 semantics, permit, votes, no-mint invariant, fixed supply.</li>
+    <li><strong>SoundHubMarket</strong> — escrow hold/release/refund, dispute window, arbiter paths.</li>
+    <li><strong>SoundHubRelease</strong> — royalties (ERC-2981), collaborator splits, order-independent treasury claims.</li>
+    <li><strong>Governor</strong> — full proposal → vote → timelock → execute lifecycle.</li>
+    <li><strong>Backend</strong> — 100+ tests covering the DAW parsers, diff engine, versioning and the <code>snd push</code> contract.</li>
+  </ul>
+  <h3>11.2 Risks</h3>
+  <ul>
+    <li><strong>Narrative-driven market.</strong> The value of SND is tied to
+      platform adoption, not to any underlying utility guarantee.</li>
+    <li><strong>Format complexity.</strong> DAW files are reverse-engineered
+      formats; parser coverage is best-effort and improves over time.</li>
+    <li><strong>Concentration risk.</strong> Governance uses a 4% quorum; a
+      coordinated minority could in principle pass proposals during low
+      turnout, mitigated by the timelock window.</li>
+    <li><strong>Testnet data.</strong> All on-chain contracts below are on
+      <strong>Base Sepolia</strong>; addresses and behaviour are subject to
+      change before mainnet.</li>
+  </ul>
+  <div class="callout ok">
+    <b>✅ Live today (honest).</b>
+    DAW engine (4 formats), smart diffs, repos &amp; content-addressed
+    versioning, SND/Release/Market/Governor on Base Sepolia, escrow buy flow
+    with faucet, wallet sign-in, in-DAW M4L prototype.
+  </div>
+</section>
+
+<!-- ================= 12 ROADMAP ================= -->
+<section id="roadmap">
+  <h2 class="sec"><span class="secnum">12.</span> Roadmap</h2>
+  <table>
+    <tr><th>Phase</th><th>Status</th><th>Scope</th></tr>
+    <tr><td><strong>1 · Buy flow</strong></td><td>✅</td><td>SoundHubMarket live on Base Sepolia → list/buy/confirm/refund in the UI → SND faucet for testers</td></tr>
+    <tr><td><strong>2 · In-DAW</strong></td><td>✅ / ⏳</td><td>SoundHub inside Ableton Live — M4L prototype shipped; next: recommendation service, asset delivery, full import</td></tr>
+    <tr><td><strong>3 · Trust layer</strong></td><td>⏳</td><td>verification badges from the DAW engine, seller reputation, license enforcement, packs as composable assets</td></tr>
+    <tr><td><strong>4 · Collaboration</strong></td><td>✅ / ⏳</td><td>branches (named pointers, per-branch diff) → merges (DAG), remix forks, audio preview, comments on tracks</td></tr>
+    <tr><td><strong>5 · Mainnet</strong></td><td>⏳</td><td>Base mainnet deployment, SND distribution vote, DAO treasury</td></tr>
+  </table>
+</section>
+
+<!-- ================= 13 CONTRACTS ================= -->
+<section id="contracts">
+  <h2 class="sec"><span class="secnum">13.</span> Contract addresses (Base Sepolia)</h2>
+  <table>
+    <tr><th>Contract</th><th>Role</th><th>Address</th></tr>
+    <tr><td>SND (ERC-20)</td><td>platform token</td><td><code>0x37a6B3aD766ffb98673290A634490C8bF952DB2F</code></td></tr>
+    <tr><td>SoundHubRelease (NFT)</td><td>release NFTs, royalties, splits</td><td><code>0xb3716751572db83d22aeED95Be7da125A4d22446</code></td></tr>
+    <tr><td>SoundHubMarket (escrow)</td><td>escrow marketplace</td><td><code>0x396d6ad9D5EA19eE56318624b05bC6EEEa2d1F5C</code></td></tr>
+    <tr><td>SoundHubFaucet (testnet)</td><td>testnet SND faucet</td><td><code>0x479fe2D308D118ef1723b5a34C8f8f37678cbba9</code></td></tr>
+    <tr><td>TimelockController</td><td>governance timelock</td><td><code>0x98F6a809ffa83cbe5f9bAFa7Cf762f2f24Cfa548</code></td></tr>
+    <tr><td>SoundHubGovernor (DAO)</td><td>governance</td><td><code>0x2db3F8BA478C445399bB8fbA921fC5e11Af202da</code></td></tr>
+  </table>
+</section>
+
+<div class="docfoot">
+  SoundHub Whitepaper v1.0 · github.com/CRYPTOSCOPE101/SoundHub ·
+  Private beta on Base Sepolia · © 2026 SoundHub, Inc.
+</div>
+
+</div>
+</body>
+</html>
