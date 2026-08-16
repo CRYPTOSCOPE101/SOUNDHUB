@@ -531,6 +531,13 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
   Демо-сессия сделана `portfolio_public` (сид + живая БД) — поиск «neon»/«demo» сразу что-то находит.
   Тесты: 99 backend (3 новых `test_search.py` — публичный поиск, приватность, лимиты) + build + smoke.
 
+**Скриншоты README пересняты** (playwright + chromium в backend-venv, без браузера в окружении):
+`backend/scripts/screenshots.py` — лендинг (main-light.png), список проектов (projects.png),
+repo-страница (repo-page.png), ветки (repo-page-branches.png) — все в новом bandcamp-дизайне;
+добавлен `projects.png` в README. Шапка README обновлена на новое прозрачное лого
+(`frontend/public/logo.png` вместо старого `LOGO_modSHA.jpg`). `demo.gif` остался старым —
+в окружении нет ffmpeg, чтобы переснять.
+
 ---
 
 ## Запуск
