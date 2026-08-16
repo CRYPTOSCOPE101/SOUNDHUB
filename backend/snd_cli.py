@@ -40,6 +40,7 @@ import os
 import sys
 import uuid
 import webbrowser
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from soundhub_cli import (
     CliError,
@@ -194,18 +195,23 @@ def _preflight_stems_dir(path: str, max_size: int) -> list[str]:
     return stems
 
 
-def cmd_push(args, http=None) -> int:
+def run_push(opts: dict, *, api: str, token: str, http=None) -> dict:
+    """Shared push pipeline: preflight → multipart upload → contract dict.
+
+    `opts` keys: target (DAW file or dir), include_media, audio, stems,
+    project, branch, round, message. Returns the JSON contract exactly as
+    the server replied. Used by `snd push` (CLI) and `snd serve` (the local
+    bridge the Max for Live device talks to).
+    """
     from app.config import MAX_UPLOAD_SIZE
 
-    cfg = load_config()
-    token = resolve_token(args, cfg)
-    api = api_base(args)
-    target = os.path.abspath(args.target)
+    target = os.path.abspath(opts["target"])
+    include_media = bool(opts.get("include_media"))
 
     # ---- resolve what to push: a DAW file or a project directory ----
     if os.path.isdir(target):
         root = target
-        project_files = find_project_files(root, args.include_media)
+        project_files = find_project_files(root, include_media)
         if not project_files:
             raise CliError(f"No project files found in {root} (add --include-media to upload audio too)")
         # the same readability preflight as single-file mode applies to every
@@ -229,24 +235,24 @@ def cmd_push(args, http=None) -> int:
         _preflight_size(p, MAX_UPLOAD_SIZE)
 
     # ---- review materials preflight ----
-    audio_path = os.path.abspath(args.audio) if args.audio else None
+    audio_path = os.path.abspath(opts["audio"]) if opts.get("audio") else None
     if audio_path:
         _preflight_audio(audio_path, ALLOWED_AUDIO, "master", MAX_UPLOAD_SIZE)
-    stem_files = _preflight_stems_dir(args.stems, MAX_UPLOAD_SIZE) if args.stems else []
+    stem_files = _preflight_stems_dir(opts["stems"], MAX_UPLOAD_SIZE) if opts.get("stems") else []
     if (audio_path or stem_files) and audio_path is None:
         raise CliError("Review mode requires --audio (the master) — stems attach to the master version")
 
-    project_name = args.project or os.path.basename(root.rstrip(os.sep)) or "SoundHub project"
+    project_name = opts.get("project") or os.path.basename(root.rstrip(os.sep)) or "SoundHub project"
     project = None
-    if args.project:
-        project = _find_project(http, api, token, args.project)
-        if project is None and not args.project.isdigit():
+    if opts.get("project"):
+        project = _find_project(http, api, token, opts["project"])
+        if project is None and not opts["project"].isdigit():
             # First push: auto-create the project with the requested name.
             project = http_json(
                 "POST",
                 f"{api}/api/projects",
                 token=token,
-                json_body={"name": args.project, "description": "pushed via snd"},
+                json_body={"name": opts["project"], "description": "pushed via snd"},
                 http=http,
             )
     if project is None:
@@ -259,12 +265,12 @@ def cmd_push(args, http=None) -> int:
         )
         project = created
 
-    manifest = build_manifest(project_name, project_files, root, args.include_media)
+    manifest = build_manifest(project_name, project_files, root, include_media)
     boundary = "----snd" + uuid.uuid4().hex
     body = bytearray()
-    fields = [("message", args.message or "snd push"), ("manifest", json.dumps(manifest)), ("branch", args.branch)]
-    if args.round:
-        fields.append(("round", str(args.round)))
+    fields = [("message", opts.get("message") or "snd push"), ("manifest", json.dumps(manifest)), ("branch", opts.get("branch") or "main")]
+    if opts.get("round"):
+        fields.append(("round", str(opts["round"])))
     for key, value in fields:
         body += f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode()
 
@@ -287,12 +293,38 @@ def cmd_push(args, http=None) -> int:
         _add_file("stems", p)
     body += f"--{boundary}--\r\n".encode()
 
-    result = http_json(
+    return http_json(
         "POST",
         f"{api}/api/projects/{project['id']}/push",
         token=token,
         raw_data=bytes(body),
         content_type=f"multipart/form-data; boundary={boundary}",
+        http=http,
+    )
+
+
+def cmd_push(args, http=None) -> int:
+    cfg = load_config()
+    token = resolve_token(args, cfg)
+    api = api_base(args)
+
+    target = os.path.abspath(args.target)
+    root = target if os.path.isdir(target) else os.path.dirname(target) or "."
+    project_name = args.project or os.path.basename(root.rstrip(os.sep)) or "SoundHub project"
+
+    result = run_push(
+        {
+            "target": args.target,
+            "include_media": args.include_media,
+            "audio": args.audio,
+            "stems": args.stems,
+            "project": args.project,
+            "branch": args.branch,
+            "round": args.round,
+            "message": args.message,
+        },
+        api=api,
+        token=token,
         http=http,
     )
 
@@ -305,10 +337,69 @@ def cmd_push(args, http=None) -> int:
         print(f"  review: {result['review_url']}")
         if args.open:
             webbrowser.open(result["review_url"])
-    if manifest["daws"]:
-        print(_summary(manifest["daws"]))
-    else:
-        print("  (no DAW project files parsed — add one, or check the folder)")
+    print("  (DAW metadata parsed locally — see the commit tree for the manifest)")
+    return 0
+
+
+def cmd_serve(args, http=None) -> int:
+    """Run a localhost JSON bridge the Max for Live device calls for pushes.
+
+    M4L can't run `shell` (blocked inside Live) and its `httprequest` mangles
+    binary multipart, so the device POSTs a small JSON payload here and this
+    tiny stdlib server runs the same `snd push` pipeline (preflight → atomic
+    upload → review) and returns the stable contract.
+    """
+    import json as _json
+
+    cfg = load_config()
+    token = resolve_token(args, cfg)
+    api = api_base(args)
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *a):  # keep the console quiet
+            pass
+
+        def _send(self, code: int, payload: dict) -> None:
+            data = _json.dumps(payload, ensure_ascii=False).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_GET(self):
+            if self.path.rstrip("/") == "/health":
+                self._send(200, {"ok": True, "service": "snd-bridge"})
+            else:
+                self._send(404, {"ok": False, "error": "not found"})
+
+        def do_POST(self):
+            if not self.path.rstrip("/").endswith("/push"):
+                self._send(404, {"ok": False, "error": "not found"})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                opts = _json.loads(self.rfile.read(length) or b"{}")
+            except ValueError as exc:
+                self._send(400, {"ok": False, "error": f"bad JSON body: {exc}"})
+                return
+            try:
+                result = run_push(opts, api=api, token=token, http=http)
+                self._send(200, result)
+            except CliError as exc:
+                self._send(400, {"ok": False, "error": str(exc)})
+            except OSError as exc:
+                self._send(400, {"ok": False, "error": str(exc)})
+
+    host, port = args.host, args.port
+    srv = ThreadingHTTPServer((host, port), Handler)
+    print(f"✓ snd bridge listening on http://{host}:{port} — point the M4L device at it (bridge message)", flush=True)
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        srv.server_close()
     return 0
 
 
@@ -340,6 +431,10 @@ def build_parser() -> argparse.ArgumentParser:
     push.add_argument("--round", type=int, default=0, help="review round number for the version (default: session round)")
     push.add_argument("--open", action="store_true", help="open the review URL in the browser after a successful push")
     push.add_argument("--json", action="store_true", help="machine-readable JSON output (stable contract for automation)")
+
+    serve = sub.add_parser("serve", parents=[common], help="localhost JSON bridge for the Max for Live push button")
+    serve.add_argument("--host", default="127.0.0.1", help="bind address (default 127.0.0.1)")
+    serve.add_argument("--port", type=int, default=8765, help="port (default 8765)")
     return p
 
 
@@ -350,6 +445,8 @@ def main(argv: list[str] | None = None, http=None) -> int:
             return cmd_login(args, http=http)
         if args.command == "push":
             return cmd_push(args, http=http)
+        if args.command == "serve":
+            return cmd_serve(args, http=http)
     except CliError as exc:
         if getattr(args, "json", False):
             print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))

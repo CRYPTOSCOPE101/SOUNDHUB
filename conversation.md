@@ -452,6 +452,18 @@ $0/$9/$19) продаёт watermark protection + version control + portfolio pag
 - **README обновлён**: секция `snd push` приведена к контракту Фазы 16 (два режима,
   preflight, атомарность, дедуп, `--json` контракт с примером; исправлено имя ветки
   `snd-push` → `snd-project-push`).
+- **M4L «Push current export» (тонкий клиент над `snd push --json`):** в `m4l/`
+  добавлена 4-я кнопка `push` — читает `live_set.current_song_path` (текущий `.als`)
+  и шлёт JSON `{target, project, branch, message}` на локальный мост `snd serve`
+  (localhost:8765), который гоняет ту же проверенную пайплайн-функцию `run_push`
+  (preflight → атомарная загрузка → review-версия) и возвращает контракт; панель
+  показывает «✓ pushed commit #N» + review URL. Почему мост: `shell` заблокирован
+  в Live, а `httprequest` портит бинарный multipart — JSON-мост на stdlib `http.server`
+  решает оба ограничения. `snd push`/`snd serve` теперь делят одно ядро `run_push(opts)`;
+  конфиг M4L: `bridge`/`pushProject`/`pushBranch`/`pushMessage`. Тест
+  `test_snd_serve_bridge_health_and_push` (health + push контракт + 400 {"ok": false}).
+  Итого 113 backend-тестов; живой smoke: push из моста → commit + review URL 200.
+  m4l/README.md обновлён (кнопка, мост, «что застаблено»).
 
 **Изучен GitHub-организации Ableton (29 репозиториев):** почти всё — внутренняя инфра (Ansible/Jenkins), нерелевантно. Применимы четыре:
 1. **`Ableton/web-audio-sequencing` (MIT)** — lookahead-планирование на часах AudioContext. **Применено сразу:** оба Web Audio плеера (`ABCompare.tsx`, `ReferenceCompare.tsx`) переведены с «RAF-тик ловит границу loop и перезапускает source с зазором» на планировщик сегментов (`start(when)`/`stop(when)` на точных временах аудио-часов, горизонт 0.15 с) — loop-регион теперь gapless, без frame-квантования и дрейфа. Frontend build зелёный.

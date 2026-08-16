@@ -14,7 +14,9 @@
 
 var OUT_CATALOG = 0;   // outlet 0: catalog text (JSON array as string)
 var OUT_STATUS = 1;    // outlet 1: status lines
-var OUT_MATCH = 2;     // outlet 2: BPM-matched suggestion
+var OUT_MATCH = 2;     // outlet 2: BPM-matched suggestion / push result
+
+var OUT_PUSH = 3;      // outlet 3: push result (JSON contract string)
 
 // ---- configuration (override via messages: rpc / market / token / key) ----
 var config = {
@@ -24,8 +26,12 @@ var config = {
   token: "0x37a6B3aD766ffb98673290A634490C8bF952DB2F",
   key: "",            // testnet private key (hex, 0x-prefixed)
   backend: "http://127.0.0.1:8000", // SoundHub backend for assets/recommend
+  bridge: "http://127.0.0.1:8765", // local `snd serve` bridge for the push button
   libraryDir: "",     // Ableton User Library (default: ~/Music/Ableton/User Library)
-  maxItems: 50
+  maxItems: 50,
+  pushProject: "",    // project name for push (default: current Live set name)
+  pushBranch: "main", // branch to commit the push to
+  pushMessage: ""     // commit message (default: "snd push")
 };
 
 var MARKET_ABI = {
@@ -347,6 +353,79 @@ function httpGet(url, cb) {
   http.exec();
 }
 
+// ---- push current export (via the local snd bridge) ------------------------
+// M4L can't run `shell` (blocked inside Live) and httprequest mangles binary
+// multipart, so the button posts a tiny JSON payload to the local `snd serve`
+// bridge, which runs the full snd push pipeline (preflight -> atomic upload
+// -> review session) and returns the stable contract.
+
+function pushCurrentExport() {
+  var path = currentSongPath();
+  if (!path) {
+    out(OUT_STATUS, "Push failed: save the Live set first (no .als path yet).");
+    return;
+  }
+  var payload = {
+    target: path,
+    project: config.pushProject || songName(),
+    branch: config.pushBranch || "main",
+    message: config.pushMessage || "snd push"
+  };
+  out(OUT_STATUS, "Pushing “" + payload.project + "” to SoundHub…");
+  httpPostJson(config.bridge + "/push", payload, function (ok, text) {
+    if (!ok) {
+      out(OUT_STATUS, "Push failed (bridge unreachable? run `snd serve`): " + text);
+      return;
+    }
+    var res;
+    try { res = JSON.parse(text); } catch (e) { res = null; }
+    if (!res || !res.ok) {
+      out(OUT_STATUS, "Push failed: " + (res && res.error ? res.error : text));
+      out(OUT_PUSH, text);
+      return;
+    }
+    out(OUT_STATUS, "✓ pushed commit #" + res.commit_id + " · " + res.file_count + " file(s)");
+    out(OUT_MATCH, res.review_url ? "review: " + res.review_url : "fast push (no review — add master audio next time)");
+    out(OUT_PUSH, JSON.stringify(res));
+  });
+}
+
+// POST a JSON body to a URL (text responses).
+function httpPostJson(url, obj, cb) {
+  if (!http) http = this.patcher.apply(this.patcher, ["httprequest"]);
+  http.text = JSON.stringify(obj);
+  http.method = 1; // POST
+  var u = url.replace(/^https?:\/\//, "");
+  http.host = u.split("/")[0];
+  http.port = (url.indexOf("https://") === 0) ? 443 : 80;
+  http.path = "/" + u.split("/").slice(1).join("/");
+  http.callback = function (err, resp) {
+    if (err) { cb(false, String(err)); return; }
+    cb(true, responseText(resp));
+  };
+  http.exec();
+}
+
+function currentSongPath() {
+  try {
+    var s = new LiveAPI(this.patcher, "live_set");
+    var p = s.get("current_song_path");
+    return (typeof p === "string" && p.length > 0) ? p : "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function songName() {
+  try {
+    var s = new LiveAPI(this.patcher, "live_set");
+    var n = s.get("current_song_name");
+    return (typeof n === "string" && n.length > 0) ? n : "Live set";
+  } catch (e) {
+    return "Live set";
+  }
+}
+
 // ---- inlets ---------------------------------------------------------------
 
 function bang() {
@@ -355,10 +434,12 @@ function bang() {
 }
 
 function msg_int(v) {
-  // 0 = refresh catalog, 1 = suggest for current BPM, 2 = load suggested asset
+  // 0 = refresh catalog, 1 = suggest for current BPM, 2 = load suggested asset,
+  // 3 = push current export
   if (v === 0) loadCatalog();
   else if (v === 1) suggestForBpm(readBpm());
   else if (v === 2) loadAssetById(pendingId >= 0 ? pendingId : 1, "suggested_asset");
+  else if (v === 3) pushCurrentExport();
 }
 
 function readBpm() {
@@ -371,10 +452,15 @@ function readBpm() {
 }
 
 // runtime configuration messages: rpc <url>, market <addr>, token <addr>,
-// key <privkey>, backend <url>, libraryDir <path>
+// key <privkey>, backend <url>, libraryDir <path>, bridge <url>,
+// pushProject <name>, pushBranch <name>, pushMessage <text>
 function rpc(v) { config.rpc = v; postln("rpc -> " + v); }
 function market(v) { config.market = v; postln("market -> " + v); }
 function token(v) { config.token = v; postln("token -> " + v); }
 function key(v) { config.key = v; postln("key set (testnet only)"); }
 function backend(v) { config.backend = v; postln("backend -> " + v); }
 function libraryDir(v) { config.libraryDir = v; postln("libraryDir -> " + v); }
+function bridge(v) { config.bridge = v; postln("bridge -> " + v); }
+function pushProject(v) { config.pushProject = v; postln("pushProject -> " + v); }
+function pushBranch(v) { config.pushBranch = v; postln("pushBranch -> " + v); }
+function pushMessage(v) { config.pushMessage = v; postln("pushMessage -> " + v); }
