@@ -1,29 +1,41 @@
 #!/usr/bin/env bash
 # Build screenshots/demo.gif — an animated walkthrough of the SoundHub UI.
 #
+# Every screenshot is centered on a neutral gray canvas with a thin border
+# and a soft shadow, so the frames are uniform regardless of the page size.
+#
 # Requires ImageMagick (convert). Usage: bash scripts/make_demo_gif.sh
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 OUT="screenshots/demo.gif"
-WIDTH=1000
-HOLD=150          # 1.5s hold per screenshot (centiseconds)
-FADE=18           # crossfade frames between screenshots
-FADE_DELAY=4      # 0.04s per crossfade frame (centiseconds)
+CANVAS_W=1280
+CANVAS_H=800
+SHOT_W=1180        # screenshot width on the canvas (16:9 → 1180x738)
+BG="#DCDCDC"       # neutral gray backdrop
+BORDER="#C6C6C6"
+HOLD=160           # 1.6s hold per screenshot (centiseconds)
+FADE=18            # crossfade frames between screenshots
+FADE_DELAY=4       # 0.04s per crossfade frame (centiseconds)
 
 shots=(
   "screenshots/main-light.png"
+  "screenshots/projects.png"
   "screenshots/repo-page.png"
   "screenshots/repo-page-branches.png"
-  "screenshots/main-dark.png"
 )
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# 1. Resize every screenshot to a work file.
+# 1. Pad every screenshot onto the gray canvas.
 for i in "${!shots[@]}"; do
-  convert "${shots[$i]}" -resize "${WIDTH}x" -strip "$tmp/shot_$i.png"
+  convert -size "${CANVAS_W}x${CANVAS_H}" xc:"$BG" \
+    \( "${shots[$i]}" -resize "${SHOT_W}x" -strip \
+       -bordercolor "$BORDER" -border 1 \
+       \( +clone -background black -shadow 80x6+0+10 \) +swap \
+       -background none -layers merge +repage \) \
+    -gravity center -composite "$tmp/shot_$i.png"
 done
 
 # 2. Render crossfade frames between consecutive screenshots.
