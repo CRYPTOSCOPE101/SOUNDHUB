@@ -4,7 +4,7 @@ All notable changes to SoundHub. Format: keep-it-simple — **what changed,
 how to test, known limits**. Versioning follows `git tag` (see
 [Releases in the README](README.md#releases)).
 
-## [Unreleased] — DAW-to-review pipeline (`snd push` + bridge)
+## [v0.2.0] — 2026-08-16 — DAW-to-review pipeline (`snd push` + bridge)
 
 ### What changed
 
