@@ -545,133 +545,7 @@ export default function PublicReviewPage() {
             )}
           </div>
 
-          {current.commit_id && (
-            <div className="public-compare">
-              <div className="public-compare-head">✦ What changed in this bounce</div>
-              <div className="rs-share-row">
-                <span className="public-review-note" style={{ flex: 1 }}>
-                  The engineer pushed this version from the DAW project — see what actually changed vs the previous one.
-                </span>
-                <button
-                  type="button"
-                  className="rs-btn approve sm"
-                  onClick={() => (diff?.version_label === current.label ? setDiff(null) : void showDiff(current))}
-                  disabled={diffBusy}
-                >
-                  {diffBusy ? "…" : diff?.version_label === current.label ? "✕ Hide diff" : `What changed in ${current.label}`}
-                </button>
-              </div>
-              {diffErr && <div className="error">{diffErr}</div>}
-              {diff && <VersionDiffPanel diff={diff} onClose={() => setDiff(null)} />}
-            </div>
-          )}
-
-          {versionList.length > 1 && (
-            <div className="public-compare">
-              <div className="public-compare-head">↔ Compare versions</div>
-              <div className="rs-share-row">
-                <label>
-                  Version A (base)
-                  <select
-                    value={compareBaseId ?? versionList[versionList.length - 1]?.id ?? ""}
-                    onChange={(e) => {
-                      setCompareBaseId(Number(e.target.value));
-                      setPublicComp(null);
-                    }}
-                    className="rs-select"
-                  >
-                    {versionList.filter((v) => v.id !== current.id).map((v) => (
-                      <option key={v.id} value={v.id}>{v.label}</option>
-                    ))}
-                  </select>
-                </label>
-                <button type="button" className="rs-btn approve sm" onClick={() => void runPublicCompare()} disabled={compareBusy}>
-                  {compareBusy ? "…" : `Compare ${current.label} ↔ base`}
-                </button>
-              </div>
-              <p className="rs-brief-hint">
-                Same playhead, loop region, loudness matched in the preview — so you compare quality, not volume.
-              </p>
-              {compareErr && <div className="error">{compareErr}</div>}
-              {publicComp && (
-                <ABCompare
-                  sessionId={0}
-                  comparison={publicComp}
-                  onClose={() => setPublicComp(null)}
-                  audioUrls={{
-                    base: api.audioUrl(api.publicAudioUrl(token ?? "", publicComp.base_version_id)),
-                    compare: api.audioUrl(api.publicAudioUrl(token ?? "", publicComp.compare_version_id)),
-                  }}
-                />
-              )}
-            </div>
-          )}
-
-          {refCompare && (
-            <ReferenceCompare
-              comparison={refCompare.comp}
-              reference={refCompare.ref}
-              onClose={() => setRefCompare(null)}
-            />
-          )}
-          {refErr && <div className="error">{refErr}</div>}
-
-          {refs && refs.length > 0 && (
-            <div className="public-refs">
-              <div className="public-refs-head">
-                🎯 References — the engineer's orientation tracks
-                <span className="public-refs-note">A/B your mix against these</span>
-              </div>
-              {refs.map((r) => (
-                <div key={r.id} className="public-ref">
-                  <div className="public-ref-info">
-                    <div className="public-ref-title">
-                      {r.title}
-                      {r.artist && <span className="rs-ref-artist"> · {r.artist}</span>}
-                    </div>
-                    <div className="public-ref-meta">
-                      <span className="rs-ref-purpose">{r.purpose}</span>
-                      {r.integrated_lufs != null && <span>{r.integrated_lufs} LUFS</span>}
-                      {r.true_peak_dbtp != null && <span>{r.true_peak_dbtp} dBTP</span>}
-                      {r.sample_rate ? <span>{(r.sample_rate / 1000).toFixed(1)} kHz</span> : null}
-                    </div>
-                    {r.note && <div className="public-ref-note">“{r.note}”</div>}
-                    {r.source_type === "external_url" && r.external_url && (
-                      <a href={r.external_url} target="_blank" rel="noreferrer" className="rs-ref-link">
-                        Open reference ↗
-                      </a>
-                    )}
-                  </div>
-                  <div className="public-ref-actions">
-                    {r.source_type === "private_upload" && (
-                      <audio
-                        controls
-                        preload="none"
-                        src={api.audioUrl(api.publicReferenceAudioUrl(token ?? "", r.id))}
-                        className="public-ref-audio"
-                      />
-                    )}
-                    {r.source_type === "private_upload" && r.analysis_status === "done" && current && (
-                      <button
-                        type="button"
-                        className="rs-btn approve sm"
-                        disabled={refBusy === r.id}
-                        onClick={() => void compareReference(r)}
-                      >
-                        {refBusy === r.id ? "…" : `A/B with ${current.label}`}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <p className="ref-disclaimer">
-                Reference audio is private to this review session and is never delivered, redistributed, or included in
-                release exports.
-              </p>
-            </div>
-          )}
-
-          <div className="public-review-lower">
+<div className="public-review-lower">
             <div className="public-review-comments">
               <div className="rs-comments-head">
                 <span>Feedback</span>
@@ -834,6 +708,134 @@ export default function PublicReviewPage() {
               </div>
             )}
           </div>
+
+          {current.commit_id && (
+            <div className="public-compare">
+              <div className="public-compare-head">✦ What changed in this bounce</div>
+              <div className="rs-share-row">
+                <span className="public-review-note" style={{ flex: 1 }}>
+                  The engineer pushed this version from the DAW project — see what actually changed vs the previous one.
+                </span>
+                <button
+                  type="button"
+                  className="rs-btn approve sm"
+                  onClick={() => (diff?.version_label === current.label ? setDiff(null) : void showDiff(current))}
+                  disabled={diffBusy}
+                >
+                  {diffBusy ? "…" : diff?.version_label === current.label ? "✕ Hide diff" : `What changed in ${current.label}`}
+                </button>
+              </div>
+              {diffErr && <div className="error">{diffErr}</div>}
+              {diff && <VersionDiffPanel diff={diff} onClose={() => setDiff(null)} />}
+            </div>
+          )}
+
+          {versionList.length > 1 && (
+            <div className="public-compare">
+              <div className="public-compare-head">↔ Compare versions</div>
+              <div className="rs-share-row">
+                <label>
+                  Version A (base)
+                  <select
+                    value={compareBaseId ?? versionList[versionList.length - 1]?.id ?? ""}
+                    onChange={(e) => {
+                      setCompareBaseId(Number(e.target.value));
+                      setPublicComp(null);
+                    }}
+                    className="rs-select"
+                  >
+                    {versionList.filter((v) => v.id !== current.id).map((v) => (
+                      <option key={v.id} value={v.id}>{v.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <button type="button" className="rs-btn approve sm" onClick={() => void runPublicCompare()} disabled={compareBusy}>
+                  {compareBusy ? "…" : `Compare ${current.label} ↔ base`}
+                </button>
+              </div>
+              <p className="rs-brief-hint">
+                Same playhead, loop region, loudness matched in the preview — so you compare quality, not volume.
+              </p>
+              {compareErr && <div className="error">{compareErr}</div>}
+              {publicComp && (
+                <ABCompare
+                  sessionId={0}
+                  comparison={publicComp}
+                  onClose={() => setPublicComp(null)}
+                  audioUrls={{
+                    base: api.audioUrl(api.publicAudioUrl(token ?? "", publicComp.base_version_id)),
+                    compare: api.audioUrl(api.publicAudioUrl(token ?? "", publicComp.compare_version_id)),
+                  }}
+                />
+              )}
+            </div>
+          )}
+
+          {refCompare && (
+            <ReferenceCompare
+              comparison={refCompare.comp}
+              reference={refCompare.ref}
+              onClose={() => setRefCompare(null)}
+            />
+          )}
+          {refErr && <div className="error">{refErr}</div>}
+
+          {refs && refs.length > 0 && (
+            <div className="public-refs">
+              <div className="public-refs-head">
+                🎯 References — the engineer's orientation tracks
+                <span className="public-refs-note">A/B your mix against these</span>
+              </div>
+              {refs.map((r) => (
+                <div key={r.id} className="public-ref">
+                  <div className="public-ref-info">
+                    <div className="public-ref-title">
+                      {r.title}
+                      {r.artist && <span className="rs-ref-artist"> · {r.artist}</span>}
+                    </div>
+                    <div className="public-ref-meta">
+                      <span className="rs-ref-purpose">{r.purpose}</span>
+                      {r.integrated_lufs != null && <span>{r.integrated_lufs} LUFS</span>}
+                      {r.true_peak_dbtp != null && <span>{r.true_peak_dbtp} dBTP</span>}
+                      {r.sample_rate ? <span>{(r.sample_rate / 1000).toFixed(1)} kHz</span> : null}
+                    </div>
+                    {r.note && <div className="public-ref-note">“{r.note}”</div>}
+                    {r.source_type === "external_url" && r.external_url && (
+                      <a href={r.external_url} target="_blank" rel="noreferrer" className="rs-ref-link">
+                        Open reference ↗
+                      </a>
+                    )}
+                  </div>
+                  <div className="public-ref-actions">
+                    {r.source_type === "private_upload" && (
+                      <audio
+                        controls
+                        preload="none"
+                        src={api.audioUrl(api.publicReferenceAudioUrl(token ?? "", r.id))}
+                        className="public-ref-audio"
+                      />
+                    )}
+                    {r.source_type === "private_upload" && r.analysis_status === "done" && current && (
+                      <button
+                        type="button"
+                        className="rs-btn approve sm"
+                        disabled={refBusy === r.id}
+                        onClick={() => void compareReference(r)}
+                      >
+                        {refBusy === r.id ? "…" : `A/B with ${current.label}`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <p className="ref-disclaimer">
+                Reference audio is private to this review session and is never delivered, redistributed, or included in
+                release exports.
+              </p>
+            </div>
+          )}
+
+          
 
           {session.status === "approved" && (
             <div className="public-change">
