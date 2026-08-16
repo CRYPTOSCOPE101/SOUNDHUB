@@ -868,6 +868,22 @@ MathJax через jsDelivr CDN с ожиданием mjx-container. Прове�
    (команды) / known limits (локальный bridge, не аудировано, парсеры
    best-effort, A/B нужны ≥2 версии). Ссылка из README в разделе Releases.
 
+Финальная сверка (по ревью):
+
+- **README ↔ код построчно**: префиксы ошибок сверены с snd_cli.py — все 5
+  совпали (bad JSON body / Not found: / Master file not found: / Review mode
+  requires --audio / Unsupported project file type).
+- **Найдено и поправлено несоответствие**: README утверждал, что серверные
+  ошибки (auth) приходят как `200 ok:false`, но на деле `http_json` бросает
+  CliError → bridge отвечает `400` «HTTP 401: …». Таблица обновлена
+  (серверный статус ≥ 400 → `HTTP <code>: <body>` как 400).
+- **CI ↔ README синхронизированы**: `pytest -k bridge` покрывает все случаи
+  из README-смоука (health, fast push, bad JSON, missing master, stems w/o
+  master, повторный push).
+- **Release checklist** в CHANGELOG: bridge up → health → fast push →
+  idempotent re-push deduped → negative JSON — с пометкой, что это ручное
+  подтверждение того, что уже проверяет CI.
+
 ---
 
 ## Запуск

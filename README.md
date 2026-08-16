@@ -235,7 +235,7 @@ auto-creates when missing; `branch` defaults to `main`.
 | `400` | `{"ok": false, "error": "Master file not found: …"}` | review mode without the audio file |
 | `400` | `{"ok": false, "error": "Review mode requires --audio…"}` | stems given without a master |
 | `400` | `{"ok": false, "error": "Unsupported project file type…"}` | not a `.als`/`.cpr`/`.rpp`/`.flp` (or directory) |
-| `200` | `{"ok": false, "error": "…"}` | pipeline failed server-side (auth, missing project, …) |
+| `400` | `{"ok": false, "error": "HTTP 401: …"}` | pipeline failed server-side (auth, missing project, …) — any server status ≥ 400 is surfaced as `HTTP <code>: <body>` |
 
 All preflight failures return `400` and never create a version — the bridge
 runs the same preflight as the CLI. `GET /health` → `{"ok": true, "service": "snd-bridge"}`.
