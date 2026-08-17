@@ -1,0 +1,19 @@
+# render.yaml — SoundHub backend on Render
+# One-click: Render dashboard → New → Blueprint → select soundXlab/SoundHub.
+# Note: the Free instance type has an ephemeral filesystem — SQLite and
+# uploaded blobs reset on restart/spin-down. Upgrade to a paid instance +
+# persistent disk for durable data.
+services:
+  - type: web
+    name: soundhub-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: SOUNDHUB_FRONTEND_URL
+        value: https://soundhub-app.vercel.app
+      - key: SOUNDHUB_SECRET_KEY
+        generateValue: true
