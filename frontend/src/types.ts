@@ -49,6 +49,42 @@ export interface GhCommit {
   date: string | null;
 }
 
+export interface LicenseReceipt {
+  receipt_id: string;
+  version: string;
+  listing_id: number;
+  asset_name: string;
+  license: string;
+  buyer_can: string;
+  seller_keeps: string;
+  seller: string;
+  buyer: string;
+  price_snd: string;
+  asset_sha256: string;
+  issued_at: number;
+  signature: string;
+}
+
+export interface CatalogAsset {
+  listing_id: number;
+  name: string;
+  price_snd: string;
+  license: string;
+  uri: string;
+  bpm: [number, number] | null;
+  key: string | null;
+  genres: string[];
+  plugins: string[];
+  format: string | null;
+  contents: string;
+  description: string;
+  verified: boolean;
+  duration_seconds: number;
+  waveform: number[];
+  match_score?: number;
+  match_reasons?: string[];
+}
+
 export interface DawTrack {
   name: string;
   kind: string;

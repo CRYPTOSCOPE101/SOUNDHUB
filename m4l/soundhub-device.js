@@ -1,9 +1,9 @@
 // SoundHub for Ableton Live — Max for Live device logic
 // ---------------------------------------------------------
 // Reads the SoundHubMarket catalog directly from an EVM RPC (no backend
-// dependency), reads the current Live set BPM to suggest relevant assets,
-// lets the user buy with SND (testnet signing), and loads the purchased
-// asset into the Live project.
+// dependency), reads the current Live set context (BPM + plugin devices) to
+// suggest assets that match the set, lets the user buy with SND (testnet
+// signing), and loads the purchased asset into the Live project.
 //
 // Run: open soundhub.amxd in Max for Live. Configure addresses/messages
 // below or send them to the js object at runtime.
@@ -32,7 +32,9 @@ var config = {
   pushProject: "",    // project name for push (default: current Live set name)
   pushBranch: "main", // branch to commit the push to
   pushMessage: "",    // commit message (default: "snd push")
-  shareToken: ""      // review session share token (loads open comments into Live)
+  shareToken: "",     // review session share token (loads open comments into Live)
+  genre: "",          // optional set context overrides (setGenre / setKey)
+  key: ""
 };
 
 var MARKET_ABI = {
@@ -129,9 +131,87 @@ function truncAddr(a) {
   return a ? a.substr(0, 6) + "\u2026" + a.substr(-4) : "";
 }
 
+function expandPath(p) {
+  if (!p || p.charAt(0) !== "~") return p;
+  var home = "";
+  try {
+    home = max.getenv("HOME") || max.getenv("USERPROFILE") || "";
+  } catch (e) { /* max unavailable — keep path as-is */ }
+  if (!home) return p;
+  if (p === "~") return home;
+  if (p.indexOf("~/") === 0) return home + p.substr(1);
+  return p;
+}
+
 function fmtPrice(weiHex) {
   var n = intFromHex(weiHex);
   return (n / 1e18).toFixed(n >= 1e18 ? 2 : 6) + " SND";
+}
+
+// Unwrap a LiveAPI return value: scalars come back as single-element arrays
+// (e.g. [128]) or strings; normalize to a plain value.
+function scalar(v) {
+  if (v && typeof v === "object" && v.length !== undefined) v = v[0];
+  if (typeof v === "string") v = v.trim();
+  return v;
+}
+
+// Trim, dedupe, cap and sort device names so the query string stays bounded
+// in big sessions and identical sets always produce the same URL (stable
+// cache keys). Pure function — unit-tested.
+function normalizeDevices(devices, maxDevices) {
+  maxDevices = maxDevices || 12;
+  var seen = {};
+  var out = [];
+  (devices || []).forEach(function (x) {
+    x = String(x || "").trim();
+    if (!x || seen[x]) return;
+    seen[x] = true;
+    out.push(x);
+  });
+  return out.sort().slice(0, maxDevices);
+}
+
+// ---- set context ------------------------------------------------------------
+
+// Read the producer's current context from the Live set: BPM plus the plugin
+// names on tracks. This is what makes suggestions "match the set" — 128 BPM ·
+// you use Vital — instead of a generic catalog browse. Pure-ish; the LiveAPI
+// calls are wrapped in try/catch so tests can run without Max.
+function readSetContext() {
+  var ctx = { bpm: readBpm(), devices: [] };
+  try {
+    var tracks = new LiveAPI(this.patcher, "live_set tracks");
+    var n = Math.min(tracks.getcount(), 64);
+    for (var i = 0; i < n; i++) {
+      var t = new LiveAPI(this.patcher, "live_set tracks " + i);
+      var dcount = Math.min(t.getcount("devices"), 16);
+      for (var j = 0; j < dcount; j++) {
+        var d = new LiveAPI(this.patcher, "live_set tracks " + i + " devices " + j);
+        var name = scalar(d.get("name"));
+        if (name) ctx.devices.push(name);
+      }
+    }
+  } catch (e) {
+    /* LiveAPI unavailable (test env) — context is bpm-only */
+  }
+  ctx.devices = normalizeDevices(ctx.devices, 12);
+  return ctx;
+}
+
+// Build the /recommend query for a set context. Pure function — unit-tested
+// in m4l/test-device.js. `ctx` = { bpm, devices[], genre?, key? }.
+function buildRecommendUrl(backend, ctx, limit) {
+  var parts = [];
+  if (ctx.bpm) parts.push("bpm=" + encodeURIComponent(ctx.bpm));
+  var devs = normalizeDevices(ctx.devices, 12);
+  if (devs.length) {
+    parts.push("devices=" + encodeURIComponent(devs.join(",")));
+  }
+  if (ctx.genre) parts.push("genre=" + encodeURIComponent(ctx.genre));
+  if (ctx.key) parts.push("key=" + encodeURIComponent(ctx.key));
+  parts.push("limit=" + (limit || 3));
+  return backend + "/api/assets/recommend?" + parts.join("&");
 }
 
 // ---- catalog ---------------------------------------------------------------
@@ -216,14 +296,19 @@ function decodeStr(hex, offsetBytes) {
 
 // ---- context-aware suggestions ---------------------------------------------
 
-function suggestForBpm(bpm) {
-  if (!bpm) return;
-  out(OUT_STATUS, "Live set BPM: " + bpm + " \u2014 asking SoundHub backend\u2026");
-  // The recommendation engine lives in the SoundHub backend and reuses the
-  // DAW engine metadata (see backend/app/services/catalog.py). We send the
-  // Live context (BPM for now; key/tracks/devices next) and get ranked
-  // assets back.
-  var url = config.backend + "/api/assets/recommend?bpm=" + bpm + "&limit=3";
+function suggestForContext() {
+  // Read the live set context (BPM + plugins) and ask the backend's
+  // recommendation engine (backend/app/services/catalog.py) to rank the
+  // catalog against it — genre + BPM fit + device overlap.
+  var ctx = readSetContext();
+  if (!ctx.bpm && !ctx.devices.length) {
+    out(OUT_STATUS, "No set context yet — set a BPM or add a device, then suggest again.");
+    return;
+  }
+  var ctxLine = (ctx.bpm ? ctx.bpm + " BPM" : "no BPM") +
+      (ctx.devices.length ? " \u00b7 you use " + ctx.devices.join(", ") : "");
+  out(OUT_STATUS, "Matches your set: " + ctxLine + " \u2014 asking SoundHub\u2026");
+  var url = buildRecommendUrl(config.backend, ctx, 3);
   httpGet(url, function (ok, text) {
     if (!ok) {
       out(OUT_STATUS, "Recommendation failed: " + text);
@@ -232,13 +317,14 @@ function suggestForBpm(bpm) {
     var recs;
     try { recs = JSON.parse(text); } catch (e) { recs = []; }
     if (!recs.length) {
-      out(OUT_MATCH, "no matches for " + bpm + " BPM");
+      out(OUT_MATCH, "Matches your set: no good match yet (" + ctxLine + ")");
       return;
     }
     var top = recs[0];
-    out(OUT_MATCH, "\u25b6 " + top.name + " \u00b7 " + top.price_snd + " SND \u00b7 " +
-        top.license + " (" + top.match_reasons.join(", ") + ")");
-    out(OUT_STATUS, recs.length + " suggestion(s) for " + bpm + " BPM");
+    out(OUT_MATCH, "Matches your set: \u25b6 " + top.name + " \u00b7 " +
+        top.price_snd + " SND \u00b7 " + top.license +
+        " (" + (top.match_reasons || []).join(", ") + ")");
+    out(OUT_STATUS, recs.length + " suggestion(s) \u2014 " + ctxLine);
     pendingId = top.listing_id || 1;
   });
 }
@@ -532,10 +618,10 @@ function bang() {
 }
 
 function msg_int(v) {
-  // 0 = refresh catalog, 1 = suggest for current BPM, 2 = load suggested asset,
+  // 0 = refresh catalog, 1 = suggest for the current set, 2 = load suggested asset,
   // 3 = push current export, 4 = load open review comments into Live
   if (v === 0) loadCatalog();
-  else if (v === 1) suggestForBpm(readBpm());
+  else if (v === 1) suggestForContext();
   else if (v === 2) loadAssetById(pendingId >= 0 ? pendingId : 1, "suggested_asset");
   else if (v === 3) pushCurrentExport();
   else if (v === 4) loadReviewComments();
@@ -544,7 +630,8 @@ function msg_int(v) {
 function readBpm() {
   try {
     var s = new LiveAPI(this.patcher, "live_set");
-    return s.get("tempo");
+    var t = Number(scalar(s.get("tempo")));
+    return t > 0 ? t : 0;
   } catch (e) {
     return 0;
   }
@@ -564,3 +651,11 @@ function pushProject(v) { config.pushProject = v; postln("pushProject -> " + v);
 function pushBranch(v) { config.pushBranch = v; postln("pushBranch -> " + v); }
 function pushMessage(v) { config.pushMessage = v; postln("pushMessage -> " + v); }
 function shareToken(v) { config.shareToken = v; postln("shareToken -> " + v); }
+function setGenre(v) { config.genre = v; postln("genre -> " + v); }
+function setKey(v) { config.key = v; postln("key -> " + v); }
+
+// Node test hook — Max's js engine has no `module`, so this stays inert in
+// the device and only exposes the pure helpers to m4l/test-device.js.
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { expandPath: expandPath, scalar: scalar, normalizeDevices: normalizeDevices, readSetContext: readSetContext, buildRecommendUrl: buildRecommendUrl };
+}

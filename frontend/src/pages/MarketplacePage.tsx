@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { formatEther, parseEther } from "ethers";
+import { api } from "../api";
+import type { CatalogAsset, LicenseReceipt } from "../types";
 import {
   getDeployment,
   getFaucet,
@@ -24,6 +26,96 @@ interface Listing {
   released: boolean;
 }
 
+interface Filters {
+  q: string;
+  genre: string;
+  key: string;
+  license: string;
+  format: string;
+  plugin: string;
+  bpmMin: string;
+  bpmMax: string;
+}
+
+const EMPTY_FILTERS: Filters = {
+  q: "",
+  genre: "",
+  key: "",
+  license: "",
+  format: "",
+  plugin: "",
+  bpmMin: "",
+  bpmMax: "",
+};
+
+function LicenseReceiptCard({ receipt }: { receipt: LicenseReceipt }) {
+  const download = () => {
+    const blob = new Blob([JSON.stringify(receipt, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `soundhub-license-${receipt.receipt_id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const date = new Date(receipt.issued_at * 1000).toLocaleString();
+  return (
+    <div className="receipt">
+      <div className="row" style={{ marginBottom: 6 }}>
+        <h2 style={{ margin: 0 }}>📄 License receipt</h2>
+        <span className="spacer" />
+        <button className="btn ghost sm" onClick={download}>
+          ⤓ .json
+        </button>
+      </div>
+      <div className="receipt-title">
+        {receipt.asset_name} · {receipt.license}
+      </div>
+      <div className="receipt-scope">
+        <div>
+          <strong>You can:</strong> {receipt.buyer_can}
+        </div>
+        <div>
+          <strong>Seller keeps:</strong> {receipt.seller_keeps}
+        </div>
+      </div>
+      <dl className="receipt-facts">
+        <div><dt>receipt</dt><dd>#{receipt.receipt_id} · v{receipt.version}</dd></div>
+        <div><dt>date</dt><dd>{date}</dd></div>
+        <div><dt>price</dt><dd>{receipt.price_snd} SND</dd></div>
+        <div><dt>buyer</dt><dd className="mono">{receipt.buyer.slice(0, 8)}…{receipt.buyer.slice(-6)}</dd></div>
+        <div><dt>seller</dt><dd className="mono">{receipt.seller.slice(0, 8)}…{receipt.seller.slice(-6)}</dd></div>
+        <div><dt>asset sha256</dt><dd className="mono">{receipt.asset_sha256.slice(0, 16)}…</dd></div>
+      </dl>
+    </div>
+  );
+}
+
+function Waveform({
+  peaks,
+  progress,
+  playing,
+}: {
+  peaks: number[];
+  progress: number;
+  playing: boolean;
+}) {
+  const bars = peaks.length ? peaks : Array.from({ length: 120 }, () => 12);
+  return (
+    <div className="waveform" aria-hidden="true">
+      {bars.map((p, i) => (
+        <span
+          key={i}
+          className={`wf-bar${playing && i / bars.length <= progress ? " played" : ""}`}
+          style={{ height: `${Math.max(6, Math.round((p / 255) * 100))}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function MarketplacePage() {
   const wallet = useWallet();
   const [deployment, setDeployment] = useState<Deployment | null>(null);
@@ -33,6 +125,17 @@ export default function MarketplacePage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [receipt, setReceipt] = useState<LicenseReceipt | null>(null);
+  const [receiptErr, setReceiptErr] = useState<string | null>(null);
+
+  // catalog browsing (public API — no wallet needed)
+  const [catalog, setCatalog] = useState<CatalogAsset[]>([]);
+  const [allAssets, setAllAssets] = useState<CatalogAsset[]>([]);
+  const [filters, setFilters] = useState<Filters>({ ...EMPTY_FILTERS });
+  const [catalogErr, setCatalogErr] = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<number | null>(null);
+  const [progress, setProgress] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // seller form
   const [lName, setLName] = useState("");
@@ -95,6 +198,87 @@ export default function MarketplacePage() {
     refresh();
   }, [refresh]);
 
+  // full catalog for filter options
+  useEffect(() => {
+    api.catalog({ limit: 200 }).then(setAllAssets).catch(() => {});
+  }, []);
+
+  // stop preview audio on unmount
+  useEffect(() => {
+    return () => audioRef.current?.pause();
+  }, []);
+
+  // filtered catalog (debounced)
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      api
+        .catalog({
+          q: filters.q || undefined,
+          genre: filters.genre || undefined,
+          key: filters.key || undefined,
+          license: filters.license || undefined,
+          format: filters.format || undefined,
+          plugin: filters.plugin || undefined,
+          bpm_min: filters.bpmMin || undefined,
+          bpm_max: filters.bpmMax || undefined,
+        })
+        .then(setCatalog)
+        .catch((e) =>
+          setCatalogErr(e instanceof Error ? e.message : "Failed to load catalog")
+        );
+    }, 200);
+    return () => window.clearTimeout(t);
+  }, [filters]);
+
+  const genreOptions = useMemo(
+    () => [...new Set(allAssets.flatMap((a) => a.genres))].sort(),
+    [allAssets]
+  );
+  const keyOptions = useMemo(
+    () => [...new Set(allAssets.map((a) => a.key).filter(Boolean) as string[])].sort(),
+    [allAssets]
+  );
+  const licenseOptions = useMemo(
+    () => [...new Set(allAssets.map((a) => a.license))].sort(),
+    [allAssets]
+  );
+  const formatOptions = useMemo(
+    () => [...new Set(allAssets.map((a) => a.format).filter(Boolean) as string[])].sort(),
+    [allAssets]
+  );
+  const pluginOptions = useMemo(
+    () => [...new Set(allAssets.flatMap((a) => a.plugins))].sort(),
+    [allAssets]
+  );
+
+  const onchainFor = (id: number) => listings.find((l) => Number(l.id) === id);
+
+  const setFilter = (k: keyof Filters, v: string) =>
+    setFilters((f) => ({ ...f, [k]: v }));
+
+  const resetFilters = () => setFilters({ ...EMPTY_FILTERS });
+
+  const togglePlay = (a: CatalogAsset) => {
+    if (playingId === a.listing_id) {
+      audioRef.current?.pause();
+      setPlayingId(null);
+      setProgress(0);
+      return;
+    }
+    audioRef.current?.pause();
+    const audio = new Audio(api.previewUrl(a.listing_id));
+    audioRef.current = audio;
+    setPlayingId(a.listing_id);
+    setProgress(0);
+    audio.ontimeupdate = () =>
+      setProgress(audio.duration ? audio.currentTime / audio.duration : 0);
+    audio.onended = () => {
+      setPlayingId(null);
+      setProgress(0);
+    };
+    audio.play().catch(() => setPlayingId(null));
+  };
+
   const claimFaucet = async () => {
     setErr(null);
     setMsg(null);
@@ -128,6 +312,18 @@ export default function MarketplacePage() {
       await (await market.buy(l.id)).wait();
       setMsg(`Bought "${l.name}" — SND is in escrow. Confirm receipt to pay the seller.`);
       await refresh();
+      // ship the signed license receipt
+      try {
+        setReceiptErr(null);
+        setReceipt(
+          await api.issueReceipt(Number(l.id), wallet.address!, l.seller)
+        );
+      } catch (e3) {
+        setReceipt(null);
+        setReceiptErr(
+          e3 instanceof Error ? e3.message : "License receipt unavailable"
+        );
+      }
     } catch (e2) {
       setErr(e2 instanceof Error ? e2.message : "Buy failed");
     } finally {
@@ -180,24 +376,166 @@ export default function MarketplacePage() {
   };
 
   const deployed = deployment && isDeployed(deployment);
+  const filteredCount = catalog.length;
 
   return (
     <div>
       <h1>🛒 Marketplace</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        Don't generate. Buy. — finished sounds, verified, paid for with SND.
+        Find it. Preview it. Drop it into your track. — finished sounds with clear
+        commercial rights, paid for with SND.
       </p>
 
+      {/* ---------- Catalog with filters + previews (public) ---------- */}
+      <div className="card filter-bar">
+        <input
+          type="text"
+          placeholder="What are you making? Search presets, loops, packs…"
+          value={filters.q}
+          onChange={(e) => setFilter("q", e.target.value)}
+        />
+        <div className="row" style={{ marginTop: 10 }}>
+          <select value={filters.genre} onChange={(e) => setFilter("genre", e.target.value)}>
+            <option value="">genre</option>
+            {genreOptions.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+          <select value={filters.key} onChange={(e) => setFilter("key", e.target.value)}>
+            <option value="">key</option>
+            {keyOptions.map((k) => (
+              <option key={k} value={k}>{k}</option>
+            ))}
+          </select>
+          <select value={filters.license} onChange={(e) => setFilter("license", e.target.value)}>
+            <option value="">license</option>
+            {licenseOptions.map((l) => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+          <select value={filters.format} onChange={(e) => setFilter("format", e.target.value)}>
+            <option value="">format</option>
+            {formatOptions.map((f) => (
+              <option key={f} value={f}>{f.toUpperCase()}</option>
+            ))}
+          </select>
+          <select value={filters.plugin} onChange={(e) => setFilter("plugin", e.target.value)}>
+            <option value="">plugin</option>
+            {pluginOptions.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+          <input
+            type="number"
+            placeholder="BPM min"
+            value={filters.bpmMin}
+            onChange={(e) => setFilter("bpmMin", e.target.value)}
+            style={{ width: 90 }}
+          />
+          <input
+            type="number"
+            placeholder="BPM max"
+            value={filters.bpmMax}
+            onChange={(e) => setFilter("bpmMax", e.target.value)}
+            style={{ width: 90 }}
+          />
+          <button className="btn ghost sm" onClick={resetFilters}>
+            reset
+          </button>
+        </div>
+      </div>
+
+      {catalogErr && <div className="error" style={{ margin: "12px 0" }}>{catalogErr}</div>}
+
+      <p className="muted" style={{ margin: "14px 0 10px" }}>
+        {filteredCount} {filteredCount === 1 ? "asset" : "assets"}
+      </p>
+
+      <div className="grid asset-grid">
+        {catalog.map((a) => {
+          const onchain = onchainFor(a.listing_id);
+          const sold = onchain ? onchain.escrowed > 0n : false;
+          const isMyListing =
+            onchain && wallet.address?.toLowerCase() === onchain.seller.toLowerCase();
+          const canBuy = Boolean(onchain && onchain.active && !sold && !isMyListing);
+          return (
+            <div className="card asset-card" key={a.uri || a.listing_id}>
+              <div className="row" style={{ alignItems: "flex-start" }}>
+                <strong className="asset-name">{a.name}</strong>
+                <span className="spacer" />
+                {a.verified && <span className="chip added">verified</span>}
+              </div>
+              <p className="muted asset-desc">{a.description}</p>
+              <div className="row" style={{ gap: 6 }}>
+                {a.format && <span className="chip">{a.format.toUpperCase()}</span>}
+                <span className="chip">{a.license}</span>
+                {a.bpm && (
+                  <span className="chip">{a.bpm[0]}–{a.bpm[1]} BPM</span>
+                )}
+                {a.key && <span className="chip">{a.key}</span>}
+              </div>
+              <Waveform
+                peaks={a.waveform}
+                progress={playingId === a.listing_id ? progress : 0}
+                playing={playingId === a.listing_id}
+              />
+              <div className="row asset-foot">
+                <button
+                  className="btn ghost sm"
+                  onClick={() => togglePlay(a)}
+                  disabled={!a.waveform.length}
+                >
+                  {playingId === a.listing_id ? "❚❚ pause" : "▶ preview"}
+                </button>
+                <span className="spacer" />
+                {a.duration_seconds > 0 && (
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    {a.duration_seconds}s
+                  </span>
+                )}
+                <strong>{a.price_snd} SND</strong>
+                {canBuy ? (
+                  <button
+                    className="btn sm"
+                    disabled={busy || !wallet.address}
+                    title={wallet.address ? "" : "connect wallet to buy"}
+                    onClick={() => onchain && buy(onchain)}
+                  >
+                    Buy
+                  </button>
+                ) : onchain ? (
+                  <span className="chip">{sold ? "sold" : isMyListing ? "yours" : "off market"}</span>
+                ) : (
+                  <span className="chip">demo</span>
+                )}
+              </div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+                {a.plugins.length > 0
+                  ? `needs: ${a.plugins.join(", ")}`
+                  : "works without third-party plugins"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {catalog.length === 0 && !catalogErr && (
+        <p className="muted">No assets match — try wider filters.</p>
+      )}
+
+      {/* ---------- On-chain sections (wallet required) ---------- */}
       {!deployed ? (
-        <p className="muted">Contracts not deployed yet.</p>
+        <p className="muted" style={{ marginTop: 24 }}>
+          Contracts not deployed yet — catalog preview is still available above.
+        </p>
       ) : (
         <>
-          <div className="split">
+          <div className="split" style={{ marginTop: 28 }}>
             <div>
-              {/* Listings */}
+              {/* Listings / escrow */}
               <div className="card" style={{ marginBottom: 20 }}>
                 <div className="row" style={{ marginBottom: 10 }}>
-                  <h2 style={{ margin: 0 }}>Listings</h2>
+                  <h2 style={{ margin: 0 }}>Listings &amp; escrow</h2>
                   <span className="spacer" />
                   <button className="btn ghost" onClick={refresh} disabled={busy}>
                     ↻ refresh
@@ -321,6 +659,12 @@ export default function MarketplacePage() {
                 </div>
                 {msg && <div className="success" style={{ marginTop: 10 }}>{msg}</div>}
                 {err && <div className="error" style={{ marginTop: 10 }}>{err}</div>}
+                {receiptErr && (
+                  <div className="error" style={{ marginTop: 10 }}>
+                    {receiptErr}
+                  </div>
+                )}
+                {receipt && <LicenseReceiptCard receipt={receipt} />}
                 <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>
                   Testnet faucet: 100 SND per wallet per day — enough to try
                   buying a preset.

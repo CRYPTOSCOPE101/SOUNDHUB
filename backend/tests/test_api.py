@@ -201,6 +201,97 @@ def test_asset_catalog_and_recommend(client):
     assert "Dark Bass Pack (Techno)" in names
 
 
+def test_asset_catalog_filters_and_preview(client):
+    """Server-side catalog filters + the public preview stream."""
+    # catalog entries carry preview metadata
+    r = client.get("/api/assets")
+    assert r.status_code == 200
+    one = next(a for a in r.json() if a["listing_id"] == 1)
+    assert one["duration_seconds"] > 0
+    assert len(one["waveform"]) > 0
+    assert all(0 <= p <= 255 for p in one["waveform"])
+
+    # bpm range filter overlaps asset ranges
+    r = client.get("/api/assets", params={"bpm_min": 126, "bpm_max": 134})
+    names = {a["name"] for a in r.json()}
+    assert "Neon Dreams — Serum Preset Pack" in names  # 124–132
+    assert "Dark Bass Pack (Techno)" in names  # 126–138
+    assert "Cinematic Impacts Vol.1" not in names  # no bpm
+
+    # hard license + format filters
+    r = client.get("/api/assets", params={"license": "sync"})
+    assert r.json() and all(a["license"] == "Sync" for a in r.json())
+    r = client.get("/api/assets", params={"format": "wav"})
+    assert r.json() and all(a["format"] == "wav" for a in r.json())
+
+    # key / genre / plugin / text filters
+    r = client.get("/api/assets", params={"key": "a minor"})
+    assert r.json() and all(a["key"] == "A minor" for a in r.json())
+    r = client.get("/api/assets", params={"genre": "cinematic"})
+    assert [a["name"] for a in r.json()] == ["Cinematic Impacts Vol.1"]
+    r = client.get("/api/assets", params={"plugin": "serum"})
+    assert r.json() and all("Serum" in a["plugins"] for a in r.json())
+    # text search matches name/description/contents (e.g. "chords")
+    r = client.get("/api/assets", params={"q": "chords"})
+    assert r.json()
+    assert all("chord" in a["name"].lower() or "chord" in a["description"].lower() for a in r.json())
+
+    # public preview: full bytes, correct mime + ranges
+    r = client.get("/api/assets/1/preview")
+    assert r.status_code == 200
+    assert r.headers["Content-Type"] == "audio/wav"
+    assert r.headers["Accept-Ranges"] == "bytes"
+    assert r.content[:4] == b"RIFF"
+
+    full = client.get("/api/assets/1/preview")
+    r = client.get("/api/assets/1/preview", headers={"Range": "bytes=0-99"})
+    assert r.status_code == 206
+    assert len(r.content) == 100
+    assert r.headers["Content-Range"] == f"bytes 0-99/{len(full.content)}"
+
+    # out-of-range request -> 416
+    r = client.get("/api/assets/1/preview", headers={"Range": "bytes=999999-"})
+    assert r.status_code == 416
+
+    # unknown listing -> 404
+    r = client.get("/api/assets/999/preview")
+    assert r.status_code == 404
+
+
+def test_license_receipt(client):
+    """A purchase ships a signed, machine-checkable license receipt."""
+    from app import config as cfg
+    from app.services import catalog, licenses
+
+    buyer = "0x" + "ab" * 20
+    seller = "0x" + "cd" * 20
+    r = client.post(
+        "/api/assets/1/receipt", params={"buyer": buyer, "seller": seller}
+    )
+    assert r.status_code == 200
+    rec = r.json()
+    assert rec["version"] == "1.0"
+    assert rec["listing_id"] == 1
+    assert rec["asset_name"] == "Neon Dreams — Serum Preset Pack"
+    assert rec["license"] == "Commercial"
+    assert rec["buyer_can"] and rec["seller_keeps"]
+    assert rec["buyer"] == buyer.lower() or rec["buyer"] == buyer
+    assert rec["seller"] == seller
+    assert rec["asset_sha256"] == catalog.find_asset(1).sha256
+    assert len(rec["signature"]) == 64
+
+    # signature verifies, and tampering breaks it
+    assert licenses.verify_license_receipt(cfg.SECRET_KEY, rec) is True
+    tampered = {**rec, "license": "Exclusive"}
+    assert licenses.verify_license_receipt(cfg.SECRET_KEY, tampered) is False
+
+    # unknown listing -> 404
+    r = client.post(
+        "/api/assets/999/receipt", params={"buyer": "0x" + "ab" * 20}
+    )
+    assert r.status_code == 404
+
+
 def test_asset_download_token(client):
     from app import config
     from app.services import catalog

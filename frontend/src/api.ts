@@ -27,6 +27,8 @@ import type {
   VersionDiff,
   GhBranch,
   GhCommit,
+  CatalogAsset,
+  LicenseReceipt,
   Project,
   ReviewApproval,
   ReviewComment,
@@ -670,6 +672,20 @@ export const api = {
     }
     return res.text();
   },
+  // Marketplace catalog (public — preview before purchase)
+  catalog: (params: Record<string, string | number | undefined> = {}) => {
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") q.set(k, String(v));
+    });
+    const qs = q.toString();
+    return request<CatalogAsset[]>(`/api/assets${qs ? `?${qs}` : ""}`);
+  },
+  previewUrl: (listingId: number) => `/api/assets/${listingId}/preview`,
+  issueReceipt: (listingId: number, buyer: string, seller: string) =>
+    request<LicenseReceipt>(`/api/assets/${listingId}/receipt?buyer=${encodeURIComponent(buyer)}&seller=${encodeURIComponent(seller)}`, {
+      method: "POST",
+    }),
   // GitHub API (public, unauthenticated) — the SoundHub code repo itself
   ghBranches: () =>
     fetch("https://api.github.com/repos/soundXlab/SoundHub/branches").then((r) =>

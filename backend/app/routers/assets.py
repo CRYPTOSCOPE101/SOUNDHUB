@@ -17,12 +17,13 @@ the backend DB / IPFS.
 """
 
 import base64
+import re
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response
 
 from ..config import SECRET_KEY
-from ..services import catalog
+from ..services import catalog, licenses
 
 router = APIRouter(prefix="/api/assets", tags=["assets"])
 
@@ -43,8 +44,33 @@ def _mime_for(filename: str) -> str:
 
 
 @router.get("")
-def list_catalog(limit: int = Query(default=50, ge=1, le=200)) -> list[dict]:
-    return catalog.get_catalog()[:limit]
+def list_catalog(
+    limit: int = Query(default=50, ge=1, le=200),
+    q: str | None = Query(default=None, max_length=200),
+    genre: str | None = Query(default=None, max_length=256),
+    bpm_min: float | None = Query(default=None, ge=20, le=300),
+    bpm_max: float | None = Query(default=None, ge=20, le=300),
+    key: str | None = Query(default=None, max_length=64),
+    license: str | None = Query(default=None, max_length=128),
+    format: str | None = Query(default=None, max_length=128),
+    plugin: str | None = Query(default=None, max_length=128),
+) -> list[dict]:
+    """Filterable catalog for the web UI (and the M4L device).
+
+    `license` / `format` accept comma-separated lists; bpm_min/bpm_max match
+    assets whose BPM range overlaps; key/genre/plugin/q narrow further.
+    """
+    return catalog.search_catalog(
+        q=q,
+        genre=genre,
+        bpm_min=bpm_min,
+        bpm_max=bpm_max,
+        key=key,
+        license=license,
+        format=format,
+        plugin=plugin,
+        limit=limit,
+    )
 
 
 @router.get("/recommend")
@@ -70,6 +96,87 @@ def recommend_assets(
         license=license,
         format=format,
         limit=limit,
+    )
+
+
+@router.post("/{listing_id}/receipt")
+def issue_license_receipt(
+    listing_id: int,
+    buyer: str = Query(min_length=20, max_length=64),
+    seller: str = Query(default="", max_length=64),
+) -> dict:
+    """Issue a signed license receipt for a purchase.
+
+    States what the buyer may do with the audio (license scope) alongside the
+    order facts: asset hash, seller, buyer, price, date, receipt version.
+
+    Prototype note: buyer/seller are reported by the client. Production must
+    verify the purchase on-chain (buyer == contract.buyer, escrowed > 0)
+    before issuing — same gate as the download token.
+    """
+    asset = catalog.find_asset(listing_id)
+    if asset is None or asset.payload is None:
+        raise HTTPException(404, "Asset not found")
+    return licenses.make_license_receipt(
+        SECRET_KEY,
+        listing_id=listing_id,
+        asset_name=asset.name,
+        license=asset.license,
+        seller=seller or "soundhub://demo-seller",
+        buyer=buyer,
+        price_snd=asset.price_snd,
+        asset_hash=asset.sha256,
+    )
+
+
+@router.get("/{listing_id}/preview")
+def preview_asset(listing_id: int, request: Request) -> Response:
+    """Stream the asset payload inline for the browser preview player.
+
+    Public (no token) — the whole point of a preview is listening before
+    buying. Supports single-range requests so the <audio> element can seek.
+    """
+    asset = catalog.find_asset(listing_id)
+    if asset is None or asset.payload is None:
+        raise HTTPException(404, "Asset not found or no preview available")
+    data = asset.payload
+    mime = _mime_for(asset.filename)
+    inline = f'inline; filename="{asset.filename}"'
+
+    range_header = request.headers.get("range")
+    if range_header:
+        m = re.match(r"bytes=(\d*)-(\d*)", range_header)
+        if m:
+            start_s, end_s = m.groups()
+            try:
+                start = int(start_s) if start_s else 0
+                end = int(end_s) if end_s else len(data) - 1
+                if start < 0 or end < start or start >= len(data):
+                    raise ValueError
+                end = min(end, len(data) - 1)
+            except ValueError:
+                return Response(
+                    status_code=416,
+                    headers={"Content-Range": f"bytes */{len(data)}"},
+                )
+            return Response(
+                content=data[start : end + 1],
+                status_code=206,
+                media_type=mime,
+                headers={
+                    "Content-Range": f"bytes {start}-{end}/{len(data)}",
+                    "Accept-Ranges": "bytes",
+                    "Content-Disposition": inline,
+                },
+            )
+
+    return Response(
+        content=data,
+        media_type=mime,
+        headers={
+            "Accept-Ranges": "bytes",
+            "Content-Disposition": inline,
+        },
     )
 
 

@@ -904,6 +904,119 @@ pre.diff-raw code {
   font-size: 13px;
 }
 
+/* ---------------- marketplace catalog ---------------- */
+
+.filter-bar select,
+.filter-bar input[type="number"] {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+
+.asset-grid {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.asset-card {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.asset-name {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.asset-desc {
+  margin: 6px 0 10px;
+  font-size: 12.5px;
+  min-height: 34px;
+}
+
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 44px;
+  margin: 10px 0 8px;
+  padding: 0 1px;
+}
+
+.wf-bar {
+  flex: 1;
+  min-width: 2px;
+  background: var(--bg4);
+  border-radius: 2px;
+  transition: background 0.1s;
+}
+
+.wf-bar.played {
+  background: var(--accent);
+}
+
+.asset-foot {
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+/* license receipt */
+.receipt {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--bg);
+  font-size: 12px;
+}
+
+.receipt-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.receipt-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.receipt-scope strong {
+  color: var(--green);
+}
+
+.receipt-facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.receipt-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.receipt-facts dt {
+  color: var(--muted);
+}
+
+.receipt-facts dd {
+  margin: 0;
+  text-align: right;
+  word-break: break-all;
+}
+
+.receipt-facts .mono {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 11px;
+}
+
 /* GitHub repo page (the SoundHub code repo itself) */
 .gh-stat {
   display: inline-flex;

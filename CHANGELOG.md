@@ -134,6 +134,14 @@ so the checklist is a manual confirmation of what CI already asserts.
   duplicated the base (variable-driven) rules and hardcoded dark colors that
   fought the CSS variables; `.btn` now follows the theme instead of being
   near-black (invisible on dark mode).
+- **Marketplace previews + license receipts** (merged from the pre-move
+  worktree) — the catalog endpoint gained server-side filters (q / genre /
+  bpm range / key / license / format / plugin) and every asset carries
+  `duration_seconds` + a downsampled `waveform`; the marketplace page has an
+  inline audio preview player and a catalog section with filters; purchases
+  now issue a **signed license receipt** (`POST /api/assets/{id}/receipt`,
+  `services/licenses.py`, verifiable client-side). The M4L device also
+  gained genre/key set-context suggestions + a Node test hook.
 
 ### How to test
 

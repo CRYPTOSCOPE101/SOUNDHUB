@@ -25,8 +25,9 @@ marketplace into Ableton Live:
 
 - reads the `SoundHubMarket` catalog **directly from the chain** (public
   Base Sepolia RPC, no backend needed);
-- reads the **current Live set BPM** and suggests relevant assets
-  (context-aware, the first step toward a full recommendation engine);
+- reads the **current Live set context** — BPM plus the plugin devices on
+  your tracks — and suggests assets that **match your set** ("128 BPM · you
+  use Vital" instead of a generic catalog browse);
 - starts a **purchase** with SND (testnet); the escrow contract already
   handles payment + dispute window;
 - **loads** the purchased asset into the project (drag-in; full
@@ -62,6 +63,13 @@ rpc   https://sepolia.base.org      # Base Sepolia public RPC
 market 0x396d6ad9D5EA19eE56318624b05bC6EEEa2d1F5C
 token  0x37a6B3aD766ffb98673290A634490C8bF952DB2F
 key    <your-testnet-private-key>   # testnet only — never a mainnet key
+
+Optional set-context overrides (Live doesn't expose key/genre, so set them
+once and they join the BPM/devices context):
+
+```
+setGenre techno
+setKey   A minor
 ```
 
 Current on-chain demo listing: **"Neon Dreams — Serum Preset Pack", 50 SND,
@@ -76,7 +84,7 @@ entries (not yet on-chain) so recommendations are meaningful.
   (`/api/assets/recommend`) for ranked matches — genre + BPM fit + device
   overlap, scored from DAW-verified asset metadata (see
   `backend/app/services/catalog.py`);
-- **load** — auto-imports the suggested asset into the Live **User Library**: fetches it through the backend's short-lived signed-token endpoint (`/api/assets/{id}/token` → `/download64`), decodes the base64 payload and writes it to `User Library/SoundHub/` with the Max `file` object, then refreshes Live's file browser (`live.browser`);
+- **load** — auto-imports the suggested asset into the Live **User Library**: fetches it through the backend's short-lived signed-token endpoint (`/api/assets/{id}/token` → `/download64`), decodes the base64 payload and writes it to `User Library/SoundHub/` with the Max `file` object,  then refreshes Live's file browser (`live.browser`);
 - **push** — pushes the **current Live set** (`.als`) to SoundHub as one
   versioned commit. The device runs a **native sidecar** (`node.script`,
   Max 8.5+) that reads the `.als` from disk and posts a real multipart body
@@ -276,9 +284,18 @@ If step 4 fails, re-run with `--json` for the machine-readable error:
 - **Token gating** — the download token endpoint is public for the
   prototype; production checks the on-chain purchase (buyer == wallet,
   escrowed > 0) before issuing.
-- **Recommendation features** — the engine scores BPM/genre/devices today;
-  key is parsed but the M4L device sends BPM only for now (key/tracks/devices
-  from Live API come next).
+- **Key/genre from Live** — the device sends BPM + plugin devices from the
+  live set and adds key/genre only if set via `setKey`/`setGenre` messages;
+  Live has no native set-key API, so auto-detection is out of scope.
+
+## Tests
+
+The pure helpers (path expansion, set-context reading, recommend-URL
+building) are unit-tested without Max:
+
+```
+node m4l/test-device.js
+```
 
 ## Security
 

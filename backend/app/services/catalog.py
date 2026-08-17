@@ -58,7 +58,15 @@ class CatalogAsset:
     payload: bytes | None = None
     filename: str = ""
 
+    @property
+    def sha256(self) -> str:
+        """Content hash of the payload — the asset fingerprint on the receipt."""
+        if self.payload is None:
+            return ""
+        return hashlib.sha256(self.payload).hexdigest()
+
     def to_dict(self) -> dict:
+        duration, waveform = _wav_info(self.payload) if self.payload else (0.0, [])
         return {
             "listing_id": self.listing_id,
             "name": self.name,
@@ -73,7 +81,54 @@ class CatalogAsset:
             "contents": self.contents,
             "description": self.description,
             "verified": self.verified,
+            "duration_seconds": duration,
+            "waveform": waveform,
+            "sha256": self.sha256 or None,
         }
+
+
+def _wav_info(payload: bytes) -> tuple[float, list[int]]:
+    """Parse a small 16-bit PCM WAV: (duration_seconds, waveform peaks).
+
+    Returns ~120 peak values (0–255) downsampled from the audio, enough for a
+    lightweight preview waveform in the UI and the M4L device.
+    """
+    if not payload.startswith(b"RIFF") or len(payload) < 44:
+        return 0.0, []
+    rate = 22050
+    channels = 1
+    data = b""
+    pos = 12
+    while pos + 8 <= len(payload):
+        cid = payload[pos : pos + 4]
+        size = int.from_bytes(payload[pos + 4 : pos + 8], "little")
+        body = payload[pos + 8 : pos + 8 + size]
+        if cid == b"fmt " and len(body) >= 8:
+            channels = int.from_bytes(body[2:4], "little") or 1
+            rate = int.from_bytes(body[4:8], "little") or rate
+        elif cid == b"data":
+            data = body
+        pos += 8 + size + (size & 1)  # chunks are word-aligned
+    if not data:
+        return 0.0, []
+    n_samples = len(data) // 2
+    if n_samples == 0:
+        return 0.0, []
+    duration = round(n_samples / rate, 2)
+    buckets = 120
+    step = max(1, n_samples // buckets)
+    peaks: list[int] = []
+    for i in range(0, n_samples, step):
+        chunk = data[i * 2 : (i + step) * 2]
+        vals = [
+            int.from_bytes(chunk[j : j + 2], "little", signed=True)
+            for j in range(0, len(chunk) - 1, 2)
+        ]
+        if not vals:
+            continue
+        peak = max(abs(v) for v in vals)
+        peaks.append(min(255, int(peak * 255 / 32768)))
+    return duration, peaks
 
 
 def _wav(name: str, seconds: float = 0.5, freq: int = 220) -> bytes:
@@ -163,6 +218,59 @@ CATALOG: list[CatalogAsset] = [
 
 def get_catalog() -> list[dict]:
     return [a.to_dict() for a in CATALOG]
+
+
+def search_catalog(
+    q: str | None = None,
+    genre: str | None = None,
+    bpm_min: float | None = None,
+    bpm_max: float | None = None,
+    key: str | None = None,
+    license: str | None = None,
+    format: str | None = None,
+    plugin: str | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    """Filter the catalog for the web UI (server-side preview filtering).
+
+    `license` / `format` accept comma-separated lists; bpm_min/bpm_max match
+    assets whose BPM range overlaps; key/genre/plugin/q are exact-ish matches.
+    """
+    assets = list(CATALOG)
+    allowed_licenses = {l.strip().lower() for l in (license or "").split(",") if l.strip()}
+    allowed_formats = {f.strip().lower() for f in (format or "").split(",") if f.strip()}
+
+    def passes(a: CatalogAsset) -> bool:
+        if allowed_licenses and a.license.lower() not in allowed_licenses:
+            return False
+        if allowed_formats and (a.format or "").lower() not in allowed_formats:
+            return False
+        if a.bpm:
+            lo, hi = a.bpm
+            if bpm_min is not None and hi < bpm_min:
+                return False
+            if bpm_max is not None and lo > bpm_max:
+                return False
+        elif bpm_min is not None or bpm_max is not None:
+            return False
+        if key and not (a.key and _norm_key(a.key) == _norm_key(key)):
+            return False
+        if genre and _genre_hits(a.genres, [g.strip() for g in genre.split(",") if g.strip()]) <= 0:
+            return False
+        if plugin:
+            pl = plugin.strip().lower()
+            if not any(pl in p.lower() for p in a.plugins):
+                return False
+        if q:
+            ql = q.strip().lower()
+            haystack = " ".join(
+                [a.name, a.description, a.contents, a.key or "", " ".join(a.genres)]
+            ).lower()
+            if ql not in haystack:
+                return False
+        return True
+
+    return [a.to_dict() for a in assets if passes(a)][:limit]
 
 
 def find_asset(listing_id: int) -> CatalogAsset | None:
