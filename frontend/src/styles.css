@@ -5320,11 +5320,6 @@ pre.diff-raw code {
   grid-row: span 2;
 }
 
-.bento-icon {
-  font-size: 26px;
-  line-height: 1;
-}
-
 .bento-title {
   font-size: 19px;
   font-weight: 800;
@@ -5651,10 +5646,6 @@ pre.diff-raw code {
   background: var(--text);
   border-color: var(--text);
   color: var(--bg);
-}
-
-.cr-tab-icon {
-  font-size: 14px;
 }
 
 .cr-tabpanel {
@@ -6311,12 +6302,6 @@ pre.diff-raw code {
   border-bottom: 1px solid var(--border);
 }
 
-.bc-pillar-icon {
-  font-size: 22px;
-  display: block;
-  margin-bottom: 8px;
-}
-
 .bc-pillar h3 {
   margin: 0 0 6px;
   font-size: 17px;
@@ -6339,14 +6324,8 @@ pre.diff-raw code {
 }
 
 .bc-benefit {
-  display: flex;
-  gap: 14px;
   padding: 16px 4px;
   border-bottom: 1px solid var(--border);
-}
-
-.bc-benefit-icon {
-  font-size: 20px;
 }
 
 .bc-benefit h3 {

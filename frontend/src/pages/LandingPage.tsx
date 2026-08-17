@@ -106,32 +106,28 @@ const ENGINE_TABS = [
 
 const DAW_ASSETS = [
   {
-    icon: "🎚",
     title: "Tracks & plugins with settings",
     text: "Project files are parsed into structure: tracks, instruments, plugins and the actual state of each instance — REAPER PARAM lines, Ableton preset refs.",
   },
   {
-    icon: "🧱",
     title: "Stems by logical name",
     text: "NeonBass_final_03.wav and bass_v13.wav both count as bass — stem-level A/B is matched by what the part is, not what it's called.",
   },
   {
-    icon: "🎛",
     title: "Samples & presets",
     text: "The samples a project references and the presets it uses are listed in the tree — you can see what a version is made of.",
   },
   {
-    icon: "📦",
     title: "One-command push",
     text: "`snd push` sends a whole project folder as one versioned commit with a SOUNDHUB-MANIFEST.json describing the structure.",
   },
 ];
 
 const MARKET_BENEFITS = [
-  { icon: "🎛", title: "Buy without leaving the session", text: "A revision needs a tighter bass? The panel suggests verified, compatible patches — buy and load in place." },
-  { icon: "🔒", title: "Escrow protected", text: "Payments sit in escrow until you confirm receipt. Dispute window and refunds are part of the purchase." },
-  { icon: "✅", title: "Verified before you pay", text: "DAW-parsed metadata: BPM, key, plugins, samples. What you're buying is answered before checkout." },
-  { icon: "📜", title: "License bound on-chain", text: "Personal / Commercial / Sync / Exclusive tiers attached to the purchase. Rights stay legible end to end." },
+  { title: "Buy without leaving the session", text: "A revision needs a tighter bass? The panel suggests verified, compatible patches — buy and load in place." },
+  { title: "Escrow protected", text: "Payments sit in escrow until you confirm receipt. Dispute window and refunds are part of the purchase." },
+  { title: "Verified before you pay", text: "DAW-parsed metadata: BPM, key, plugins, samples. What you're buying is answered before checkout." },
+  { title: "License bound on-chain", text: "Personal / Commercial / Sync / Exclusive tiers attached to the purchase. Rights stay legible end to end." },
 ];
 
 const INTEGRATIONS = [
@@ -147,7 +143,6 @@ const FEATURE_TABS = [
   {
     id: "review",
     label: "Review",
-    icon: "💬",
     title: "Comments at the exact moment",
     text: "Reviewers drop notes on the timeline — “01:24 — bass masks the vocal”. Reply, resolve, loop the region. No account needed.",
     points: ["Timestamped comments & replies", "Consolidated revision rounds", "Voice notes from the phone", "Status: In review → Needs changes → Approved"],
@@ -155,7 +150,6 @@ const FEATURE_TABS = [
   {
     id: "ab",
     label: "A/B",
-    icon: "🔀",
     title: "Gapless, level-matched A/B",
     text: "Compare v12 and v13 with one playhead, loudness matched — mix or individual stems. Hear the fix, don't just read it.",
     points: ["Same playhead, loop regions", "Short-term LUFS compensation", "Stem-level compare: drums, bass, vocal, synths", "Reference tracks (private, non-deliverable)"],
@@ -163,7 +157,6 @@ const FEATURE_TABS = [
   {
     id: "diff",
     label: "Smart diff",
-    icon: "📐",
     title: "What actually changed",
     text: "Between versions you see the structure, not “binary file changed”: tempo, tracks, plugins with their settings, samples.",
     points: ["Tempo / signature changes", "Added or removed tracks & plugins", "Plugin parameter diffs (REAPER PARAM, Ableton presets)", "SHA-256 ledger of every decision"],
@@ -399,7 +392,7 @@ function FeatureTabs() {
             className={`cr-tab ${t.id === tab ? "active" : ""}`}
             onClick={() => setTab(t.id)}
           >
-            <span className="cr-tab-icon">{t.icon}</span> {t.label}
+            {t.label}
           </button>
         ))}
       </div>
@@ -709,37 +702,31 @@ function WordSphere() {
 const BENTO = [
   {
     size: "wide",
-    icon: "🔀",
     title: "Smart diff, not \"binary changed\"",
     text: "Between v12 and v13 SoundHub tells you exactly what moved: BPM 128 → 132, + Pad track, + Vital plugin. A revision is a story, never a mystery.",
   },
   {
     size: "tall",
-    icon: "🪙",
     title: "Decision ledger",
     text: "Every request, approval and delivery is hashed into a tamper-evident chain — proof without trusting anyone.",
   },
   {
     size: "std",
-    icon: "🧱",
     title: "Content-addressed",
     text: "Same file, one blob, any number of commits. Re-pushes deduplicate — a snapshot costs almost nothing.",
   },
   {
     size: "std",
-    icon: "🎛",
     title: "Parsed, not guessed",
     text: "Tracks, plugins with settings, samples and loudness — extracted from .als, .cpr, .rpp and .flp.",
   },
   {
     size: "wide",
-    icon: "✅",
     title: "Review & approval loop",
     text: "Timestamped notes, structured rounds and role-gated sign-offs — the loop that actually ships a track.",
   },
   {
     size: "std",
-    icon: "🎚",
     title: "Stems by logical name",
     text: "NeonBass_final_03.wav and bass_v13.wav both count as bass — A/B is matched by what the part is.",
   },
@@ -756,7 +743,6 @@ function BentoGrid() {
     <div className="bento">
       {BENTO.map((b) => (
         <div key={b.title} className={`bento-tile bento-${b.size}`} onMouseMove={spot}>
-          <span className="bento-icon">{b.icon}</span>
           <h3 className="bento-title">{b.title}</h3>
           <p className="bento-text">{b.text}</p>
         </div>
@@ -800,7 +786,7 @@ export default function LandingPage() {
       setWaitlist("Enter a valid email to join the waitlist.");
       return;
     }
-    setWaitlist(`You're on the list 🎛 We'll ping ${email} when the beta opens.`);
+    setWaitlist(`You're on the list — we'll ping ${email} when the beta opens.`);
     setEmail("");
   };
 
@@ -1049,7 +1035,6 @@ export default function LandingPage() {
         <div className="bento">
           {DAW_ASSETS.map((p) => (
             <div key={p.title} className="bento-tile">
-              <span className="bento-icon">{p.icon}</span>
               <h3 className="bento-title">{p.title}</h3>
               <p className="bento-text">{p.text}</p>
             </div>
@@ -1068,7 +1053,6 @@ export default function LandingPage() {
         <div className="bc-benefits">
           {MARKET_BENEFITS.map((t) => (
             <div key={t.title} className="bc-benefit">
-              <span className="bc-benefit-icon">{t.icon}</span>
               <div>
                 <h3>{t.title}</h3>
                 <p>{t.text}</p>
