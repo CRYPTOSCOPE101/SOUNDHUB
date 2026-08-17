@@ -19,3 +19,4 @@ CONVERSATION_LOG.md
 # local screenshot tooling (puppeteer cache + extracted browser libs)
 .puppeteer-cache/
 .local-libs/
+.vercel
