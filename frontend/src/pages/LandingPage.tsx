@@ -101,6 +101,7 @@ const ENGINE_TABS = [
     title: "DAW parsing engine",
     text: "Reads Ableton, REAPER, Cubase and FL Studio projects and extracts BPM, time signature, tracks, plugins with their settings, samples and loudness — the context everything else runs on.",
     points: ["4 DAW formats, one parser", "Plugins with the actual state of each instance", "Loudness measured per version and stem"],
+    tags: ["Neon_v13.als", "128 BPM", "4/4", "12 tracks", "8 plugins", "42 samples", "−14 LUFS"],
   },
   {
     id: "diff",
@@ -108,6 +109,7 @@ const ENGINE_TABS = [
     title: "Smart diff",
     text: "Compares two bounces at the project level: tempo, tracks, plugins, samples. A revision is a story — never \"binary file changed\".",
     points: ["BPM and time-signature changes", "Tracks and plugins added / removed", "Raw normalized diff for the curious"],
+    tags: ["v12 → v13", "Tempo 128 → 132", "+ Pad track", "+ Vital plugin", "+ Clap.wav", "−2 plugins"],
   },
   {
     id: "ledger",
@@ -115,6 +117,7 @@ const ENGINE_TABS = [
     title: "Decision ledger",
     text: "Every request, approval and delivery is hashed into a tamper-evident chain — proof without trusting anyone.",
     points: ["Each event links to the previous hash", "Tampering invalidates the whole chain", "Verifiable end-to-end in one click"],
+    tags: ["Chain verified ✓", "request a1f9…", "approval 77c2…", "delivery e4b0…", "stems 9d31…", "master 51aa…"],
   },
   {
     id: "dedup",
@@ -122,6 +125,7 @@ const ENGINE_TABS = [
     title: "Content-addressed storage",
     text: "Identical files are stored once; re-pushing the same .als costs nothing. Dedup is automatic, so a snapshot is almost free.",
     points: ["Same file, one blob, any number of commits", "Re-pushes report what was deduplicated", "A locked delivery can never be silently swapped"],
+    tags: ["3 pushes · 1 blob", "push v11", "push v12", "push v13", "dedup: 2", "0 new bytes"],
   },
   {
     id: "approval",
@@ -129,6 +133,7 @@ const ENGINE_TABS = [
     title: "Review & approval",
     text: "Timestamped notes, structured rounds and role-based sign-offs — the loop that actually ships a track.",
     points: ["Guests comment at the exact moment, no account", "Draft notes consolidate into one round", "Role-gated approvals (artist, A&R, label)"],
+    tags: ["Approved ✓", "Aisha (A&R)", "Marco (client)", "Label", "in review → approved", "delivery locked"],
   },
 ];
 
@@ -498,130 +503,83 @@ function FeatureTabs() {
   );
 }
 
-/* ---------- engine tabs: what the engine does per step (CodeRabbit-style) ---------- */
+// Codegraph — a circular knowledge graph, CodeRabbit-style: concentric
+// dashed rings, a node network, and source tags fed by the centre.
+const CG_RINGS = [
+  { r: 128, cls: "cg-ring-a" },
+  { r: 88, cls: "cg-ring-b" },
+  { r: 48, cls: "cg-ring-c" },
+];
 
-// DAW parsing — a project file, then context chips cascade out of it.
-function ParseVisual() {
-  const chips = ["128 BPM", "4/4", "12 tracks", "8 plugins", "42 samples", "−14 LUFS"];
+function cgPoint(cx: number, cy: number, r: number, angleDeg: number) {
+  const a = (angleDeg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+
+function CodegraphVisual({ tags }: { tags: string[] }) {
+  const cx = 175;
+  const cy = 165;
+  const outer = 6;
+  const mid = 4;
+  const outerPts = Array.from({ length: outer }, (_, i) => cgPoint(cx, cy, 128, -90 + (360 / outer) * i));
+  const midPts = Array.from({ length: mid }, (_, i) => cgPoint(cx, cy, 88, -90 + (360 / mid) * i));
+
+  // edges: centre -> mid nodes, mid -> nearest outer nodes, plus ring hops
+  const edges: { x1: number; y1: number; x2: number; y2: number; delay: number; cls: string }[] = [];
+  midPts.forEach((m, i) => {
+    edges.push({ ...{ x1: cx, y1: cy }, x2: m.x, y2: m.y, delay: i * 0.35, cls: "cg-edge cg-edge-core" });
+    const near = [i * 1.5, i * 1.5 + 1]
+      .map((k) => outerPts[Math.round(k) % outer])
+      .filter((v, idx, arr) => arr.findIndex((o) => o === v) === idx);
+    near.forEach((o, j) => edges.push({ x1: m.x, y1: m.y, x2: o.x, y2: o.y, delay: i * 0.35 + j * 0.2, cls: "cg-edge" }));
+  });
+
+  const tagsRight = tags.slice(0, 6);
+  const tagY0 = cy - ((tagsRight.length - 1) * 34) / 2;
+
   return (
-    <div className="eng-vis eng-parse">
-      <div className="eng-file">
-        <span className="eng-file-icon">🎛</span>
-        <span className="eng-file-name">Neon_v13.als</span>
-        <span className="eng-file-pulse" />
-      </div>
-      <div className="eng-chips">
-        {chips.map((c, i) => (
-          <span key={c} className="eng-chip" style={{ animationDelay: `${i * 0.32}s` }}>
-            {c}
-          </span>
+    <div className="cg">
+      <svg className="cg-svg" viewBox="0 0 560 330" role="img" aria-label="Knowledge graph of the SoundHub engine">
+        {/* concentric dashed rings */}
+        {CG_RINGS.map((ring) => (
+          <circle key={ring.r} className={`cg-ring ${ring.cls}`} cx={cx} cy={cy} r={ring.r} fill="none" />
         ))}
-      </div>
-    </div>
-  );
-}
 
-// Smart diff — v12 → v13 rows: old value fades out, new value fades in.
-function DiffVisual() {
-  const rows = [
-    { label: "Tempo", old: "128 BPM", neu: "132 BPM" },
-    { label: "Track", old: "—", neu: "+ Pad" },
-    { label: "Plugin", old: "—", neu: "+ Vital" },
-    { label: "Sample", old: "—", neu: "+ Clap.wav" },
-  ];
-  return (
-    <div className="eng-vis eng-diff">
-      <div className="eng-diff-head">v12 → v13</div>
-      {rows.map((r, i) => (
-        <div key={r.label} className="eng-diff-row" style={{ animationDelay: `${i * 0.4}s` }}>
-          <span className="eng-diff-label">{r.label}</span>
-          <span className="eng-diff-old">{r.old}</span>
-          <span className="eng-diff-arrow">→</span>
-          <span className="eng-diff-new">{r.neu}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Decision ledger — hash blocks chain together, then verify.
-function LedgerVisual() {
-  const blocks = ["a1f9…", "77c2…", "e4b0…", "9d31…"];
-  return (
-    <div className="eng-vis eng-ledger">
-      <div className="eng-ledger-chain">
-        {blocks.map((h, i) => (
-          <span key={h} className="eng-ledger-link" style={{ animationDelay: `${i * 0.45}s` }}>
-            {i > 0 && <span className="eng-ledger-join" />}
-            <span className="eng-ledger-block">{h}</span>
-          </span>
+        {/* edges */}
+        {edges.map((e, i) => (
+          <line key={i} className={e.cls} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} style={{ animationDelay: `${e.delay}s` }} />
         ))}
-      </div>
-      <div className="eng-ledger-ok">✓ chain verified</div>
-    </div>
-  );
-}
 
-// Content-addressed storage — three identical files merge into one blob.
-function DedupVisual() {
-  return (
-    <div className="eng-vis eng-dedup">
-      <div className="eng-dedup-row">
-        <div className="eng-dedup-blobs">
-          <span className="eng-blob" />
-          <span className="eng-blob" />
-          <span className="eng-blob" />
-        </div>
-        <span className="eng-dedup-eq">→</span>
-        <div className="eng-dedup-one">
-          <span className="eng-blob eng-blob-merged" />
-        </div>
-      </div>
-      <div className="eng-dedup-meta">
-        <span className="eng-dedup-count">3 pushes · 1 blob</span>
-        <span className="eng-dedup-badge">deduplicated: 2</span>
-      </div>
-    </div>
-  );
-}
-
-// Review & approval — reviewers check off, status flips to Approved.
-function ApprovalVisual() {
-  const people = ["AR", "AV", "LP"];
-  return (
-    <div className="eng-vis eng-approval">
-      <div className="eng-approvers">
-        {people.map((who, i) => (
-          <span key={who} className="eng-approver" style={{ animationDelay: `${i * 0.45}s` }}>
-            <span className="eng-avatar">{who}</span>
-            <svg viewBox="0 0 16 16" className="eng-check" aria-hidden="true">
-              <path d="M3 8.5 L6.5 12 L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
+        {/* nodes */}
+        <circle className="cg-node cg-node-core" cx={cx} cy={cy} r="7" />
+        {midPts.map((p, i) => (
+          <circle key={`m${i}`} className="cg-node cg-node-mid" cx={p.x} cy={p.y} r="5" style={{ animationDelay: `${i * 0.4}s` }} />
         ))}
-      </div>
-      <div className="eng-approval-status">
-        <span className="eng-status-before">in review</span>
-        <span className="eng-status-arrow">→</span>
-        <span className="eng-status-after">Approved ✓</span>
-      </div>
+        {outerPts.map((p, i) => (
+          <circle key={`o${i}`} className="cg-node cg-node-outer" cx={p.x} cy={p.y} r="4" style={{ animationDelay: `${i * 0.3}s` }} />
+        ))}
+
+        {/* hub label */}
+        <text className="cg-hub-label" x={cx} y={cy + 26} textAnchor="middle">
+          SoundHub
+        </text>
+
+        {/* source tags fed from the right edge of the graph */}
+        {tagsRight.map((t, i) => {
+          const ty = tagY0 + i * 34;
+          return (
+            <g key={t} className="cg-tag">
+              <line className="cg-tag-line" x1={cx + 122} y1={cy} x2={265} y2={ty} />
+              <rect className={`cg-tag-box ${i === 0 ? "cg-tag-box-solid" : ""}`} x={270} y={ty - 13} width={282} height={26} rx={13} />
+              <text className={`cg-tag-text ${i === 0 ? "cg-tag-text-solid" : ""}`} x={282} y={ty + 4}>
+                {t}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
-}
-
-function EngineVisual({ id }: { id: string }) {
-  switch (id) {
-    case "parse":
-      return <ParseVisual />;
-    case "diff":
-      return <DiffVisual />;
-    case "ledger":
-      return <LedgerVisual />;
-    case "dedup":
-      return <DedupVisual />;
-    default:
-      return <ApprovalVisual />;
-  }
 }
 
 // CodeRabbit-style tabs under "Best-in-class context": a title per engine
@@ -655,7 +613,7 @@ function EngineTabs() {
           </ul>
         </div>
         <div className="cr-engine-visual">
-          <EngineVisual id={active.id} />
+          <CodegraphVisual tags={active.tags} />
         </div>
       </div>
     </div>
