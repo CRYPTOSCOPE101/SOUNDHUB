@@ -1,6 +1,10 @@
 
 ![SoundHub](frontend/public/logo.png)
 
+
+
+
+
 <div align="center" style="margin: 20px 0px;">
 <a href="https://github.com/soundXlab/SoundHub/actions/workflows/ci.yml">
   <img src="https://github.com/soundXlab/SoundHub/actions/workflows/ci.yml/badge.svg" />
