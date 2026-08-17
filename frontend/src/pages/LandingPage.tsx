@@ -202,15 +202,15 @@ const FEATURE_TABS = [
 
 const TESTIMONIALS = [
   {
-    quote: "Хочется работать прямо из DAW, а не прыгать между браузером и проектом.",
+    quote: "I want to work straight from my DAW, not jump between the browser and the project.",
     who: "Producer on r/ableton — what users keep asking for",
   },
   {
-    quote: "Нужен push-to-work, а не «открой сайт, скачай ZIP, распакуй, импортируй, снова сравни».",
+    quote: "Give me push-to-work, not \u201copen a site, download a ZIP, unzip, import, compare again\u201d.",
     who: "Ableton forum thread on workflow friction",
   },
   {
-    quote: "Важно увидеть, что именно поменялось между итерациями, а не просто “binary changed”.",
+    quote: "I need to see exactly what changed between iterations, not just \u201cbinary changed\u201d.",
     who: "Community feedback — the smart-diff ask",
   },
 ];
