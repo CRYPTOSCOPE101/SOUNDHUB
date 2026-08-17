@@ -97,7 +97,6 @@ const CONTEXT_STATS = [
 const ENGINE_TABS = [
   {
     id: "parse",
-    icon: "⚙️",
     title: "DAW parsing engine",
     text: "Reads Ableton, REAPER, Cubase and FL Studio projects and extracts BPM, time signature, tracks, plugins with their settings, samples and loudness — the context everything else runs on.",
     points: ["4 DAW formats, one parser", "Plugins with the actual state of each instance", "Loudness measured per version and stem"],
@@ -106,7 +105,6 @@ const ENGINE_TABS = [
   },
   {
     id: "diff",
-    icon: "🔀",
     title: "Smart diff",
     text: "Compares two bounces at the project level: tempo, tracks, plugins, samples. A revision is a story — never \"binary file changed\".",
     points: ["BPM and time-signature changes", "Tracks and plugins added / removed", "Raw normalized diff for the curious"],
@@ -115,7 +113,6 @@ const ENGINE_TABS = [
   },
   {
     id: "ledger",
-    icon: "📜",
     title: "Decision ledger",
     text: "Every request, approval and delivery is hashed into a tamper-evident chain — proof without trusting anyone.",
     points: ["Each event links to the previous hash", "Tampering invalidates the whole chain", "Verifiable end-to-end in one click"],
@@ -124,7 +121,6 @@ const ENGINE_TABS = [
   },
   {
     id: "dedup",
-    icon: "🧱",
     title: "Content-addressed storage",
     text: "Identical files are stored once; re-pushing the same .als costs nothing. Dedup is automatic, so a snapshot is almost free.",
     points: ["Same file, one blob, any number of commits", "Re-pushes report what was deduplicated", "A locked delivery can never be silently swapped"],
@@ -133,7 +129,6 @@ const ENGINE_TABS = [
   },
   {
     id: "approval",
-    icon: "✅",
     title: "Review & approval",
     text: "Timestamped notes, structured rounds and role-based sign-offs — the loop that actually ships a track.",
     points: ["Guests comment at the exact moment, no account", "Draft notes consolidate into one round", "Role-gated approvals (artist, A&R, label)"],
@@ -512,9 +507,9 @@ function FeatureTabs() {
 // a dark canvas with concentric dashed rings, blocks linked by flowing
 // edges around the circle, and source tags fed from the ring's edge.
 const CG_RINGS = [
-  { r: 148, cls: "cg-ring-a" },
-  { r: 104, cls: "cg-ring-b" },
-  { r: 60, cls: "cg-ring-c" },
+  { r: 176, cls: "cg-ring-a" },
+  { r: 124, cls: "cg-ring-b" },
+  { r: 72, cls: "cg-ring-c" },
 ];
 
 // deterministic pseudo-hash per block label, so the chain looks "real"
@@ -533,25 +528,25 @@ function cgPoint(cx: number, cy: number, r: number, angleDeg: number) {
 }
 
 function BlockchainVisual({ tags, blocks }: { tags: string[]; blocks: string[] }) {
-  const cx = 175;
-  const cy = 155;
+  const cx = 205;
+  const cy = 185;
 
   // blocks arranged around the middle ring, chain order clockwise from top
   const chain = blocks.slice(0, 6);
   const pts = chain.map((_, i) => {
     const start = -90;
     const step = chain.length === 1 ? 0 : 360 / chain.length;
-    return cgPoint(cx, cy, 88, start + step * i);
+    return cgPoint(cx, cy, 104, start + step * i);
   });
 
   const tagsRight = tags.slice(0, 5);
-  const tagX = 300;
-  const tagY0 = 55;
-  const tagGap = 42;
+  const tagX = 352;
+  const tagY0 = 64;
+  const tagGap = 50;
 
   return (
     <div className="cg">
-      <svg className="cg-svg" viewBox="0 0 560 330" role="img" aria-label="Hash chain of the SoundHub engine">
+      <svg className="cg-svg" viewBox="0 0 660 390" role="img" aria-label="Hash chain of the SoundHub engine">
         {/* concentric dashed rings behind the chain */}
         {CG_RINGS.map((ring) => (
           <circle key={ring.r} className={`cg-ring ${ring.cls}`} cx={cx} cy={cy} r={ring.r} fill="none" />
@@ -559,11 +554,11 @@ function BlockchainVisual({ tags, blocks }: { tags: string[]; blocks: string[] }
 
         {/* genesis block at the centre */}
         <g className="cg-block cg-block-genesis">
-          <rect x={cx - 34} y={cy - 20} width={68} height={40} rx={10} />
-          <text className="cg-block-hash" x={cx} y={cy - 5} textAnchor="middle">
+          <rect x={cx - 40} y={cy - 24} width={80} height={48} rx={12} />
+          <text className="cg-block-hash" x={cx} y={cy - 6} textAnchor="middle">
             0x000000
           </text>
-          <text className="cg-block-label" x={cx} y={cy + 11} textAnchor="middle">
+          <text className="cg-block-label" x={cx} y={cy + 13} textAnchor="middle">
             genesis
           </text>
         </g>
@@ -573,10 +568,10 @@ function BlockchainVisual({ tags, blocks }: { tags: string[]; blocks: string[] }
           <line
             key={`c${i}`}
             className="cg-edge cg-edge-core"
-            x1={cx + 34}
+            x1={cx + 42}
             y1={cy}
-            x2={p.x - (p.x > cx ? 34 : -34)}
-            y2={p.y - (p.y > cy ? 18 : -18)}
+            x2={p.x - (p.x > cx ? 42 : -42)}
+            y2={p.y - (p.y > cy ? 24 : -24)}
             style={{ animationDelay: `${i * 0.3}s` }}
           />
         ))}
@@ -586,10 +581,10 @@ function BlockchainVisual({ tags, blocks }: { tags: string[]; blocks: string[] }
             <line
               key={`l${i}`}
               className="cg-edge"
-              x1={p.x + (nxt.x > p.x ? 34 : -34)}
-              y1={p.y + (nxt.y > p.y ? 18 : -18)}
-              x2={nxt.x - (nxt.x > p.x ? 34 : -34)}
-              y2={nxt.y - (nxt.y > p.y ? 18 : -18)}
+              x1={p.x + (nxt.x > p.x ? 42 : -42)}
+              y1={p.y + (nxt.y > p.y ? 24 : -24)}
+              x2={nxt.x - (nxt.x > p.x ? 42 : -42)}
+              y2={nxt.y - (nxt.y > p.y ? 24 : -24)}
               style={{ animationDelay: `${i * 0.25}s` }}
             />
           );
@@ -601,11 +596,11 @@ function BlockchainVisual({ tags, blocks }: { tags: string[]; blocks: string[] }
           const last = i === chain.length - 1;
           return (
             <g key={label} className={`cg-block ${last ? "cg-block-head" : ""}`} style={{ animationDelay: `${i * 0.35}s` }}>
-              <rect x={p.x - 35} y={p.y - 21} width={70} height={42} rx={10} />
-              <text className="cg-block-hash" x={p.x} y={p.y - 6} textAnchor="middle">
+              <rect x={p.x - 42} y={p.y - 25} width={84} height={50} rx={12} />
+              <text className="cg-block-hash" x={p.x} y={p.y - 7} textAnchor="middle">
                 {last ? "✓" : `0x${blockHash(label)}`}
               </text>
-              <text className="cg-block-label" x={p.x} y={p.y + 10} textAnchor="middle">
+              <text className="cg-block-label" x={p.x} y={p.y + 12} textAnchor="middle">
                 {label}
               </text>
             </g>
@@ -617,9 +612,9 @@ function BlockchainVisual({ tags, blocks }: { tags: string[]; blocks: string[] }
           const ty = tagY0 + i * tagGap;
           return (
             <g key={t} className="cg-tag">
-              <line className="cg-tag-line" x1={cx + 120} y1={cy + 20} x2={tagX - 12} y2={ty} />
-              <rect className={`cg-tag-box ${i === 0 ? "cg-tag-box-solid" : ""}`} x={tagX} y={ty - 13} width={254} height={26} rx={13} />
-              <text className={`cg-tag-text ${i === 0 ? "cg-tag-text-solid" : ""}`} x={tagX + 12} y={ty + 4}>
+              <line className="cg-tag-line" x1={cx + 142} y1={cy + 24} x2={tagX - 14} y2={ty} />
+              <rect className={`cg-tag-box ${i === 0 ? "cg-tag-box-solid" : ""}`} x={tagX} y={ty - 15} width={298} height={30} rx={15} />
+              <text className={`cg-tag-text ${i === 0 ? "cg-tag-text-solid" : ""}`} x={tagX + 14} y={ty + 5}>
                 {t}
               </text>
             </g>

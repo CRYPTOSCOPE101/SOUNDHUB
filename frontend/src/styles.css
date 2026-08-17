@@ -5173,8 +5173,8 @@ pre.diff-raw code {
 
 .cr-engine {
   display: grid;
-  grid-template-columns: minmax(280px, 360px) 1fr;
-  gap: 36px;
+  grid-template-columns: minmax(300px, 400px) 1fr;
+  gap: 40px;
   align-items: start;
 }
 
@@ -5239,13 +5239,13 @@ pre.diff-raw code {
 
 .cr-engine-panel {
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
   background: var(--bg2);
-  padding: 30px;
+  padding: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 460px;
+  min-height: 540px;
   animation: eng-panel-in 0.35s ease both;
 }
 
@@ -5364,12 +5364,12 @@ pre.diff-raw code {
 /* --- Codegraph: circular hash chain on a dark canvas (CodeRabbit-style) --- */
 .cg {
   width: 100%;
-  max-width: 640px;
+  max-width: 760px;
   /* the canvas stays dark in both themes, like the CodeRabbit panel */
   background: #141416;
   border: 1px solid #2b2b30;
   border-radius: 16px;
-  padding: 12px;
+  padding: 14px;
 }
 
 .cg-svg {
@@ -5379,9 +5379,9 @@ pre.diff-raw code {
 }
 
 .cg-ring {
-  stroke-width: 1.5;
+  stroke-width: 1.6;
   stroke-dasharray: 3 6;
-  transform-origin: 175px 155px;
+  transform-origin: 205px 185px;
   animation: cg-ring-spin 60s linear infinite;
 }
 
@@ -5451,7 +5451,7 @@ pre.diff-raw code {
 .cg-block-hash {
   fill: #8b8b96;
   font-family: JetBrains Mono, Fira Code, Consolas, monospace;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .cg-block-genesis .cg-block-hash {
@@ -5460,13 +5460,13 @@ pre.diff-raw code {
 
 .cg-block-head .cg-block-hash {
   fill: #ff8a5c;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .cg-block-label {
   fill: #e8e6e1;
-  font-size: 11.5px;
+  font-size: 13.5px;
   font-weight: 700;
 }
 
@@ -5527,7 +5527,7 @@ pre.diff-raw code {
 
 .cg-tag-text {
   fill: #7fd08a;
-  font-size: 12.5px;
+  font-size: 15px;
   font-weight: 700;
 }
 
