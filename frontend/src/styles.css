@@ -8131,6 +8131,7 @@ pre.diff-raw code {
 .bc-subnav-inner {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   flex-wrap: wrap;
   width: 100%;
@@ -8167,7 +8168,6 @@ pre.diff-raw code {
 }
 
 .bc-subnav-sample {
-  margin-left: auto;
   color: var(--accent);
 }
 
