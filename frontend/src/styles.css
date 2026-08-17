@@ -8045,8 +8045,8 @@ pre.diff-raw code {
 }
 
 .bc-top .bc-search {
-  flex: 1;
-  max-width: 460px;
+  flex: 0 1 460px;
+  margin: 0 auto;
   min-width: 160px;
 }
 
