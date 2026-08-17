@@ -84,6 +84,12 @@ body {
   transition: background 0.2s, color 0.2s;
 }
 
+/* editorial display type (2026 trend): Fraunces variable serif for
+   headline moments, system stack for body/UI. Loaded via Google Fonts. */
+:root {
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+}
+
 :root[data-theme="dark"] body {
   color: var(--text); /* keep light text on the dark theme */
 }
@@ -4847,12 +4853,13 @@ pre.diff-raw code {
 }
 
 .cr-title {
-  font-size: clamp(34px, 5.2vw, 58px);
-  line-height: 1.1;
-  font-weight: 850;
-  letter-spacing: -1.2px;
+  font-family: var(--font-display);
+  font-size: clamp(38px, 5.6vw, 66px);
+  line-height: 1.04;
+  font-weight: 820;
+  letter-spacing: -1.6px;
   margin: 0 auto 22px;
-  max-width: 780px;
+  max-width: 820px;
 }
 
 .cr-sub {
@@ -5194,11 +5201,12 @@ pre.diff-raw code {
   background: transparent;
   border-radius: 10px;
   padding: 12px 14px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--muted);
   cursor: pointer;
-  font-family: inherit;
+  font-family: var(--font-display);
+  letter-spacing: -0.3px;
   text-align: left;
   transition: all 0.15s;
 }
@@ -5321,9 +5329,10 @@ pre.diff-raw code {
 }
 
 .bento-title {
-  font-size: 19px;
-  font-weight: 800;
-  letter-spacing: -0.3px;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 760;
+  letter-spacing: -0.5px;
   margin: 0;
 }
 
@@ -6141,9 +6150,10 @@ pre.diff-raw code {
 }
 
 .bc-h2 {
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: -0.4px;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.4vw, 40px);
+  font-weight: 780;
+  letter-spacing: -0.8px;
   text-align: center;
   margin: 0 0 26px;
 }
