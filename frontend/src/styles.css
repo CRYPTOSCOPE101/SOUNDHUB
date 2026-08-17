@@ -7009,8 +7009,8 @@ pre.diff-raw code {
 
 .word-sphere {
   perspective: 900px;
-  width: 340px;
-  height: 340px;
+  width: 380px;
+  height: 380px;
   margin: 8px auto 0;
   position: relative;
 }
@@ -7031,11 +7031,11 @@ pre.diff-raw code {
   position: absolute;
   left: 50%;
   top: 50%;
-  font-size: 17px;
+  font-size: 14.5px;
   font-weight: 700;
   color: var(--muted);
   white-space: nowrap;
-  padding: 4px 12px;
+  padding: 3px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--bg2);

@@ -677,9 +677,26 @@ function Testimonials() {
 }
 
 // Rotating 3D word sphere — the producer lingo, as a tag cloud.
+// Mostly community mantras: r/synthesizers classics + r/audioengineering advice.
 const SPHERE_WORDS = [
-  "Bounce", "Version", "Master", "Stems", "LUFS", "A/B", "Round",
-  "Approval", "Watermark", "Deposit", "Ledger", "Release", "Feedback owner", "Invoice",
+  "Just get Maths",
+  "Maths is life",
+  "Eurorack tax",
+  "Cable spaghetti",
+  "Knob twiddler",
+  "West Coast",
+  "East Coast",
+  "Gain staging",
+  "Trust your ears",
+  "It depends",
+  "Reference tracks",
+  "Treat your room",
+  "Don't mix in solo",
+  "Leave headroom",
+  "Take breaks",
+  "Less is more",
+  "Static mix first",
+  "Don't chase loudness",
 ];
 
 function spherePoints(n: number, radius: number) {
@@ -1111,7 +1128,7 @@ export default function LandingPage() {
       <section className="bc-section word-sphere-section">
         <h2 className="bc-h2">Speak the language</h2>
         <p className="bc-lead">
-          Bounce, stems, LUFS — the words producers throw around. Spin the sphere, learn the lingo.
+          Just get Maths, trust your ears, treat your room — the mantras producers actually live by.
         </p>
         <WordSphere />
       </section>
