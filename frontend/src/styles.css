@@ -4662,21 +4662,24 @@ pre.diff-raw code {
 }
 
 .bc-btn-primary {
-  background: var(--accent);
+  background: linear-gradient(180deg, #ff6f31, var(--accent) 55%, var(--accent-hover));
   border: 1px solid var(--accent);
   color: #fff;
+  /* soft skeuomorphic volume — a button you could press */
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.28) inset, 0 2px 0 rgba(0, 0, 0, 0.12), 0 6px 16px rgba(255, 94, 26, 0.25);
 }
 
 .bc-btn-primary:hover {
-  background: var(--accent-hover);
+  background: linear-gradient(180deg, #ff7b3d, var(--accent-hover) 60%);
   border-color: var(--accent-hover);
   text-decoration: none;
   transform: translateY(-2px);
-  box-shadow: 0 8px 22px rgba(255, 94, 26, 0.28);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 4px 0 rgba(0, 0, 0, 0.12), 0 12px 28px rgba(255, 94, 26, 0.35);
 }
 
 .bc-btn-primary:active {
-  transform: translateY(0) scale(0.97);
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 1px 0 rgba(0, 0, 0, 0.1);
 }
 
 .bc-btn-ghost {
@@ -4771,13 +4774,62 @@ pre.diff-raw code {
 
 /* ---------- hero ---------- */
 .cr-hero {
+  position: relative;
+  overflow: hidden;
   padding: 72px 0 0;
   text-align: center;
 }
 
-.cr-hero-inner {
-  max-width: 860px;
-  margin: 0 auto;
+/* organic shapes — soft blurred colour blobs behind the headline */
+.cr-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cr-blob-a {
+  width: 480px;
+  height: 480px;
+  left: -140px;
+  top: -120px;
+  background: radial-gradient(circle, rgba(255, 94, 26, 0.5), transparent 70%);
+  animation: blob-drift 18s ease-in-out infinite alternate;
+}
+
+.cr-blob-b {
+  width: 420px;
+  height: 420px;
+  right: -120px;
+  top: 40px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.42), transparent 70%);
+  animation: blob-drift 22s ease-in-out infinite alternate-reverse;
+}
+
+.cr-blob-c {
+  width: 360px;
+  height: 360px;
+  left: 38%;
+  top: 220px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.35), transparent 70%);
+  animation: blob-drift 26s ease-in-out infinite alternate;
+}
+
+@keyframes blob-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(40px, -30px, 0) scale(1.08);
+  }
+}
+
+.cr-hero-inner,
+.cr-hero .cr-shot {
+  position: relative;
+  z-index: 1;
 }
 
 .cr-badge {
@@ -6816,8 +6868,12 @@ pre.diff-raw code {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: var(--bg2);
-  border-bottom: 1px solid var(--border);
+  /* glassmorphism — frosted header, content glows through softly */
+  background: color-mix(in srgb, var(--bg2) 78%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
 }
 
 .bc-top {

@@ -847,6 +847,9 @@ export default function LandingPage() {
 
       {/* ---------- hero: headline + product screenshot in a browser frame ---------- */}
       <section className="cr-hero" id="top">
+        <div className="cr-blob cr-blob-a" aria-hidden="true" />
+        <div className="cr-blob cr-blob-b" aria-hidden="true" />
+        <div className="cr-blob cr-blob-c" aria-hidden="true" />
         <div className="cr-hero-inner">
           <p className="cr-badge">Review · versions · approval — for music</p>
           <h1 className="cr-title">
