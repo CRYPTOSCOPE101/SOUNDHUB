@@ -5099,58 +5099,84 @@ pre.diff-raw code {
 }
 
 .cr-engine {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: 32px;
+  align-items: start;
 }
 
 .cr-engine-tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg2);
+  padding: 10px;
 }
 
 .cr-engine-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg2);
-  border-radius: 999px;
-  padding: 9px 16px;
+  display: block;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 10px;
+  padding: 12px 14px;
   font-size: 14px;
   font-weight: 700;
   color: var(--muted);
   cursor: pointer;
   font-family: inherit;
+  text-align: left;
   transition: all 0.15s;
 }
 
 .cr-engine-tab:hover {
-  border-color: var(--accent);
+  background: var(--bg3);
   color: var(--text);
 }
 
 .cr-engine-tab.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: var(--bg3);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.cr-engine-tab-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .cr-engine-tab-icon {
-  font-size: 15px;
+  font-size: 16px;
+}
+
+.cr-engine-tab-desc {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.cr-engine-tab-points {
+  margin: 8px 0 0;
+  padding: 0 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .cr-engine-panel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 28px;
-  align-items: center;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--bg2);
   padding: 28px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 380px;
   animation: eng-panel-in 0.35s ease both;
 }
 
@@ -5165,19 +5191,10 @@ pre.diff-raw code {
   }
 }
 
-.cr-engine-title {
-  font-size: 20px;
-  margin: 0 0 8px;
-}
-
-.cr-engine-text {
-  font-size: 15px;
-  color: var(--muted);
-  line-height: 1.55;
-  margin: 0 0 14px;
-}.cr-engine-visual {
+.cr-engine-visual {
   display: flex;
   justify-content: center;
+  width: 100%;
 }
 
 /* --- Codegraph: circular knowledge graph (CodeRabbit-style) --- */
@@ -5353,8 +5370,27 @@ pre.diff-raw code {
 }
 
 @media (max-width: 920px) {
-  .cr-engine-panel {
+  .cr-engine {
     grid-template-columns: 1fr;
+  }
+
+  .cr-engine-tabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border: none;
+    background: transparent;
+    padding: 0;
+  }
+
+  .cr-engine-tab {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    border-radius: 999px;
+    padding: 8px 14px;
+  }
+
+  .cr-engine-tab-desc {
+    display: none;
   }
 }
 

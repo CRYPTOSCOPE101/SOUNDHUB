@@ -589,29 +589,39 @@ function EngineTabs() {
   const active = ENGINE_TABS.find((t) => t.id === tab)!;
   return (
     <div className="cr-engine">
-      <div className="cr-engine-tabs">
+      <div className="cr-engine-tabs" role="tablist" aria-orientation="vertical">
         {ENGINE_TABS.map((t) => (
-          <button
+          <div
             key={t.id}
-            type="button"
+            role="tab"
+            aria-selected={t.id === tab}
+            tabIndex={0}
             className={`cr-engine-tab ${t.id === tab ? "active" : ""}`}
+            onMouseEnter={() => setTab(t.id)}
             onClick={() => setTab(t.id)}
+            onFocus={() => setTab(t.id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") setTab(t.id);
+            }}
           >
-            <span className="cr-engine-tab-icon">{t.icon}</span>
-            <span className="cr-engine-tab-title">{t.title}</span>
-          </button>
+            <span className="cr-engine-tab-head">
+              <span className="cr-engine-tab-icon">{t.icon}</span>
+              <span className="cr-engine-tab-title">{t.title}</span>
+            </span>
+            {t.id === tab && (
+              <span className="cr-engine-tab-desc">
+                {t.text}
+                <ul className="cr-engine-tab-points">
+                  {t.points.map((pt) => (
+                    <li key={pt}>{pt}</li>
+                  ))}
+                </ul>
+              </span>
+            )}
+          </div>
         ))}
       </div>
       <div className="cr-engine-panel" key={active.id}>
-        <div className="cr-engine-copy">
-          <h3 className="cr-engine-title">{active.title}</h3>
-          <p className="cr-engine-text">{active.text}</p>
-          <ul className="cr-feature-list">
-            {active.points.map((pt) => (
-              <li key={pt}>{pt}</li>
-            ))}
-          </ul>
-        </div>
         <div className="cr-engine-visual">
           <CodegraphVisual tags={active.tags} />
         </div>
