@@ -1157,9 +1157,6 @@ export default function LandingPage() {
             <a href="https://github.com/soundXlab/SoundHub" target="_blank" rel="noopener noreferrer">GitHub · open source</a>
           </div>
         </div>
-        <p className="bc-footer-bottom">
-          Private beta on Base Sepolia · open-source contracts · © {new Date().getFullYear()} SoundHub
-        </p>
         <div className="bc-footer-giant" aria-hidden="true">
           <img src="/logo.png" alt="" className="bc-footer-giant-img" />
         </div>
