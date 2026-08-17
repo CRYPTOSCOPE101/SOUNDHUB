@@ -742,6 +742,67 @@ function WordSphere() {
   );
 }
 
+// Bento grid — the “big websites” trick: uneven tiles, each a glanceable
+// fact about SoundHub, with micro-interactions on hover.
+const BENTO = [
+  {
+    size: "wide",
+    icon: "🔀",
+    title: "Smart diff, not \"binary changed\"",
+    text: "Between v12 and v13 SoundHub tells you exactly what moved: BPM 128 → 132, + Pad track, + Vital plugin. A revision is a story, never a mystery.",
+  },
+  {
+    size: "tall",
+    icon: "🪙",
+    title: "Decision ledger",
+    text: "Every request, approval and delivery is hashed into a tamper-evident chain — proof without trusting anyone.",
+  },
+  {
+    size: "std",
+    icon: "🧱",
+    title: "Content-addressed",
+    text: "Same file, one blob, any number of commits. Re-pushes deduplicate — a snapshot costs almost nothing.",
+  },
+  {
+    size: "std",
+    icon: "🎛",
+    title: "Parsed, not guessed",
+    text: "Tracks, plugins with settings, samples and loudness — extracted from .als, .cpr, .rpp and .flp.",
+  },
+  {
+    size: "wide",
+    icon: "✅",
+    title: "Review & approval loop",
+    text: "Timestamped notes, structured rounds and role-gated sign-offs — the loop that actually ships a track.",
+  },
+  {
+    size: "std",
+    icon: "🎚",
+    title: "Stems by logical name",
+    text: "NeonBass_final_03.wav and bass_v13.wav both count as bass — A/B is matched by what the part is.",
+  },
+];
+
+function BentoGrid() {
+  const spot = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    el.style.setProperty("--my", `${e.clientY - r.top}px`);
+  };
+  return (
+    <div className="bento">
+      {BENTO.map((b) => (
+        <div key={b.title} className={`bento-tile bento-${b.size}`} onMouseMove={spot}>
+          <span className="bento-icon">{b.icon}</span>
+          <h3 className="bento-title">{b.title}</h3>
+          <p className="bento-text">{b.text}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Comparison table: SoundHub vs the usual ways of sharing files.
 function CompareTable() {
   return (
@@ -887,8 +948,7 @@ export default function LandingPage() {
 
       {/* ---------- feature: one workspace for every version ---------- */}
       <section className="bc-section cr-feature" id="versions">
-        <div className="cr-feature-copy">
-          <h2 className="bc-h2 left">One workspace for every version</h2>
+        <div className="cr-feature-copy">            <h2 className="bc-h2 left">One <span className="grad">workspace</span> for every version</h2>
           <p>
             Every bounce lands in the same repo: v11 → v12 → v13, branches for
             clients and rounds, full history with DAW metadata. No more guessing
@@ -913,7 +973,7 @@ export default function LandingPage() {
       <section className="bc-section" id="diff">
         <div className="bc-diff-grid">
           <div className="bc-diff-copy">
-            <h2 className="bc-h2 left">Version your track like music, not bytes.</h2>
+            <h2 className="bc-h2 left">Version your track like <span className="grad">music</span>, not bytes.</h2>
             <p>
               Between v12 and v13, GitHub would say “binary file changed”. SoundHub
               reads the project file and tells you exactly what moved — so a revision
@@ -978,6 +1038,15 @@ export default function LandingPage() {
           Across each step, we extract dozens more points of context than a shared ZIP ever shows.
         </p>
         <EngineTabs />
+      </section>
+
+      {/* ---------- bento grid: glanceable facts ---------- */}
+      <section className="bc-section" id="bento">
+        <h2 className="bc-h2">Everything in one <span className="grad">glance</span></h2>
+        <p className="cr-context-sub">
+          No spreadsheets, no "which ZIP is current" — the workspace is built from blocks that each answer one question.
+        </p>
+        <BentoGrid />
       </section>
 
       {/* ---------- feature: push from the DAW ---------- */}
