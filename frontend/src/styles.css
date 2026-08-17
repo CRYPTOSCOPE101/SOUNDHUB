@@ -5330,9 +5330,9 @@ pre.diff-raw code {
 
 .bento-title {
   font-family: var(--font-display);
-  font-size: 21px;
-  font-weight: 760;
-  letter-spacing: -0.5px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
   margin: 0;
 }
 

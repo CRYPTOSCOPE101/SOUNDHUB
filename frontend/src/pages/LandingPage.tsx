@@ -233,22 +233,18 @@ const FAQ = [
   {
     q: "Do reviewers need an account or a wallet?",
     a: "No. Reviewers open a private link, listen, and leave timestamped comments — no signup, no wallet. The producer works in SoundHub; collaborators just review.",
-    open: true,
   },
   {
     q: "How is this different from sending files over Discord or email?",
     a: "SoundHub keeps one source of truth: versions (v11 → v12 → v13), comments pinned to exact moments, statuses (In review / Needs changes / Approved) and smart diffs that show what actually changed between versions.",
-    open: true,
   },
   {
     q: "What does the marketplace add?",
     a: "When a revision needs a sound, you can buy a verified, compatible asset right in the project — escrowed, with a license bound to the purchase. It's a second layer on top of the review workflow.",
-    open: true,
   },
   {
     q: "Is this live on mainnet?",
     a: "Today SoundHub runs on Base Sepolia (testnet). Contracts are open-source with a full test suite; a security review is in progress before any mainnet deployment.",
-    open: true,
   },
 ];
 
@@ -1132,7 +1128,7 @@ export default function LandingPage() {
         <h2 className="bc-h2">Questions, answered</h2>
         <div className="bc-faq">
           {FAQ.map((f) => (
-            <details key={f.q} className="bc-faq-item" open={f.open}>
+            <details key={f.q} className="bc-faq-item" open>
               <summary>{f.q}</summary>
               <p>{f.a}</p>
             </details>
