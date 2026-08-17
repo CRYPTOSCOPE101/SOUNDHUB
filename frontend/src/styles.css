@@ -76,17 +76,16 @@ body {
   margin: 0;
   background: var(--bg);
   color: #000000;
-  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* system stack like bandcamp — Segoe UI renders crisp via ClearType on
+     Windows, SF Pro on macOS; no web font to soften glyphs */
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 18px;
   line-height: 1.5;
-  -webkit-font-smoothing: subpixel-antialiased; /* crisp letters, like bandcamp */
-  text-rendering: optimizeLegibility;
   transition: background 0.2s, color 0.2s;
 }
 
 :root[data-theme="dark"] body {
   color: var(--text); /* keep light text on the dark theme */
-  -webkit-font-smoothing: antialiased; /* grayscale avoids color fringing on dark */
 }
 
 a {
