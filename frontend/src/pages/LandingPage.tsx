@@ -1175,22 +1175,22 @@ export default function LandingPage() {
         <h2 className="bc-h2">Read the docs</h2>
         <div className="docs-landing-grid">
           <Link to="/docs" className="docs-landing-card docs-landing-primary">
-            <strong>📚 Docs hub</strong>
+            <strong>Docs hub</strong>
             <span>Core loop, snd push, review sessions, roles and honest limits — a user guide on one page.</span>
             <em>Open the guide →</em>
           </Link>
           <a href="/Whitepaper.pdf" className="docs-landing-card">
-            <strong>📄 Whitepaper (PDF)</strong>
+            <strong>Whitepaper (PDF)</strong>
             <span>18 pages — architecture, formulas, tokenomics, governance.</span>
             <em>Read the whitepaper →</em>
           </a>
           <a href="https://github.com/soundXlab/SoundHub/blob/main/LITEPAPER.md" target="_blank" rel="noopener noreferrer" className="docs-landing-card">
-            <strong>📝 Litepaper</strong>
+            <strong>Litepaper</strong>
             <span>The product in one page: problem, solution, layers, roadmap.</span>
             <em>Read the litepaper →</em>
           </a>
           <a href="https://github.com/soundXlab/SoundHub/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer" className="docs-landing-card">
-            <strong>🗒️ Changelog</strong>
+            <strong>Changelog</strong>
             <span>Release notes — what changed, how to test, known limits.</span>
             <em>See the changelog →</em>
           </a>
