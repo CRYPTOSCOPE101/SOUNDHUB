@@ -13,7 +13,7 @@
   --bg4: #ddd8cf;          /* pressed / strong hover */
   --border: #d8d3c8;       /* warm gray borders */
   --text: #1f1f1f;         /* near-black text */
-  --muted: #6b6761;
+  --muted: #4f4b45;        /* darker muted — crisp contrast on off-white */
   --accent: #ff5e1a;       /* bandcamp orange */
   --accent-hover: #e8500e;
   --accent-text: #ffffff;
@@ -44,7 +44,7 @@
   --bg4: #35332f;
   --border: #3d3a34;
   --text: #e8e6e1;
-  --muted: #9c978e;
+  --muted: #b5b0a7;        /* lighter muted — readable on near-black */
   --accent: #ff7a3d;
   --accent-hover: #ff8f5c;
   --accent-text: #1a1917;
