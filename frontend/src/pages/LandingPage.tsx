@@ -508,11 +508,12 @@ function FeatureTabs() {
   );
 }
 
-// Blockchain — a hash chain of blocks, CodeRabbit-style: a snake of
-// blocks linked by flowing edges, with source tags fed from the head.
+// Blockchain — a hash chain wrapped into a ring, CodeRabbit-style:
+// a dark canvas with concentric dashed rings, blocks linked by flowing
+// edges around the circle, and source tags fed from the ring's edge.
 const CG_RINGS = [
-  { r: 150, cls: "cg-ring-a" },
-  { r: 105, cls: "cg-ring-b" },
+  { r: 148, cls: "cg-ring-a" },
+  { r: 104, cls: "cg-ring-b" },
   { r: 60, cls: "cg-ring-c" },
 ];
 
@@ -526,23 +527,27 @@ function blockHash(label: string): string {
   return (h >>> 0).toString(16).padStart(8, "0").slice(0, 6);
 }
 
+function cgPoint(cx: number, cy: number, r: number, angleDeg: number) {
+  const a = (angleDeg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+
 function BlockchainVisual({ tags, blocks }: { tags: string[]; blocks: string[] }) {
   const cx = 175;
-  const cy = 165;
+  const cy = 155;
 
-  // snake path through the rings: each block sits on the next node of a sine wave
+  // blocks arranged around the middle ring, chain order clockwise from top
   const chain = blocks.slice(0, 6);
   const pts = chain.map((_, i) => {
-    const t = chain.length === 1 ? 0.5 : i / (chain.length - 1);
-    return {
-      x: 40 + t * 260,
-      y: cy - 78 + Math.sin(t * Math.PI * 2.2) * 55,
-    };
+    const start = -90;
+    const step = chain.length === 1 ? 0 : 360 / chain.length;
+    return cgPoint(cx, cy, 88, start + step * i);
   });
 
   const tagsRight = tags.slice(0, 5);
-  const head = pts[pts.length - 1];
-  const tagY0 = 60;
+  const tagX = 300;
+  const tagY0 = 55;
+  const tagGap = 42;
 
   return (
     <div className="cg">
@@ -552,26 +557,51 @@ function BlockchainVisual({ tags, blocks }: { tags: string[]; blocks: string[] }
           <circle key={ring.r} className={`cg-ring ${ring.cls}`} cx={cx} cy={cy} r={ring.r} fill="none" />
         ))}
 
-        {/* links between blocks */}
-        {pts.slice(0, -1).map((p, i) => (
+        {/* genesis block at the centre */}
+        <g className="cg-block cg-block-genesis">
+          <rect x={cx - 34} y={cy - 20} width={68} height={40} rx={10} />
+          <text className="cg-block-hash" x={cx} y={cy - 5} textAnchor="middle">
+            0x000000
+          </text>
+          <text className="cg-block-label" x={cx} y={cy + 11} textAnchor="middle">
+            genesis
+          </text>
+        </g>
+
+        {/* links: centre -> each block, and block -> next block around the ring */}
+        {pts.map((p, i) => (
           <line
-            key={i}
+            key={`c${i}`}
             className="cg-edge cg-edge-core"
-            x1={p.x + 40}
-            y1={p.y}
-            x2={pts[i + 1].x - 40}
-            y2={pts[i + 1].y}
-            style={{ animationDelay: `${i * 0.5}s` }}
+            x1={cx + 34}
+            y1={cy}
+            x2={p.x - (p.x > cx ? 34 : -34)}
+            y2={p.y - (p.y > cy ? 18 : -18)}
+            style={{ animationDelay: `${i * 0.3}s` }}
           />
         ))}
+        {pts.map((p, i) => {
+          const nxt = pts[(i + 1) % pts.length];
+          return (
+            <line
+              key={`l${i}`}
+              className="cg-edge"
+              x1={p.x + (nxt.x > p.x ? 34 : -34)}
+              y1={p.y + (nxt.y > p.y ? 18 : -18)}
+              x2={nxt.x - (nxt.x > p.x ? 34 : -34)}
+              y2={nxt.y - (nxt.y > p.y ? 18 : -18)}
+              style={{ animationDelay: `${i * 0.25}s` }}
+            />
+          );
+        })}
 
-        {/* blocks */}
+        {/* blocks around the ring */}
         {chain.map((label, i) => {
           const p = pts[i];
           const last = i === chain.length - 1;
           return (
             <g key={label} className={`cg-block ${last ? "cg-block-head" : ""}`} style={{ animationDelay: `${i * 0.35}s` }}>
-              <rect x={p.x - 40} y={p.y - 22} width={80} height={44} rx={10} />
+              <rect x={p.x - 35} y={p.y - 21} width={70} height={42} rx={10} />
               <text className="cg-block-hash" x={p.x} y={p.y - 6} textAnchor="middle">
                 {last ? "✓" : `0x${blockHash(label)}`}
               </text>
@@ -582,14 +612,14 @@ function BlockchainVisual({ tags, blocks }: { tags: string[]; blocks: string[] }
           );
         })}
 
-        {/* source tags fed from the chain head */}
+        {/* source tags fed from the ring's right edge */}
         {tagsRight.map((t, i) => {
-          const ty = tagY0 + i * 34;
+          const ty = tagY0 + i * tagGap;
           return (
             <g key={t} className="cg-tag">
-              <line className="cg-tag-line" x1={head.x + 34} y1={head.y} x2={270} y2={ty} />
-              <rect className={`cg-tag-box ${i === 0 ? "cg-tag-box-solid" : ""}`} x={276} y={ty - 13} width={278} height={26} rx={13} />
-              <text className={`cg-tag-text ${i === 0 ? "cg-tag-text-solid" : ""}`} x={288} y={ty + 4}>
+              <line className="cg-tag-line" x1={cx + 120} y1={cy + 20} x2={tagX - 12} y2={ty} />
+              <rect className={`cg-tag-box ${i === 0 ? "cg-tag-box-solid" : ""}`} x={tagX} y={ty - 13} width={254} height={26} rx={13} />
+              <text className={`cg-tag-text ${i === 0 ? "cg-tag-text-solid" : ""}`} x={tagX + 12} y={ty + 4}>
                 {t}
               </text>
             </g>
