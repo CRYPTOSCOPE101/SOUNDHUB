@@ -79,12 +79,14 @@ body {
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 18px;
   line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
+  -webkit-font-smoothing: subpixel-antialiased; /* crisp letters, like bandcamp */
+  text-rendering: optimizeLegibility;
   transition: background 0.2s, color 0.2s;
 }
 
 :root[data-theme="dark"] body {
   color: var(--text); /* keep light text on the dark theme */
+  -webkit-font-smoothing: antialiased; /* grayscale avoids color fringing on dark */
 }
 
 a {
