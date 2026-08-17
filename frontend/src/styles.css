@@ -6663,14 +6663,32 @@ pre.diff-raw code {
 
 .bc-faq-item summary {
   cursor: pointer;
-  padding: 15px 16px;
+  padding: 15px 44px 15px 16px;
   font-weight: 600;
   font-size: 16.5px;
   list-style: none;
+  position: relative;
 }
 
 .bc-faq-item summary::-webkit-details-marker {
   display: none;
+}
+
+/* visible expand indicator — the answers are click-to-open, not missing */
+.bc-faq-item summary::after {
+  content: "+";
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--accent);
+  transition: transform 0.18s ease;
+}
+
+.bc-faq-item[open] summary::after {
+  transform: translateY(-50%) rotate(45deg);
 }
 
 .bc-faq-item summary:hover {

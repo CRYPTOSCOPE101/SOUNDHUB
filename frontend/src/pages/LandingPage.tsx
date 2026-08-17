@@ -36,39 +36,6 @@ const DIFF_ROWS = [
   { kind: "add", label: "Sample", before: "—", after: "+ VocalChop_01.wav" },
 ];
 
-const ENGINE_PILLARS = [
-  {
-    icon: "🧩",
-    title: "DAW parsing engine",
-    text: "Reads Ableton .als, Cubase .cpr, REAPER .rpp and FL Studio .flp — tracks, devices, plugins and their settings. No opaque blobs.",
-  },
-  {
-    icon: "📐",
-    title: "Smart diff",
-    text: "Between versions you see what actually moved: tempo, a bass preset replaced, EQ changed — not “binary file changed”.",
-  },
-  {
-    icon: "🔗",
-    title: "Decision ledger",
-    text: "Every decision is chained with SHA-256. Rewrite one event and every hash after it breaks — verifiable history, no trust needed.",
-  },
-  {
-    icon: "🗃",
-    title: "Content-addressed storage",
-    text: "Files are stored by SHA-256, so a full-snapshot version costs almost nothing when little changed — dedup by design.",
-  },
-  {
-    icon: "📊",
-    title: "Loudness analysis",
-    text: "Short-term LUFS, true peak, sample rate — measured per version and per stem, so A/B compares the mix, not the volume.",
-  },
-  {
-    icon: "🔊",
-    title: "Watermarking",
-    text: "An audible watermark is mixed into unapproved previews at the sample level — a leaked demo can't pass for the final file.",
-  },
-];
-
 // What SoundHub understands about a session vs what a shared file shows.
 // CodeRabbit-style "best-in-class context" comparison.
 const CONTEXT_WE_SEE = [
@@ -234,7 +201,7 @@ const PLANS = [
   },
   {
     name: "Pro",
-    price: "beta",
+    price: "beta — from $15/mo",
     note: "For engineers with real clients",
     features: ["Stem-level A/B & reference tracks", "Release package + QC preflight", "Stripe paid delivery (card / AP / GP)", "Booking deposits & paid extra rounds", "Change orders after approval"],
     cta: "Join the beta",
@@ -243,7 +210,7 @@ const PLANS = [
   },
   {
     name: "Team",
-    price: "beta",
+    price: "beta — from $39/mo",
     note: "For labels & studios",
     features: ["Roles & approval chains", "Client briefs + service presets", "Email reminders & deadlines", "Archive & session-file handoff", "Priority support"],
     cta: "Join the beta",
@@ -283,12 +250,12 @@ const FAQ = [
   {
     q: "What does the marketplace add?",
     a: "When a revision needs a sound, you can buy a verified, compatible asset right in the project — escrowed, with a license bound to the purchase. It's a second layer on top of the review workflow.",
-    open: false,
+    open: true,
   },
   {
     q: "Is this live on mainnet?",
     a: "Today SoundHub runs on Base Sepolia (testnet). Contracts are open-source with a full test suite; a security review is in progress before any mainnet deployment.",
-    open: false,
+    open: true,
   },
 ];
 
@@ -324,10 +291,10 @@ const ROADMAP = [
   },
   {
     phase: "Next",
-    items: ["USDC checkout", "Max for Live: review comments in the DAW", "REAPER integration"],
+    items: ["Max for Live: review comments in the DAW", "REAPER integration", "Marketplace: sell finished sounds"],
     state: "next",
   },
-  { phase: "Later", items: ["Mainnet + security audit", "Seller reputation & packs", "DAO governance"], state: "later" },
+  { phase: "Later", items: ["Mainnet + security audit", "USDC checkout", "DAO governance"], state: "later" },
 ];
 
 // --- Watch-the-workflow modal (scripted scene player) ------------------------
@@ -1072,37 +1039,19 @@ export default function LandingPage() {
         />
       </section>
 
-      {/* ---------- sound-tech engine backbone ---------- */}
+      {/* ---------- daw-native track assets (bento, not duplicate cards) ---------- */}
       <section className="bc-section">
-        <h2 className="bc-h2 bc-h2-tech">Sound-tech engine backbone</h2>
-        <p className="bc-lead">
-          Underneath the review loop sits a small engine that actually understands DAW
-          projects — parsing, diffing, hashing and measuring instead of guessing.
-        </p>
-        <div className="bc-pillars">
-          {ENGINE_PILLARS.map((p) => (
-            <div key={p.title} className="bc-pillar">
-              <span className="bc-pillar-icon">{p.icon}</span>
-              <h3>{p.title}</h3>
-              <p>{p.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ---------- daw-native track assets ---------- */}
-      <section className="bc-section">
-        <h2 className="bc-h2 bc-h2-tech">DAW-native track assets</h2>
-        <p className="bc-lead">
+        <h2 className="bc-h2">DAW-native <span className="grad">track assets</span></h2>
+        <p className="cr-context-sub">
           Versions aren't just audio files — SoundHub understands what a session is made
           of: tracks, plugins, stems and samples, straight from the DAW.
         </p>
-        <div className="bc-pillars bc-pillars-2">
+        <div className="bento">
           {DAW_ASSETS.map((p) => (
-            <div key={p.title} className="bc-pillar">
-              <span className="bc-pillar-icon">{p.icon}</span>
-              <h3>{p.title}</h3>
-              <p>{p.text}</p>
+            <div key={p.title} className="bento-tile">
+              <span className="bento-icon">{p.icon}</span>
+              <h3 className="bento-title">{p.title}</h3>
+              <p className="bento-text">{p.text}</p>
             </div>
           ))}
         </div>
@@ -1112,8 +1061,9 @@ export default function LandingPage() {
       <section className="bc-section" id="market">
         <h2 className="bc-h2">When a revision needs a sound, buy it in place</h2>
         <p className="bc-lead">
-          The review workflow comes first; the marketplace is the second layer — verified assets,
-          escrowed, licensed, right where you're working.
+          The review workflow is the product. On-chain rails are the plumbing underneath it —
+          escrowed payments, auditable licenses, a tamper-evident ledger — so the marketplace
+          is a second layer, not the point of the tool.
         </p>
         <div className="bc-benefits">
           {MARKET_BENEFITS.map((t) => (
