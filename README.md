@@ -1,9 +1,7 @@
 
 ![SoundHub](frontend/public/logo.png)
 
-
-
-
+![AVL](screenshots/AVL.png)
 
 <div align="center" style="margin: 20px 0px;">
 <a href="https://github.com/soundXlab/SoundHub/actions/workflows/ci.yml">
