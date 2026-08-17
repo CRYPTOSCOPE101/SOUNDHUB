@@ -102,6 +102,7 @@ const ENGINE_TABS = [
     text: "Reads Ableton, REAPER, Cubase and FL Studio projects and extracts BPM, time signature, tracks, plugins with their settings, samples and loudness — the context everything else runs on.",
     points: ["4 DAW formats, one parser", "Plugins with the actual state of each instance", "Loudness measured per version and stem"],
     tags: ["Neon_v13.als", "128 BPM", "4/4", "12 tracks", "8 plugins", "42 samples", "−14 LUFS"],
+    blocks: ["Neon_v13.als", "128 BPM · 4/4", "12 tracks", "8 plugins", "42 samples", "−14 LUFS"],
   },
   {
     id: "diff",
@@ -110,6 +111,7 @@ const ENGINE_TABS = [
     text: "Compares two bounces at the project level: tempo, tracks, plugins, samples. A revision is a story — never \"binary file changed\".",
     points: ["BPM and time-signature changes", "Tracks and plugins added / removed", "Raw normalized diff for the curious"],
     tags: ["v12 → v13", "Tempo 128 → 132", "+ Pad track", "+ Vital plugin", "+ Clap.wav", "−2 plugins"],
+    blocks: ["v12", "Tempo 128 → 132", "+ Pad track", "+ Vital plugin", "v13"],
   },
   {
     id: "ledger",
@@ -118,6 +120,7 @@ const ENGINE_TABS = [
     text: "Every request, approval and delivery is hashed into a tamper-evident chain — proof without trusting anyone.",
     points: ["Each event links to the previous hash", "Tampering invalidates the whole chain", "Verifiable end-to-end in one click"],
     tags: ["Chain verified ✓", "request a1f9…", "approval 77c2…", "delivery e4b0…", "stems 9d31…", "master 51aa…"],
+    blocks: ["genesis", "request a1f9…", "approval 77c2…", "delivery e4b0…", "chain ✓"],
   },
   {
     id: "dedup",
@@ -126,6 +129,7 @@ const ENGINE_TABS = [
     text: "Identical files are stored once; re-pushing the same .als costs nothing. Dedup is automatic, so a snapshot is almost free.",
     points: ["Same file, one blob, any number of commits", "Re-pushes report what was deduplicated", "A locked delivery can never be silently swapped"],
     tags: ["3 pushes · 1 blob", "push v11", "push v12", "push v13", "dedup: 2", "0 new bytes"],
+    blocks: ["push v11", "push v12", "push v13", "1 blob", "dedup: 2"],
   },
   {
     id: "approval",
@@ -134,6 +138,7 @@ const ENGINE_TABS = [
     text: "Timestamped notes, structured rounds and role-based sign-offs — the loop that actually ships a track.",
     points: ["Guests comment at the exact moment, no account", "Draft notes consolidate into one round", "Role-gated approvals (artist, A&R, label)"],
     tags: ["Approved ✓", "Aisha (A&R)", "Marco (client)", "Label", "in review → approved", "delivery locked"],
+    blocks: ["in review", "notes 01:24", "round 2", "approved ✓", "delivery locked"],
   },
 ];
 
@@ -503,75 +508,88 @@ function FeatureTabs() {
   );
 }
 
-// Codegraph — a circular knowledge graph, CodeRabbit-style: concentric
-// dashed rings, a node network, and source tags fed by the centre.
+// Blockchain — a hash chain of blocks, CodeRabbit-style: a snake of
+// blocks linked by flowing edges, with source tags fed from the head.
 const CG_RINGS = [
-  { r: 128, cls: "cg-ring-a" },
-  { r: 88, cls: "cg-ring-b" },
-  { r: 48, cls: "cg-ring-c" },
+  { r: 150, cls: "cg-ring-a" },
+  { r: 105, cls: "cg-ring-b" },
+  { r: 60, cls: "cg-ring-c" },
 ];
 
-function cgPoint(cx: number, cy: number, r: number, angleDeg: number) {
-  const a = (angleDeg * Math.PI) / 180;
-  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+// deterministic pseudo-hash per block label, so the chain looks "real"
+function blockHash(label: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < label.length; i++) {
+    h ^= label.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0").slice(0, 6);
 }
 
-function CodegraphVisual({ tags }: { tags: string[] }) {
+function BlockchainVisual({ tags, blocks }: { tags: string[]; blocks: string[] }) {
   const cx = 175;
   const cy = 165;
-  const outer = 6;
-  const mid = 4;
-  const outerPts = Array.from({ length: outer }, (_, i) => cgPoint(cx, cy, 128, -90 + (360 / outer) * i));
-  const midPts = Array.from({ length: mid }, (_, i) => cgPoint(cx, cy, 88, -90 + (360 / mid) * i));
 
-  // edges: centre -> mid nodes, mid -> nearest outer nodes, plus ring hops
-  const edges: { x1: number; y1: number; x2: number; y2: number; delay: number; cls: string }[] = [];
-  midPts.forEach((m, i) => {
-    edges.push({ ...{ x1: cx, y1: cy }, x2: m.x, y2: m.y, delay: i * 0.35, cls: "cg-edge cg-edge-core" });
-    const near = [i * 1.5, i * 1.5 + 1]
-      .map((k) => outerPts[Math.round(k) % outer])
-      .filter((v, idx, arr) => arr.findIndex((o) => o === v) === idx);
-    near.forEach((o, j) => edges.push({ x1: m.x, y1: m.y, x2: o.x, y2: o.y, delay: i * 0.35 + j * 0.2, cls: "cg-edge" }));
+  // snake path through the rings: each block sits on the next node of a sine wave
+  const chain = blocks.slice(0, 6);
+  const pts = chain.map((_, i) => {
+    const t = chain.length === 1 ? 0.5 : i / (chain.length - 1);
+    return {
+      x: 40 + t * 260,
+      y: cy - 78 + Math.sin(t * Math.PI * 2.2) * 55,
+    };
   });
 
-  const tagsRight = tags.slice(0, 6);
-  const tagY0 = cy - ((tagsRight.length - 1) * 34) / 2;
+  const tagsRight = tags.slice(0, 5);
+  const head = pts[pts.length - 1];
+  const tagY0 = 60;
 
   return (
     <div className="cg">
-      <svg className="cg-svg" viewBox="0 0 560 330" role="img" aria-label="Knowledge graph of the SoundHub engine">
-        {/* concentric dashed rings */}
+      <svg className="cg-svg" viewBox="0 0 560 330" role="img" aria-label="Hash chain of the SoundHub engine">
+        {/* concentric dashed rings behind the chain */}
         {CG_RINGS.map((ring) => (
           <circle key={ring.r} className={`cg-ring ${ring.cls}`} cx={cx} cy={cy} r={ring.r} fill="none" />
         ))}
 
-        {/* edges */}
-        {edges.map((e, i) => (
-          <line key={i} className={e.cls} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} style={{ animationDelay: `${e.delay}s` }} />
+        {/* links between blocks */}
+        {pts.slice(0, -1).map((p, i) => (
+          <line
+            key={i}
+            className="cg-edge cg-edge-core"
+            x1={p.x + 40}
+            y1={p.y}
+            x2={pts[i + 1].x - 40}
+            y2={pts[i + 1].y}
+            style={{ animationDelay: `${i * 0.5}s` }}
+          />
         ))}
 
-        {/* nodes */}
-        <circle className="cg-node cg-node-core" cx={cx} cy={cy} r="7" />
-        {midPts.map((p, i) => (
-          <circle key={`m${i}`} className="cg-node cg-node-mid" cx={p.x} cy={p.y} r="5" style={{ animationDelay: `${i * 0.4}s` }} />
-        ))}
-        {outerPts.map((p, i) => (
-          <circle key={`o${i}`} className="cg-node cg-node-outer" cx={p.x} cy={p.y} r="4" style={{ animationDelay: `${i * 0.3}s` }} />
-        ))}
+        {/* blocks */}
+        {chain.map((label, i) => {
+          const p = pts[i];
+          const last = i === chain.length - 1;
+          return (
+            <g key={label} className={`cg-block ${last ? "cg-block-head" : ""}`} style={{ animationDelay: `${i * 0.35}s` }}>
+              <rect x={p.x - 40} y={p.y - 22} width={80} height={44} rx={10} />
+              <text className="cg-block-hash" x={p.x} y={p.y - 6} textAnchor="middle">
+                {last ? "✓" : `0x${blockHash(label)}`}
+              </text>
+              <text className="cg-block-label" x={p.x} y={p.y + 10} textAnchor="middle">
+                {label}
+              </text>
+            </g>
+          );
+        })}
 
-        {/* hub label */}
-        <text className="cg-hub-label" x={cx} y={cy + 26} textAnchor="middle">
-          SoundHub
-        </text>
-
-        {/* source tags fed from the right edge of the graph */}
+        {/* source tags fed from the chain head */}
         {tagsRight.map((t, i) => {
           const ty = tagY0 + i * 34;
           return (
             <g key={t} className="cg-tag">
-              <line className="cg-tag-line" x1={cx + 122} y1={cy} x2={265} y2={ty} />
-              <rect className={`cg-tag-box ${i === 0 ? "cg-tag-box-solid" : ""}`} x={270} y={ty - 13} width={282} height={26} rx={13} />
-              <text className={`cg-tag-text ${i === 0 ? "cg-tag-text-solid" : ""}`} x={282} y={ty + 4}>
+              <line className="cg-tag-line" x1={head.x + 34} y1={head.y} x2={270} y2={ty} />
+              <rect className={`cg-tag-box ${i === 0 ? "cg-tag-box-solid" : ""}`} x={276} y={ty - 13} width={278} height={26} rx={13} />
+              <text className={`cg-tag-text ${i === 0 ? "cg-tag-text-solid" : ""}`} x={288} y={ty + 4}>
                 {t}
               </text>
             </g>
@@ -623,7 +641,7 @@ function EngineTabs() {
       </div>
       <div className="cr-engine-panel" key={active.id}>
         <div className="cr-engine-visual">
-          <CodegraphVisual tags={active.tags} />
+          <BlockchainVisual tags={active.tags} blocks={active.blocks} />
         </div>
       </div>
     </div>
