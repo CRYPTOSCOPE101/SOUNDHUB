@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { shortDate, type GhBranch, type GhCommit } from "../types";
 
-const REPO_URL = "https://github.com/CRYPTOSCOPE101/SOUNDHUB";
+const REPO_URL = "https://github.com/soundXlab/SoundHub";
 
 export default function GitHubRepoPage() {
   const [branches, setBranches] = useState<GhBranch[]>([]);
@@ -40,10 +40,10 @@ export default function GitHubRepoPage() {
     <div>
       <div className="repo-header">
         <div className="repo-breadcrumb">
-          <span className="owner">CRYPTOSCOPE101</span>
+          <span className="owner">soundXlab</span>
           <span className="sep">/</span>
           <a className="name" href={REPO_URL} target="_blank" rel="noreferrer">
-            SOUNDHUB
+            SoundHub
           </a>
           <span className="visibility-chip">Public</span>
         </div>

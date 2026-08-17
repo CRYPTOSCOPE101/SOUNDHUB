@@ -2,20 +2,20 @@
 ![SoundHub](frontend/public/logo.png)
 
 <div align="center" style="margin: 20px 0px;">
-<a href="https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/ci.yml">
-  <img src="https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/ci.yml/badge.svg" />
+<a href="https://github.com/soundXlab/SoundHub/actions/workflows/ci.yml">
+  <img src="https://github.com/soundXlab/SoundHub/actions/workflows/ci.yml/badge.svg" />
 </a>
-<a href="https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/release.yml">
-  <img src="https://github.com/CRYPTOSCOPE101/SoundHub/actions/workflows/release.yml/badge.svg" />
+<a href="https://github.com/soundXlab/SoundHub/actions/workflows/release.yml">
+  <img src="https://github.com/soundXlab/SoundHub/actions/workflows/release.yml/badge.svg" />
 </a>
-<a href="https://github.com/CRYPTOSCOPE101/SoundHub/releases">
-  <img src="https://img.shields.io/github/v/release/CRYPTOSCOPE101/SoundHub?label=Release" />
+<a href="https://github.com/soundXlab/SoundHub/releases">
+  <img src="https://img.shields.io/github/v/release/soundXlab/SoundHub?label=Release" />
 </a>
-<a href="https://github.com/CRYPTOSCOPE101/SoundHub/issues">
-  <img src="https://img.shields.io/github/issues/CRYPTOSCOPE101/SoundHub" />
+<a href="https://github.com/soundXlab/SoundHub/issues">
+  <img src="https://img.shields.io/github/issues/soundXlab/SoundHub" />
 </a>
-<a href="https://github.com/CRYPTOSCOPE101/SoundHub/stargazers">
-  <img src="https://img.shields.io/github/stars/CRYPTOSCOPE101/SoundHub?style=social" />
+<a href="https://github.com/soundXlab/SoundHub/stargazers">
+  <img src="https://img.shields.io/github/stars/soundXlab/SoundHub?style=social" />
 </a>
 <a href="LICENSE">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" />

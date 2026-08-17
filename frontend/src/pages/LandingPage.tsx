@@ -1108,12 +1108,12 @@ export default function LandingPage() {
             <span>18 pages — architecture, formulas, tokenomics, governance.</span>
             <em>Read the whitepaper →</em>
           </a>
-          <a href="https://github.com/CRYPTOSCOPE101/SoundHub/blob/snd-project-push/LITEPAPER.md" target="_blank" rel="noopener noreferrer" className="docs-landing-card">
+          <a href="https://github.com/soundXlab/SoundHub/blob/main/LITEPAPER.md" target="_blank" rel="noopener noreferrer" className="docs-landing-card">
             <strong>📝 Litepaper</strong>
             <span>The product in one page: problem, solution, layers, roadmap.</span>
             <em>Read the litepaper →</em>
           </a>
-          <a href="https://github.com/CRYPTOSCOPE101/SoundHub/blob/snd-project-push/CHANGELOG.md" target="_blank" rel="noopener noreferrer" className="docs-landing-card">
+          <a href="https://github.com/soundXlab/SoundHub/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer" className="docs-landing-card">
             <strong>🗒️ Changelog</strong>
             <span>Release notes — what changed, how to test, known limits.</span>
             <em>See the changelog →</em>
@@ -1154,6 +1154,7 @@ export default function LandingPage() {
             <Link to={SAMPLE_REVIEW_URL}>Open a sample review</Link>
             <Link to="/market">Marketplace</Link>
             <Link to="/kettle">Kettle for beginners</Link>
+            <a href="https://github.com/soundXlab/SoundHub" target="_blank" rel="noopener noreferrer">GitHub · open source</a>
           </div>
         </div>
         <p className="bc-footer-bottom">

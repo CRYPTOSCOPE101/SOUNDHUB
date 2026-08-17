@@ -57,11 +57,11 @@ const LIMITS = [
 
 const DOCUMENTS = [
   { name: "Whitepaper (PDF)", desc: "18-page technical deep dive — architecture, formulas, tokenomics, governance.", href: "/Whitepaper.pdf", external: true },
-  { name: "Litepaper", desc: "The product in one page: problem, solution, layers, roadmap.", href: "https://github.com/CRYPTOSCOPE101/SoundHub/blob/snd-project-push/LITEPAPER.md", external: true },
-  { name: "README", desc: "Quick start, API overview, DAW engine, releases.", href: "https://github.com/CRYPTOSCOPE101/SoundHub/blob/snd-project-push/README.md", external: true },
-  { name: "Architecture", desc: "How the Max for Live layer, backend and settlement fit together.", href: "https://github.com/CRYPTOSCOPE101/SoundHub/blob/snd-project-push/ARCHITECTURE.md", external: true },
-  { name: "Changelog", desc: "Release notes — what changed, how to test, known limits, release checklist.", href: "https://github.com/CRYPTOSCOPE101/SoundHub/blob/snd-project-push/CHANGELOG.md", external: true },
-  { name: "Max for Live device", desc: "Install, bridge contract, push button states, troubleshooting.", href: "https://github.com/CRYPTOSCOPE101/SoundHub/blob/snd-project-push/m4l/README.md", external: true },
+  { name: "Litepaper", desc: "The product in one page: problem, solution, layers, roadmap.", href: "https://github.com/soundXlab/SoundHub/blob/main/LITEPAPER.md", external: true },
+  { name: "README", desc: "Quick start, API overview, DAW engine, releases.", href: "https://github.com/soundXlab/SoundHub/blob/main/README.md", external: true },
+  { name: "Architecture", desc: "How the Max for Live layer, backend and settlement fit together.", href: "https://github.com/soundXlab/SoundHub/blob/main/ARCHITECTURE.md", external: true },
+  { name: "Changelog", desc: "Release notes — what changed, how to test, known limits, release checklist.", href: "https://github.com/soundXlab/SoundHub/blob/main/CHANGELOG.md", external: true },
+  { name: "Max for Live device", desc: "Install, bridge contract, push button states, troubleshooting.", href: "https://github.com/soundXlab/SoundHub/blob/main/m4l/README.md", external: true },
 ];
 
 export default function DocsPage() {

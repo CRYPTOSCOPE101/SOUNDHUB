@@ -672,12 +672,12 @@ export const api = {
   },
   // GitHub API (public, unauthenticated) — the SoundHub code repo itself
   ghBranches: () =>
-    fetch("https://api.github.com/repos/CRYPTOSCOPE101/SOUNDHUB/branches").then((r) =>
+    fetch("https://api.github.com/repos/soundXlab/SoundHub/branches").then((r) =>
       r.ok ? (r.json() as Promise<GhBranch[]>) : Promise.reject(new Error("GitHub API error"))
     ),
   ghBranchCommits: (branch: string) =>
     fetch(
-      `https://api.github.com/repos/CRYPTOSCOPE101/SOUNDHUB/commits?sha=${encodeURIComponent(branch)}&per_page=15`
+      `https://api.github.com/repos/soundXlab/SoundHub/commits?sha=${encodeURIComponent(branch)}&per_page=15`
     ).then((r) =>
       r.ok
         ? r.json().then((rows) => ghCommits(rows as Array<Record<string, unknown>>))

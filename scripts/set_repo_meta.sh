@@ -5,11 +5,11 @@
 # Usage: bash scripts/set_repo_meta.sh
 set -euo pipefail
 
-REPO="${1:-CRYPTOSCOPE101/SoundHub}"
+REPO="${1:-soundXlab/SoundHub}"
 
 gh repo edit "$REPO" \
   --description "SoundHub — a tokenized marketplace for finished sounds (presets, loops, stems, packs). Buy, don't generate. 🎛" \
-  --homepage "https://github.com/CRYPTOSCOPE101/SoundHub" \
+  --homepage "https://github.com/soundXlab/SoundHub" \
   --add-topic music \
   --add-topic marketplace \
   --add-topic ableton-live \

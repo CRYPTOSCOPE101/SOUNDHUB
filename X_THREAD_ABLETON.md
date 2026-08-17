@@ -75,6 +75,6 @@ can be sold.
 SoundHub — GitHub for sound, tokenized, embedded in the workflow where
 music actually gets made.
 
-→ github.com/CRYPTOSCOPE101/SOUNDHUB
+→ github.com/soundXlab/SoundHub
 
 Don't generate. Buy. 🎛️
