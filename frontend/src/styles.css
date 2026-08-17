@@ -7002,6 +7002,65 @@ pre.diff-raw code {
   }
 }
 
+/* ---------- rotating producer-lingo word sphere ---------- */
+.word-sphere-section {
+  overflow: hidden;
+}
+
+.word-sphere {
+  perspective: 900px;
+  width: 340px;
+  height: 340px;
+  margin: 8px auto 0;
+  position: relative;
+}
+
+.word-sphere-rot {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation: word-sphere-spin 38s linear infinite;
+  will-change: transform;
+}
+
+.word-sphere:hover .word-sphere-rot {
+  animation-play-state: paused;
+}
+
+.word-sphere-word {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.word-sphere-word:nth-child(3n + 1) {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+
+.word-sphere-word:nth-child(3n + 2) {
+  color: var(--link);
+  border-color: var(--blue-soft);
+}
+
+@keyframes word-sphere-spin {
+  from {
+    transform: rotateX(-12deg) rotateY(0deg);
+  }
+  to {
+    transform: rotateX(-12deg) rotateY(360deg);
+  }
+}
+
 /* ---------- testimonials ---------- */
 .cr-testimonials {
   display: grid;

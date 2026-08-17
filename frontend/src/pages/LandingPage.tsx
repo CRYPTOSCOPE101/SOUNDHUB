@@ -676,6 +676,40 @@ function Testimonials() {
   );
 }
 
+// Rotating 3D word sphere — the producer lingo, as a tag cloud.
+const SPHERE_WORDS = [
+  "Bounce", "Version", "Master", "Stems", "LUFS", "A/B", "Round",
+  "Approval", "Watermark", "Deposit", "Ledger", "Release", "Feedback owner", "Invoice",
+];
+
+function spherePoints(n: number, radius: number) {
+  // fibonacci sphere — words spread evenly over the ball
+  const pts: { x: number; y: number; z: number }[] = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < n; i++) {
+    const y = 1 - (i / (n - 1)) * 2;
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const theta = golden * i;
+    pts.push({ x: Math.cos(theta) * r * radius, y: y * radius, z: Math.sin(theta) * r * radius });
+  }
+  return pts;
+}
+
+function WordSphere() {
+  const pts = spherePoints(SPHERE_WORDS.length, 150);
+  return (
+    <div className="word-sphere" aria-hidden="true">
+      <div className="word-sphere-rot">
+        {SPHERE_WORDS.map((w, i) => (
+          <span key={w} className="word-sphere-word" style={{ transform: `translate3d(${pts[i].x}px, ${pts[i].y}px, ${pts[i].z}px)` }}>
+            {w}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Comparison table: SoundHub vs the usual ways of sharing files.
 function CompareTable() {
   return (
@@ -1071,6 +1105,15 @@ export default function LandingPage() {
             </details>
           ))}
         </div>
+      </section>
+
+      {/* ---------- producer lingo word sphere ---------- */}
+      <section className="bc-section word-sphere-section">
+        <h2 className="bc-h2">Speak the language</h2>
+        <p className="bc-lead">
+          Bounce, stems, LUFS — the words producers throw around. Spin the sphere, learn the lingo.
+        </p>
+        <WordSphere />
       </section>
 
       {/* ---------- final CTA ---------- */}
