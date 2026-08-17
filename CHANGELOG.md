@@ -73,6 +73,84 @@ Run before tagging a release (same cases CI covers in `pytest -k bridge`):
 All five bridge checks are automated in `tests/test_snd_project.py` (`-k bridge`),
 so the checklist is a manual confirmation of what CI already asserts.
 
+## [Unreleased] — Native sidecar (in-Live push)
+
+### What changed
+
+- **`m4l/sidecar.js` — native Node.js sidecar for the push button.** Max
+  8.5+ ships a Node.js runtime for `node.script`, so the device now runs the
+  push pipeline **inside Live**: the sidecar reads the `.als` from disk and
+  posts a real multipart body straight to the backend. No external `snd
+  serve` process, no `shell` (blocked in Live), no binary-mangling
+  `httprequest`. On older Max it falls back to the `snd serve` bridge
+  (unchanged).
+- The sidecar doubles as a plain CLI (`node sidecar.js push …`) with the
+  same stable contract (`ok / project_id / commit_id / version_id /
+  session_id / share_token / review_url / uploaded / deduplicated`) and the
+  same client-side preflight (missing file, size, extension, `.als`
+  readability, review-mode master gate, stems-without-master).
+- Honest limit: the sidecar does **not** build the local
+  `SOUNDHUB-MANIFEST.json` (that needs the Python parsers) — the backend
+  re-parses pushed DAW files itself, so smart diff / tree analysis still
+  work.
+- Patch `SoundHub.amxd` rebuilt with a `node.script` object (`sidecar`),
+  device JS tries the sidecar first, falls back to the bridge.
+- **Deep `.flp` parsing** — the FL parser now reads the `FLdt` event stream
+  instead of just the header: per-channel names/types (instrument, sampler,
+  layer, …), plugins per channel (including VST factory names from the
+  `Plugin.Data` blob), and patterns with note counts. Smart diff on `.flp`
+  now shows `+Pad`, `+Vital`, `BPM 140 → 150` instead of only a binary
+  hexdump.
+- **Smart diff UI polish** — the review diff panel now badges bpm/time-
+  signature changes as `~ changed` (not `+ added`), shows a change counter in
+  the header, and colorizes raw diff lines (`+` green, `−` red, `@@` hunks
+  blue).
+- **Engineer reputation & verification** — public portfolios now carry a
+  reputation block computed from **real platform data** (delivered packages,
+  approved sessions, avg rounds to approval, on-time rate) — nothing
+  self-reported except the profile text. `✓ Verified` appears only for
+  wallet-linked accounts (signature-checked at login). Engineers edit their
+  bio / specialty / location via `PATCH /api/auth/me`.
+- **USDC checkout on Base** — a second payment layer beside Stripe, no
+  custodial step: the client gets payment terms (payee wallet, exact USDC
+  amount, token + chain), sends USDC from their own wallet, then the
+  transfer is verified on-chain by tx hash (`POST /webhooks/usdc` reads the
+  receipt over JSON-RPC, checks the `Transfer` log amount + payee,
+  idempotently marks the invoice / deposit / extra round paid). Works on the
+  public delivery page and the owner view; `delivery_token` or `package_id`
+  both accepted for verification. Disabled (503) until `SOUNDHUB_BASE_RPC_URL`
+  is set.
+- **Review comments in the DAW** — the M4L device now pulls **open review
+  comments** straight into Live (fourth button, `shareToken` config): it
+  reads the public export endpoint (`GET /api/sessions/public/{token}/requests/export`,
+  new, share-token based — no login) and shows the current request plus the
+  full list on the panel. The `snd serve` bridge gained the same
+  `GET /comments?token=…` proxy.
+- **REAPER integration** (`reaper/`) — a ReaScript (Lua) panel mirroring the
+  M4L device: push the current `.rpp` via the `snd` CLI, pull open comments
+  into the console via `reaper.URL_Get`. Install notes + config in
+  `reaper/README.md`.
+- **Style cleanup** — removed dead `[data-theme=…]` override blocks that
+  duplicated the base (variable-driven) rules and hardcoded dark colors that
+  fought the CSS variables; `.btn` now follows the theme instead of being
+  near-black (invisible on dark mode).
+
+### How to test
+
+```bash
+cd backend && .venv/bin/python -m pytest tests/test_usdc.py tests/test_reputation.py tests/test_parsers.py tests/test_daw_bridge.py -q
+cd backend && .venv/bin/python -m pytest tests/test_snd_sidecar.py tests/test_snd_project.py -q   # needs node
+cd frontend && npm run build
+cd m4l && python3 build_amxd.py
+```
+
+### Known limits
+
+- Sidecar requires **Max 8.5+** (first release with `node.script`); older
+  Max uses the bridge fallback.
+- No local manifest from the sidecar (`manifest_stored: false`) — server
+  re-parse covers diff/tree.
+
 ## After v0.2.0 — post-release note
 
 ### What the smoke showed

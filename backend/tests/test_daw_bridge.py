@@ -145,6 +145,27 @@ def test_export_requires_owner(client):
     assert r.status_code == 404
 
 
+def test_public_export_share_token(client):
+    """The M4L device pulls open comments via the share token — no login."""
+    token = _register(client)
+    s = _create_session(client, token)
+    v = _upload(client, token, s["id"], make_wav())
+    _open_requests(client, token, s["id"], s["share_token"], v["id"], ["bass masks the vocal"])
+
+    r = client.get(f"/api/sessions/public/{s['share_token']}/requests/export")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/markdown")
+    assert "bass masks the vocal" in r.text
+
+    r = client.get(f"/api/sessions/public/{s['share_token']}/requests/export?format=csv")
+    assert r.status_code == 200
+    assert "version,time_s,clock,author,status,body" in r.text
+    assert "bass masks the vocal" in r.text
+
+    # unknown token → 404
+    assert client.get("/api/sessions/public/nope/requests/export").status_code == 404
+
+
 # ---------- CLI ----------
 
 

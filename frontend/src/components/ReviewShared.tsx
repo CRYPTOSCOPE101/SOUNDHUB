@@ -339,10 +339,32 @@ const DIFF_LABEL: Record<string, string> = {
   sample_removed: "Sample removed",
 };
 
-function diffKindBadge(kind: string): { cls: string; arrow: string } {
-  if (kind.endsWith("_added") || kind === "bpm") return { cls: "added", arrow: "→" };
-  if (kind.endsWith("_removed")) return { cls: "removed", arrow: "→" };
-  return { cls: "info", arrow: "→" };
+function diffKindBadge(kind: string): { cls: string; arrow: string; mark: string } {
+  if (kind.endsWith("_added")) return { cls: "added", arrow: "→", mark: "+" };
+  if (kind.endsWith("_removed")) return { cls: "removed", arrow: "→", mark: "−" };
+  if (kind === "bpm" || kind === "info") return { cls: "changed", arrow: "→", mark: "~" };
+  return { cls: "info", arrow: "→", mark: "·" };
+}
+
+// Colorize unified-diff / hexdump lines by their leading marker.
+function RawDiffLines({ raw }: { raw: string }) {
+  const lines = raw.split("\n");
+  return (
+    <>
+      {lines.map((line, i) => {
+        let cls = "";
+        if (line.startsWith("+++") || line.startsWith("---") || line.startsWith("@@")) cls = "hunk";
+        else if (line.startsWith("+")) cls = "add";
+        else if (line.startsWith("-")) cls = "del";
+        return (
+          <span key={i} className={cls ? `rd-${cls}` : undefined}>
+            {line}
+            {"\n"}
+          </span>
+        );
+      })}
+    </>
+  );
 }
 
 export function VersionDiffPanel({ diff, onClose }: { diff: VersionDiff; onClose: () => void }) {
@@ -354,6 +376,7 @@ export function VersionDiffPanel({ diff, onClose }: { diff: VersionDiff; onClose
         <span className="rs-diff-title">
           ✦ What changed · <strong>{diff.version_label}</strong>
           {diff.from_label ? ` vs ${diff.from_label}` : " (first version)"}
+          {hasChanges && <span className="rs-diff-count">· {changes.length} {changes.length === 1 ? "change" : "changes"}</span>}
         </span>
         <button type="button" className="rs-btn ghost sm" onClick={onClose}>
           ✕
@@ -370,7 +393,7 @@ export function VersionDiffPanel({ diff, onClose }: { diff: VersionDiff; onClose
             const label = c.kind === "info" ? c.label : DIFF_LABEL[c.kind] || c.label;
             return (
               <li key={i} className={`rs-diff-row ${b.cls}`}>
-                <span className={`rs-diff-badge ${b.cls}`}>{b.cls === "added" ? "+" : b.cls === "removed" ? "−" : "·"}</span>
+                <span className={`rs-diff-badge ${b.cls}`}>{b.mark}</span>
                 <span className="rs-diff-label">{label}</span>
                 <span className="rs-diff-change">
                   {c.old != null && <span className="rs-diff-old">{c.old}</span>}
@@ -388,7 +411,7 @@ export function VersionDiffPanel({ diff, onClose }: { diff: VersionDiff; onClose
           {diff.truncated && " · raw diff truncated"}
           <details className="rs-diff-raw">
             <summary>Raw diff</summary>
-            <pre>{diff.raw || "(no raw diff)"}</pre>
+            <pre>{diff.raw ? <RawDiffLines raw={diff.raw} /> : "(no raw diff)"}</pre>
           </details>
         </div>
       )}

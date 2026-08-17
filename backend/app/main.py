@@ -79,6 +79,20 @@ def _seed_sample_review() -> None:
             demo = User(username="demo", password_hash=hash_password("demo123"))
             db.add(demo)
             db.flush()
+        if not demo.bio:
+            # demo engineer profile — reputation is computed from real data,
+            # bio/specialty/location are the only self-edited fields
+            demo.bio = (
+                "Demo engineer: bass-heavy garage and neon warehouse mixes. "
+                "Working in Ableton Live 12, REAPER, Cubase and FL Studio."
+            )
+            demo.specialty = "mix_master"
+            demo.location = "Berlin"
+        if not demo.wallet_address:
+            # wallet-linked identity → ✓ Verified badge (signature-checked path)
+            demo.wallet_address = "0x" + "ab" * 20
+            db.add(demo)
+        db.commit()  # persist the profile even when the review already exists
         existing = db.scalar(
             select(ReviewSession).where(ReviewSession.share_token == DEMO_REVIEW_TOKEN)
         )

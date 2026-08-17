@@ -31,7 +31,8 @@ var config = {
   maxItems: 50,
   pushProject: "",    // project name for push (default: current Live set name)
   pushBranch: "main", // branch to commit the push to
-  pushMessage: ""     // commit message (default: "snd push")
+  pushMessage: "",    // commit message (default: "snd push")
+  shareToken: ""      // review session share token (loads open comments into Live)
 };
 
 var MARKET_ABI = {
@@ -353,11 +354,85 @@ function httpGet(url, cb) {
   http.exec();
 }
 
-// ---- push current export (via the local snd bridge) ------------------------
+// ---- load open review comments into Live -----------------------------------
+// The engineer's todo list lives in the review session. This pulls the open
+// change requests (timestamped comments) straight into Live using the share
+// link token — no login needed, same read the public review page does.
+//
+//   GET {backend}/api/sessions/public/{shareToken}/requests/export?format=csv
+//
+// The CSV rows are version, time_s, clock, author, status, body — rendered
+// into OUT_MATCH (current request) + OUT_STATUS (count) and the full list on
+// OUT_CATALOG.
+
+function loadReviewComments() {
+  var token = config.shareToken;
+  if (!token) {
+    out(OUT_STATUS, "No share token — send `shareToken <token>` to the device (from the review link).");
+    return;
+  }
+  var url = config.backend + "/api/sessions/public/" + encodeURIComponent(token) + "/requests/export?format=csv";
+  out(OUT_STATUS, "Loading open review comments…");
+  httpGet(url, function (ok, text) {
+    if (!ok) {
+      out(OUT_STATUS, "Load comments failed: " + text);
+      return;
+    }
+    var rows = parseCsv(text);
+    var comments = rows.slice(1); // drop header
+    if (!comments.length) {
+      out(OUT_STATUS, "No open review comments. 🎉");
+      out(OUT_CATALOG, "[]");
+      out(OUT_MATCH, "no open comments");
+      return;
+    }
+    out(OUT_CATALOG, JSON.stringify(comments.map(function (r) {
+      return { clock: r[2], version: r[0], author: r[3] || "Reviewer", status: r[4], body: r[5] };
+    })));
+    var first = comments[0];
+    out(OUT_MATCH, "🎧 " + first[2] + " " + (first[3] || "Reviewer") + ": " + first[5]);
+    out(OUT_STATUS, comments.length + " open comment(s) — see panel");
+  });
+}
+
+// Minimal RFC-4180 CSV parser (quoted fields, embedded commas/newlines).
+function parseCsv(text) {
+  var rows = [];
+  var row = [];
+  var field = "";
+  var inQ = false;
+  for (var i = 0; i < text.length; i++) {
+    var ch = text.charAt(i);
+    if (inQ) {
+      if (ch === "\"") {
+        if (text.charAt(i + 1) === "\"") { field += "\""; i++; }
+        else inQ = false;
+      } else field += ch;
+    } else if (ch === "\"") {
+      inQ = true;
+    } else if (ch === ",") {
+      row.push(field); field = "";
+    } else if (ch === "\n") {
+      row.push(field); field = "";
+      if (row.length > 1 || (row.length === 1 && row[0] !== "")) rows.push(row);
+      row = [];
+    } else if (ch !== "\r") {
+      field += ch;
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+// ---- push current export (native sidecar, fallback to the snd bridge) ------
 // M4L can't run `shell` (blocked inside Live) and httprequest mangles binary
-// multipart, so the button posts a tiny JSON payload to the local `snd serve`
-// bridge, which runs the full snd push pipeline (preflight -> atomic upload
-// -> review session) and returns the stable contract.
+// multipart. Two transports, same Phase 16 pipeline + contract:
+//   1. Native sidecar — `node.script` (Max 8.5+ ships a Node.js runtime)
+//      runs m4l/sidecar.js INSIDE the device: it reads the .als from disk
+//      and posts a real multipart body straight to the backend. No external
+//      process, no `snd serve` needed.
+//   2. Fallback — POST a tiny JSON payload to the local `snd serve` bridge
+//      (older Max versions / manual setup), which runs the same pipeline.
 
 function pushCurrentExport() {
   var path = currentSongPath();
@@ -371,6 +446,18 @@ function pushCurrentExport() {
     branch: config.pushBranch || "main",
     message: config.pushMessage || "snd push"
   };
+
+  // 1. native sidecar (node.script object named `sidecar` in the patch)
+  var sidecar = null;
+  try { sidecar = this.patcher.getnamed("sidecar"); } catch (e) { sidecar = null; }
+  if (sidecar) {
+    out(OUT_STATUS, "Pushing “" + payload.project + "” via native sidecar…");
+    // the sidecar posts to the backend and answers on its outlet → panel
+    sidecar.message("push", JSON.stringify(payload));
+    return;
+  }
+
+  // 2. fallback: local `snd serve` bridge
   out(OUT_STATUS, "Pushing “" + payload.project + "” to SoundHub…");
   httpPostJson(config.bridge + "/push", payload, function (ok, text) {
     if (!ok) {
@@ -384,10 +471,21 @@ function pushCurrentExport() {
       out(OUT_PUSH, text);
       return;
     }
-    out(OUT_STATUS, "✓ pushed commit #" + res.commit_id + " · " + res.file_count + " file(s)");
-    out(OUT_MATCH, res.review_url ? "review: " + res.review_url : "fast push (no review — add master audio next time)");
-    out(OUT_PUSH, JSON.stringify(res));
+    handlePushContract(res);
   });
+}
+
+// Shared success rendering for both transports (native sidecar answers with
+// the same JSON contract on the sidecar outlet).
+function handlePushContract(res) {
+  if (!res || !res.ok) {
+    out(OUT_STATUS, "Push failed: " + (res && res.error ? res.error : JSON.stringify(res)));
+    out(OUT_PUSH, JSON.stringify(res));
+    return;
+  }
+  out(OUT_STATUS, "✓ pushed commit #" + res.commit_id + " · " + (res.file_count || "?") + " file(s)");
+  out(OUT_MATCH, res.review_url ? "review: " + res.review_url : "fast push (no review — add master audio next time)");
+  out(OUT_PUSH, JSON.stringify(res));
 }
 
 // POST a JSON body to a URL (text responses).
@@ -435,11 +533,12 @@ function bang() {
 
 function msg_int(v) {
   // 0 = refresh catalog, 1 = suggest for current BPM, 2 = load suggested asset,
-  // 3 = push current export
+  // 3 = push current export, 4 = load open review comments into Live
   if (v === 0) loadCatalog();
   else if (v === 1) suggestForBpm(readBpm());
   else if (v === 2) loadAssetById(pendingId >= 0 ? pendingId : 1, "suggested_asset");
   else if (v === 3) pushCurrentExport();
+  else if (v === 4) loadReviewComments();
 }
 
 function readBpm() {
@@ -464,3 +563,4 @@ function bridge(v) { config.bridge = v; postln("bridge -> " + v); }
 function pushProject(v) { config.pushProject = v; postln("pushProject -> " + v); }
 function pushBranch(v) { config.pushBranch = v; postln("pushBranch -> " + v); }
 function pushMessage(v) { config.pushMessage = v; postln("pushMessage -> " + v); }
+function shareToken(v) { config.shareToken = v; postln("shareToken -> " + v); }

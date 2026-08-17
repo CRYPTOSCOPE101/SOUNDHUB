@@ -12,8 +12,9 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import ReleasePackage, ReviewSession, ReviewVersion, User
-from ..schemas import PortfolioOut, PortfolioTrackOut
+from ..schemas import PortfolioOut, PortfolioTrackOut, ReputationOut
 from ..services import storage, watermark
+from ..services.reputation import engineer_reputation
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
@@ -63,7 +64,13 @@ def portfolio(username: str, db: Session = Depends(get_db)):
                 delivery_token=pkg.delivery_token if pkg else None,
             )
         )
-    return PortfolioOut(username=user.username, track_count=len(tracks), tracks=tracks)
+    reputation = engineer_reputation(db, user)
+    return PortfolioOut(
+        username=user.username,
+        track_count=len(tracks),
+        tracks=tracks,
+        reputation=ReputationOut(**reputation),
+    )
 
 
 @router.get("/{username}/preview/{version_id}")

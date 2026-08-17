@@ -48,9 +48,12 @@ features vs roadmap, and how it compares to existing tools.
 📄 Read the [Litepaper](LITEPAPER.md) — vision, tokenized layer, tokenomics
 and roadmap.
 
-🎛 **SoundHub inside Ableton Live** — Max for Live prototype that embeds the
-marketplace in the DAW: catalog, BPM-aware suggestions, buy & load. See
-[`m4l/`](m4l/) and the [integration architecture](ARCHITECTURE.md).
+🎛 **SoundHub inside your DAW** — Max for Live prototype for Ableton Live
+(`m4l/`) that embeds the marketplace (catalog, BPM-aware suggestions, buy &
+load), pushes the current set as a versioned commit (native sidecar), and
+pulls open review comments into the DAW. The same loop works in REAPER via a
+ReaScript panel (`reaper/`). See [`m4l/`](m4l/) and the [integration
+architecture](ARCHITECTURE.md).
 
 GitHub, but for DAW projects — Ableton Live (`.als`), Cubase (`.cpr`),
 REAPER (`.rpp`) and FL Studio (`.flp`). Version your tracks, see *what
@@ -188,12 +191,33 @@ cd backend
  "deduplicated": 4}
 ```
 
-## Bridge contract — `snd serve` (localhost:8765)
+## Native sidecar — push from inside Live (Max 8.5+)
 
-The Max for Live push button (and any local automation) talks to a tiny
-localhost JSON bridge, a thin client over the same `snd push --json`
-pipeline. `shell` is blocked inside Live and `httprequest` mangles binary
-multipart, so the device POSTs JSON and the bridge does the real work.
+The Max for Live push button runs a **native sidecar** (`m4l/sidecar.js`)
+through Max's built-in `node.script` (Max 8.5+ ships a Node.js runtime). It
+reads the current `.als` from disk and posts a real multipart body straight
+to the backend — **no external process** (`shell` is blocked inside Live and
+`httprequest` mangles binary multipart, so a sidecar is the in-Live
+transport). The same code is a plain CLI:
+
+```bash
+cd backend
+node ../m4l/sidecar.js push --target ./Track_v12.als --audio ./master.wav \
+  --project "artist-track" --branch review/v12 --round 3 \
+  --api http://127.0.0.1:8000 --token <token> --json
+# → {"ok": true, "commit_id": 42, "review_url": "http://localhost:5173/r/…"}
+```
+
+The sidecar does not build the local `SOUNDHUB-MANIFEST.json` (that needs
+the Python parsers); the backend re-parses every pushed DAW file itself, so
+smart diff and tree analysis still work. Covered by
+`backend/tests/test_snd_sidecar.py` (live uvicorn + real `node`).
+
+## Bridge contract — `snd serve` (localhost:8765, fallback)
+
+On Max versions without `node.script` (before 8.5), the device falls back to
+a tiny localhost JSON bridge, a thin client over the same `snd push --json`
+pipeline: the device POSTs JSON and the bridge does the real work.
 
 ```bash
 cd backend
@@ -292,7 +316,7 @@ These are exactly the cases the CI bridge smoke covers
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Push failed (bridge unreachable?)` | `snd serve` isn't running | run `./snd serve` and keep it open |
+| `Push failed (bridge unreachable?)` | Max < 8.5 (no `node.script`) and `snd serve` isn't running | upgrade to Max 8.5+ (native sidecar), or run `./snd serve` and keep it open |
 | `Push failed: HTTP 401/403` | no valid session | run `./snd login --user … --password …` once |
 | `Push failed: bad JSON body` | device ↔ bridge mismatch | reload the device, check `bridge` points at `http://127.0.0.1:8765` |
 | `Push failed: Target file not found` | `.als` path wrong / unsaved set | save the Live set (Cmd/Ctrl+S), use the absolute path |
@@ -323,10 +347,10 @@ These are exactly the cases the CI bridge smoke covers
 - [x] Repo-first UI (own design): repo tabs, branch selector, commits view, README; Ableton light/dark themes; SoundHub-repo page via GitHub API
 - [x] Branches: named pointers, per-branch history/tree/diff (merges: DAG — next)
 - [ ] Token gating on purchase, one-click device insert, key/tracks/devices context from Live API
-- [ ] Verification badges (DAW-parsed), seller reputation, license enforcement
+- [x] Verification badges (wallet-linked), seller reputation (real platform data), license enforcement
 - [ ] Merges (DAG), audio preview, real-time collab
 - [x] FL Studio & Cubase integration prototypes (`feat/flstudio-integration`, `feat/cubase-integration`)
-- [ ] WalletConnect signing in M4L / relayer; REAPER equivalent (ReaScript)
+- [ ] WalletConnect signing in M4L / relayer; REAPER push via bridge (ReaScript panel ships in `reaper/` — push via `snd` CLI, comments via public export)
 - [ ] S3/Azure blob backend for production scale
 
 ## Tokenized platform (web3) 🪙

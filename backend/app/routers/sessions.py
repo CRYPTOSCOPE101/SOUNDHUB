@@ -883,17 +883,8 @@ def update_brief(
     return _session_detail(db, session)
 
 
-@router.get("/{session_id}/requests/export")
-def export_requests(
-    session_id: int,
-    format: str = Query("markdown", pattern="^(markdown|csv)$"),
-    include_drafts: bool = Query(False),
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Export open change requests as Markdown or CSV — the DAW-bridge input
-    (engineer pulls the list into the studio, pushes bounces back via CLI)."""
-    session = get_session_or_404(db, user, session_id)
+def _export_requests_response(db: Session, session: ReviewSession, format: str, include_drafts: bool):
+    """Render open change requests as Markdown or CSV — the DAW-bridge input."""
     rows = db.scalars(
         select(ReviewComment)
         .join(ReviewVersion, ReviewComment.version_id == ReviewVersion.id)
@@ -934,6 +925,35 @@ def export_requests(
         media_type="text/markdown",
         headers={"Content-Disposition": f'attachment; filename="{_ascii_filename(session.name, "md")}"'},
     )
+
+
+@router.get("/{session_id}/requests/export", response_model=None)
+def export_requests(
+    session_id: int,
+    format: str = Query("markdown", pattern="^(markdown|csv)$"),
+    include_drafts: bool = Query(False),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Export open change requests as Markdown or CSV — the DAW-bridge input
+    (engineer pulls the list into the studio, pushes bounces back via CLI)."""
+    session = get_session_or_404(db, user, session_id)
+    return _export_requests_response(db, session, format, include_drafts)
+
+
+@router.get("/public/{share_token}/requests/export", response_model=None)
+def public_export_requests(
+    share_token: str,
+    format: str = Query("markdown", pattern="^(markdown|csv)$"),
+    include_drafts: bool = Query(False),
+    password: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Public export for the DAW bridge — the M4L device pulls open review
+    comments straight into Live using the share link token."""
+    session = get_public_session(db, share_token)
+    _check_share_access(session, "", password)
+    return _export_requests_response(db, session, format, include_drafts)
 
 
 @router.post("/{session_id}/checkout", response_model=CheckoutOut)

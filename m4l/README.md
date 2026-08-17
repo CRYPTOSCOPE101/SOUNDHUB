@@ -32,8 +32,9 @@ marketplace into Ableton Live:
 - **loads** the purchased asset into the project (drag-in; full
   browser/rack import is the next iteration);
 - **pushes the current export** to SoundHub as a versioned commit (+ review
-  session for the master) via the local `snd serve` bridge — the DAW-to-
-  review pipeline from the Phase 16 contract, one button away from Live.
+  session for the master) via a **native `node.script` sidecar** running
+  inside the device — the DAW-to-review pipeline from the Phase 16 contract,
+  one button away from Live, no external process needed.
 
 ## Files
 
@@ -41,6 +42,7 @@ marketplace into Ableton Live:
 |---|---|
 | `SoundHub.amxd` | the device — drag into a Live track (Max for Live required) |
 | `soundhub-device.js` | all device logic (catalog decoding, RPC, buying, BPM matching) |
+| `sidecar.js` | native push sidecar — runs inside the device via `node.script` (Max 8.5+), also usable as a plain CLI (`node sidecar.js push …`) |
 | `build_amxd.py` | regenerates `SoundHub.amxd` from the patch definition (gzip JSON) |
 
 ## Install
@@ -76,25 +78,49 @@ entries (not yet on-chain) so recommendations are meaningful.
   `backend/app/services/catalog.py`);
 - **load** — auto-imports the suggested asset into the Live **User Library**: fetches it through the backend's short-lived signed-token endpoint (`/api/assets/{id}/token` → `/download64`), decodes the base64 payload and writes it to `User Library/SoundHub/` with the Max `file` object, then refreshes Live's file browser (`live.browser`);
 - **push** — pushes the **current Live set** (`.als`) to SoundHub as one
-  versioned commit; if you also run `snd serve` locally it posts the JSON
-  payload to the bridge, which runs the full Phase 16 pipeline (preflight →
-  atomic upload → review session) and shows the **review URL** in the panel.
+  versioned commit. The device runs a **native sidecar** (`node.script`,
+  Max 8.5+) that reads the `.als` from disk and posts a real multipart body
+  straight to the backend — the full Phase 16 pipeline (preflight → atomic
+  upload → review session) — and shows the **review URL** in the panel. No
+  external bridge process to start. On Max versions without `node.script`
+  the device falls back to the local `snd serve` bridge.
+- **comments** — pulls the **open review comments** (timestamped change
+  requests) straight into Live. The engineer sets the review session's
+  `shareToken` (the `/r/<token>` part of the review link) and the device
+  reads the public export (`GET /api/sessions/public/{token}/requests/export`)
+  — no login needed — and shows the current request in the panel with the
+  full list on the catalog display: `🎧 1:23.4 Aisha: bass masks the vocal`.
 
 ### Push current export — how it works
 
 `shell` is blocked inside Live and `httprequest` mangles binary multipart, so
-push goes through a tiny localhost JSON bridge (a thin client over the
-already-tested `snd push --json` contract):
+push runs through a **native sidecar**: Max 8.5+ ships a Node.js runtime for
+`node.script`, and the patch includes one (`sidecar.js`) that reads the
+`.als` from disk and posts a real multipart body straight to the SoundHub
+backend:
 
 ```
 [push] button → live_set.current_song_path (.als)
-  → POST {target, project, branch, message} → http://127.0.0.1:8765/push
-  → snd serve runs the real push pipeline (preflight + dedup + atomic commit
+  → node.script sidecar: preflight → multipart POST → /api/projects/{id}/push
+  → backend runs the real pipeline (preflight + dedup + atomic commit
     + review session/version) → returns the stable JSON contract
   → panel shows "✓ pushed commit #N" + the review URL
 ```
 
-Run the bridge once (any terminal), then press **push** in Live:
+**No external process.** The sidecar uses Node's stdlib only (`fs`,
+`http`/`https`, `crypto`) — nothing to install, nothing to keep running.
+
+The same code is a plain CLI, which is also how the test suite drives it:
+
+```bash
+cd backend
+node ../m4l/sidecar.js push --target ./Track.als \
+  --api http://127.0.0.1:8000 --token <token> --json
+# → {"ok": true, "commit_id": N, "review_url": "http://localhost:5173/r/…"}
+```
+
+On Max versions without `node.script` (before 8.5), the device falls back to
+the local `snd serve` bridge (a thin client over the same contract):
 
 ```bash
 cd backend
@@ -110,11 +136,32 @@ bridge       http://127.0.0.1:8765
 pushProject  artist-track
 pushBranch   review/v12
 pushMessage  "Round 3 candidate"
+shareToken   AbC123…   # from the review link /r/<token> — loads comments
 ```
+
+### Load review comments — how it works
+
+The review loop works both ways: the client's timestamped notes are the
+engineer's todo list. With the session's `shareToken` configured, the
+**comments** button does a plain GET against the same public export the
+review page uses (view permission only, password-protected links work the
+same way):
+
+```
+[comments] button → GET /api/sessions/public/{shareToken}/requests/export?format=csv
+  → CSV parsed in the device (version, time_s, clock, author, status, body)
+  → panel: count + first request; catalog: full list; match: 🎧 current one
+```
+
+No auth token to manage — the share token **is** the credential, same as the
+public review link.
 
 A fast push (just the `.als`) creates the versioned commit; adding a master
 render path (`audio`) opens the review session so the client can do gapless
-A/B — see the Phase 16 contract in the README.
+A/B — see the Phase 16 contract in the README. Note the sidecar does not
+build the local `SOUNDHUB-MANIFEST.json` (that needs the Python parsers);
+the backend re-parses every pushed DAW file itself, so smart diff and tree
+analysis still work.
 
 ### Push button — UX spec (states)
 
@@ -135,12 +182,13 @@ only reached with a `commit_id` in the response (any other body is an
 
 ### Idempotency
 
-Pushing the **same export twice** is safe and predictable: the bridge runs
-the real pipeline, blobs are content-addressed (SHA-256), so an identical
-`.als` + manifest creates **no new blobs** and the server returns the
-`deduplicated` count with a deterministic `commit_id`. The button therefore
-never needs a “force” path — a re-push after a failed confirmation is just
-another push of the same bytes.
+Pushing the **same export twice** is safe and predictable: both transports
+run the real pipeline, blobs are content-addressed (SHA-256), so an
+identical `.als` creates **no new blobs** and the server returns the
+`deduplicated` count (a fresh commit row still appears — that's version
+history, not duplicate data). The button therefore never needs a “force”
+path — a re-push after a failed confirmation is just another push of the
+same bytes.
 
 ## Backend endpoints the device uses
 
@@ -151,7 +199,8 @@ another push of the same bytes.
 | `GET /api/assets/{id}/token` | short-lived download token + asset metadata (prototype: public) |
 | `GET /api/assets/{id}/download?token=` | asset bytes with license headers |
 | `GET /api/assets/{id}/download64?token=` | text-safe base64 JSON variant (for M4L import) |
-| `POST /push` (local bridge, port 8765) | JSON `{target, audio?, stems?, project?, branch?, round?, message?}` → Phase 16 push contract |
+| `POST /api/projects/{id}/push` | multipart push (sidecar, real HTTP) — same contract as `snd push` |
+| `POST /push` (local bridge, port 8765, fallback) | JSON `{target, audio?, stems?, project?, branch?, round?, message?}` → Phase 16 push contract |
 
 Run the backend locally for suggestions/loads: `cd backend && .venv/bin/uvicorn
 app.main:app --port 8000`, and point the device at it (`backend` message).
@@ -179,7 +228,7 @@ Configure the library folder if it's not the default macOS path:
 
 | Symptom in the panel | Cause | Fix |
 |---|---|---|
-| `Push failed (bridge unreachable? run snd serve)` | `snd serve` isn't running | run `./snd serve` in a terminal and keep it open |
+| `Push failed (bridge unreachable? run snd serve)` | Max < 8.5 (no `node.script`) and `snd serve` isn't running | upgrade to Max 8.5+ (native sidecar), or run `./snd serve` in a terminal and keep it open |
 | `Push failed: bad JSON body` | device ↔ bridge mismatch (shouldn't happen with the shipped patch) | reload the device, check `bridge` message points at `http://127.0.0.1:8765` |
 | `Push failed: save the Live set first` | set was never saved | save the Live set (Cmd/Ctrl+S) before pushing |
 | `Push failed: … Master file not found` | `audio` path configured but file missing | point `audio` at the real render path, or drop it to do a fast push |
@@ -205,10 +254,16 @@ If step 4 fails, re-run with `--json` for the machine-readable error:
 
 ## What's stubbed (honest)
 
-- **Push current export needs `snd serve` running** — the bridge is a thin
-  local process (`backend/snd serve`, stdlib only); the device shows a clear
-  error if it's not up. A bundled/sidecar process inside the device is the
-  next iteration.
+- **Native sidecar is the primary transport (Max 8.5+)** — `node.script`
+  runs `sidecar.js` inside the device with Node's stdlib; older Max falls
+  back to the local `snd serve` bridge. The sidecar does **not** build the
+  local `SOUNDHUB-MANIFEST.json` (Python parsers) — the backend re-parses
+  files itself, so diff/tree still work, but the push contract reports
+  `manifest_stored: false`.
+- **Push uploads the `.als` of the current set** (plus master/stems only if
+  paths are configured) — Live's own render-to-disk automation (export the
+  current scene as a master WAV before pushing) is the natural next step.
+  The sidecar reads master/stems from `audio`/`stems` paths when set.
 - **Push uploads the `.als` of the current set** (plus master/stems only if
   paths are configured) — Live's own render-to-disk automation (export the
   current scene as a master WAV before pushing) is the natural next step.

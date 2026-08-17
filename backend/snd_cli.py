@@ -363,8 +363,49 @@ def start_bridge(*, api: str, token: str, host: str = "127.0.0.1", port: int = 8
             self.wfile.write(data)
 
         def do_GET(self):
-            if self.path.rstrip("/") == "/health":
+            path = self.path.rstrip("/")
+            if path == "/health":
                 self._send(200, {"ok": True, "service": "snd-bridge"})
+            elif path.startswith("/comments"):
+                # GET /comments?token=<share_token>&format=markdown|csv — the
+                # DAW-side panel (REAPER ReaScript, M4L fallback) pulls open
+                # review comments through the same local bridge.
+                from urllib.parse import parse_qs, urlparse
+
+                q = parse_qs(urlparse(self.path).query)
+                token = (q.get("token") or [""])[0]
+                if not token:
+                    self._send(400, {"ok": False, "error": "missing share token (?token=…)"})
+                    return
+                fmt = (q.get("format") or ["markdown"])[0]
+                if fmt not in ("markdown", "csv"):
+                    self._send(400, {"ok": False, "error": "format must be markdown or csv"})
+                    return
+                try:
+                    import urllib.request
+
+                    url = f"{api}/api/sessions/public/{token}/requests/export?format={fmt}"
+                    if http is not None:
+                        # test double: returns (status, body_bytes)
+                        status, body = http("GET", url, token=None)
+                        if status >= 400:
+                            raise CliError(f"HTTP {status}: {body.decode(errors='replace')[:300]}")
+                        text = body.decode(errors="replace")
+                    else:
+                        with urllib.request.urlopen(url, timeout=30) as resp:
+                            text = resp.read().decode(errors="replace")
+                except CliError as exc:
+                    self._send(404, {"ok": False, "error": str(exc)})
+                    return
+                except OSError as exc:
+                    self._send(404, {"ok": False, "error": str(exc)})
+                    return
+                data = text.encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
             else:
                 self._send(404, {"ok": False, "error": "not found"})
 

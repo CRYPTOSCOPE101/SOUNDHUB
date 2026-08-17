@@ -24,6 +24,9 @@ class UserOut(ORMModel):
     username: str
     wallet_address: str | None = None
     created_at: datetime
+    bio: str = ""
+    specialty: str = ""
+    location: str = ""
 
 
 class TokenOut(BaseModel):
@@ -757,6 +760,35 @@ class CheckoutOut(BaseModel):
     currency: str
 
 
+class UsdcCheckoutOut(BaseModel):
+    """USDC payment terms — the client sends USDC from their own wallet."""
+
+    network: str
+    chain_id: int
+    token_address: str
+    payee_address: str
+    amount_usdc_units: int
+    amount_usdc: float
+    decimals: int
+    purpose: str
+    expires_at: int
+
+
+class UsdcVerifyIn(BaseModel):
+    tx_hash: str
+    package_id: int | None = None
+    session_id: int | None = None
+    delivery_token: str | None = None
+    kind: str = "package"  # package | deposit | extra_round
+
+
+class UsdcVerifyOut(BaseModel):
+    ok: bool
+    handled: bool
+    already_paid: bool = False
+    transfer: dict | None = None
+
+
 # ---------- Public engineer portfolio ----------
 class PortfolioTrackOut(BaseModel):
     session_id: int
@@ -772,10 +804,32 @@ class PortfolioTrackOut(BaseModel):
     delivery_token: str | None = None  # locked release package, when one exists
 
 
+class ReputationOut(BaseModel):
+    """Objective trust signals for an engineer's public profile."""
+
+    delivered_count: int = 0
+    approved_count: int = 0
+    session_count: int = 0
+    avg_rounds: float | None = None
+    on_time_rate: float | None = None
+    verified: bool = False
+    badges: list[str] = []
+    bio: str = ""
+    specialty: str = ""
+    location: str = ""
+
+
+class ProfileUpdate(BaseModel):
+    bio: str | None = Field(default=None, max_length=1000)
+    specialty: str | None = Field(default=None, max_length=64)
+    location: str | None = Field(default=None, max_length=128)
+
+
 class PortfolioOut(BaseModel):
     username: str
     track_count: int = 0
     tracks: list[PortfolioTrackOut] = []
+    reputation: ReputationOut | None = None
 
 
 # ---------- Diff ----------

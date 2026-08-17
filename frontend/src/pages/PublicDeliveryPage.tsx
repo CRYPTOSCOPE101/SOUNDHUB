@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
+import UsdcPayButton from "../components/UsdcPayButton";
 import { humanSize, shortDate, type DeliveryPage, type Deliverable } from "../types";
 
 export default function PublicDeliveryPage() {
@@ -170,9 +171,12 @@ export default function PublicDeliveryPage() {
                 The engineer requires a booking deposit before the final files are handed over.
               </span>
             </div>
-            <button type="button" className="rs-btn approve" onClick={() => void payDeposit()} disabled={paying}>
-              {paying ? "Opening checkout…" : "💳 Pay deposit"}
-            </button>
+            <div className="public-delivery-pay-row">
+              <button type="button" className="rs-btn approve" onClick={() => void payDeposit()} disabled={paying}>
+                {paying ? "Opening checkout…" : "💳 Pay deposit"}
+              </button>
+              <UsdcPayButton target={{ deliveryToken: token, kind: "deposit", purposeLabel: "booking deposit" }} />
+            </div>
           </div>
         )}
         {gate && !depositDue && (
@@ -184,9 +188,12 @@ export default function PublicDeliveryPage() {
                 Pay to unlock the approved files. Card, Apple Pay and Google Pay accepted.
               </span>
             </div>
-            <button type="button" className="rs-btn approve" onClick={() => void pay()} disabled={paying}>
-              {paying ? "Opening checkout…" : "💳 Pay with card"}
-            </button>
+            <div className="public-delivery-pay-row">
+              <button type="button" className="rs-btn approve" onClick={() => void pay()} disabled={paying}>
+                {paying ? "Opening checkout…" : "💳 Pay with card"}
+              </button>
+              <UsdcPayButton target={{ deliveryToken: token, kind: "package", purposeLabel: "release package invoice" }} />
+            </div>
           </div>
         )}
         {payErr && <div className="error">{payErr}</div>}

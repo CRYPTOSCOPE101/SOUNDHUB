@@ -4,6 +4,8 @@ import type {
   Branch,
   ChangeOrder,
   CheckoutOut,
+  UsdcCheckoutOut,
+  UsdcVerifyOut,
   Commit,
   CommitDetail,
   Deliverable,
@@ -88,7 +90,23 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ username, password }),
     }),
-  me: () => request<{ id: number; username: string }>("/api/auth/me"),
+  me: () => request<{
+    id: number;
+    username: string;
+    wallet_address: string | null;
+    bio: string;
+    specialty: string;
+    location: string;
+  }>("/api/auth/me"),
+  updateProfile: (patch: { bio?: string; specialty?: string; location?: string }) =>
+    request<{
+      id: number;
+      username: string;
+      wallet_address: string | null;
+      bio: string;
+      specialty: string;
+      location: string;
+    }>("/api/auth/me", { method: "PATCH", body: JSON.stringify(patch) }),
   walletNonce: (address: string) =>
     request<{ nonce: string; message: string }>("/api/auth/wallet/nonce", {
       method: "POST",
@@ -563,11 +581,38 @@ export const api = {
     }),
   createCheckout: (packageId: number) =>
     request<CheckoutOut>(`/api/release-packages/${packageId}/checkout`, { method: "POST" }),
+  usdcCheckout: (packageId: number, kind: "package" | "deposit" = "package") => {
+    const fd = new FormData();
+    fd.append("kind", kind);
+    return request<UsdcCheckoutOut>(`/api/release-packages/${packageId}/checkout/usdc`, {
+      method: "POST",
+      body: fd,
+    });
+  },
   publicCheckout: (token: string, kind: "package" | "deposit" = "package") => {
     const fd = new FormData();
     fd.append("kind", kind);
     return request<CheckoutOut>(`/api/release-packages/public/${token}/checkout`, { method: "POST", body: fd });
   },
+  publicUsdcCheckout: (token: string, kind: "package" | "deposit" = "package") => {
+    const fd = new FormData();
+    fd.append("kind", kind);
+    return request<UsdcCheckoutOut>(
+      `/api/release-packages/public/${token}/checkout/usdc`,
+      { method: "POST", body: fd }
+    );
+  },
+  usdcVerify: (opts: { txHash: string; packageId?: number | null; sessionId?: number | null; deliveryToken?: string | null; kind: string }) =>
+    request<UsdcVerifyOut>("/api/release-packages/webhooks/usdc", {
+      method: "POST",
+      body: JSON.stringify({
+        tx_hash: opts.txHash,
+        package_id: opts.packageId ?? null,
+        session_id: opts.sessionId ?? null,
+        delivery_token: opts.deliveryToken ?? null,
+        kind: opts.kind,
+      }),
+    }),
   releaseDownloadUrl: (packageId: number, deliverableId: number) =>
     `/api/release-packages/${packageId}/download?deliverable_id=${deliverableId}`,
   // public delivery link

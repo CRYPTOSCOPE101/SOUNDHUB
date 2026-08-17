@@ -79,6 +79,55 @@ def test_parse_flp():
     assert "FLhd" in info.extra["chunks"]
 
 
+def test_parse_flp_deep_channels_plugins_and_patterns():
+    """Deep .flp parse: per-channel plugins, patterns with note counts."""
+    info = get_daw_info(
+        "Neon.flp",
+        make_flp(
+            bpm=140.0,
+            channels=[
+                ("Synth Lead", 4, "Serum"),
+                ("Kick", 0, None),
+                ("Pad", 4, "Vital"),
+            ],
+            patterns=[("Pattern 1", 8), ("Drops", 32)],
+        ),
+    )
+    assert info is not None
+    # channels become tracks with kind + plugin devices
+    tracks = {t.name: t for t in info.tracks}
+    assert set(tracks) == {"Synth Lead", "Kick", "Pad"}
+    assert tracks["Synth Lead"].kind == "instrument"
+    assert tracks["Synth Lead"].devices == ["Serum"]
+    assert tracks["Kick"].kind == "sampler"
+    assert tracks["Kick"].devices == []
+    assert "Serum" in info.plugins and "Vital" in info.plugins
+    # patterns carry names + note counts
+    pats = {p["name"]: p for p in info.extra["patterns"]}
+    assert pats["Pattern 1"]["notes"] == 8
+    assert pats["Drops"]["notes"] == 32
+    assert info.extra["total_notes"] == 40
+    assert info.extra["track_count"] == 3
+
+
+def test_flp_deep_diff_shows_channel_and_plugin_changes():
+    """Smart diff on .flp now surfaces added channels + plugins."""
+    a = get_daw_info("Neon.flp", make_flp(bpm=140.0))
+    b = get_daw_info(
+        "Neon.flp",
+        make_flp(
+            bpm=150.0,
+            channels=[("Synth Lead", 4, "Serum"), ("Kick", 0, None), ("Pad", 4, "Vital")],
+            patterns=[("Pattern 1", 8)],
+        ),
+    )
+    changes = summary_diff(a, b)
+    kinds = {c["kind"] for c in changes}
+    assert "bpm" in kinds
+    assert "track_added" in kinds
+    assert "plugin_added" in kinds
+
+
 def test_normalize_and_diff():
     a = make_als(bpm=128.0)
     b = make_als(bpm=132.0)

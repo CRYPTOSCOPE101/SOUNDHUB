@@ -47,6 +47,14 @@ BOXES = [
     box("newobj", "browserbox", [300.0, 190.0, 150.0, 24.0],
         text="live.browser @name browserbox",
         numinlets=1, inlettype=[""], numoutlets=1, outlettype=[""]),
+    # Native sidecar: node.script (Max 8.5+) runs m4l/sidecar.js inside the
+    # device — reads the .als from disk, posts a real multipart body to the
+    # backend, answers on outlet 0 with the push contract. No `snd serve`
+    # process needed. The js script messages it via getnamed("sidecar").
+    box("newobj", "sidecar", [300.0, 240.0, 220.0, 24.0],
+        text="node.script @name sidecar @script sidecar.js",
+        numinlets=1, inlettype=[""], numoutlets=1, outlettype=[""],
+        script="sidecar.js"),
     # buttons -> prepend converts bang into an int for the js int inlet
     box("button", "btnLoad", [30.0, 50.0, 30.0, 30.0],
         numoutlets=1, outlettype=["bang"]),
@@ -69,7 +77,7 @@ BOXES = [
     box("comment", "l3", [310.0, 20.0, 50.0, 16.0], text="load", **FONT),
     box("comment", "l5", [450.0, 20.0, 60.0, 16.0], text="push", **FONT),
     box("comment", "l4", [30.0, 140.0, 500.0, 16.0],
-        text="SoundHub — don't generate, buy · push current export (needs `snd serve` running)", **FONT),
+        text="SoundHub — don't generate, buy · push current export (native node.script sidecar)", **FONT),
     box("text", "dispCatalog", [30.0, 160.0, 550.0, 140.0], text="catalog", **FONT),
     box("text", "dispStatus", [30.0, 310.0, 550.0, 60.0], text="status", **FONT),
     box("text", "dispMatch", [30.0, 380.0, 550.0, 40.0], text="match", **FONT),
@@ -85,6 +93,8 @@ LINES = [
     ("mapBuy", 0, "core", 1),           # int 2 -> buy last suggestion
     ("btnPush", 0, "mapPush", 0),
     ("mapPush", 0, "core", 1),          # int 3 -> push current export
+    ("sidecar", 0, "dispStatus", 0),    # sidecar contract -> status display
+    ("sidecar", 0, "dispMatch", 0),     # sidecar review url -> match display
     ("ctx", 0, "core", 1),              # live context -> js int inlet (spare)
     ("core", 0, "dispCatalog", 0),      # catalog json
     ("core", 1, "dispStatus", 0),       # status

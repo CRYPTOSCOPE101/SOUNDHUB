@@ -19,6 +19,10 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(256), nullable=True)
     wallet_address: Mapped[str | None] = mapped_column(String(42), unique=True, index=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # public seller profile (reputation layer)
+    bio: Mapped[str] = mapped_column(Text, default="")  # what the engineer does / how they work
+    specialty: Mapped[str] = mapped_column(String(64), default="")  # mix / master / mix_master / production / stems
+    location: Mapped[str] = mapped_column(String(128), default="")
 
     projects: Mapped[list["Project"]] = relationship(back_populates="owner")
 

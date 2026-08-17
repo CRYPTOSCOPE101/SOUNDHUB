@@ -40,9 +40,12 @@ from ..schemas import (
     ReleaseLockIn,
     ReleasePackageCreate,
     ReleasePackageOut,
+    UsdcCheckoutOut,
+    UsdcVerifyIn,
+    UsdcVerifyOut,
 )
 from ..security import get_current_user
-from ..services import ledger, storage, stripe_pay, waveform
+from ..services import ledger, storage, stripe_pay, usdc_pay, waveform
 
 router = APIRouter(prefix="/api/release-packages", tags=["release packages"])
 
@@ -1060,3 +1063,229 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     )
     db.commit()
     return {"received": True, "handled": True}
+
+
+# ---------- USDC checkout (Base) ----------
+
+
+def _usdc_terms_for_package(
+    package: ReleasePackage,
+    purpose: str,
+    db: Session,
+) -> UsdcCheckoutOut:
+    """Payment terms for a package-level charge (invoice or booking deposit)."""
+    if not usdc_pay.enabled():
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "USDC checkout is not configured — set SOUNDHUB_BASE_RPC_URL",
+        )
+    if package.status != "ready":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Lock the package before charging")
+    if package.invoice_status not in ("deposit_due", "balance_due"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Invoice status '{package.invoice_status}' has nothing to charge",
+        )
+    amount = package.amount_due_cents
+    if not amount or amount <= 0:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Set an amount on the invoice before requesting USDC terms",
+        )
+    owner = db.get(User, package.session.owner_id) if package.session else None
+    wallet = owner.wallet_address if owner else None
+    if not usdc_pay.has_payee(wallet):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "This engineer has no wallet linked — ask them to link one, or pay by card",
+        )
+    try:
+        terms = usdc_pay.terms(amount_cents=amount, wallet_address=wallet, purpose=purpose)
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc))
+    return UsdcCheckoutOut(**terms)
+
+
+def _usdc_deposit_terms(package: ReleasePackage, db: Session) -> UsdcCheckoutOut:
+    """Payment terms for a booking deposit charged against this package's session."""
+    if not usdc_pay.enabled():
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "USDC checkout is not configured — set SOUNDHUB_BASE_RPC_URL",
+        )
+    session = package.session
+    if session is None or session.deposit_status != "deposit_due" or not session.deposit_due_cents:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No deposit due")
+    owner = db.get(User, session.owner_id) if session.owner_id else None
+    wallet = owner.wallet_address if owner else None
+    if not usdc_pay.has_payee(wallet):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "This engineer has no wallet linked — ask them to link one, or pay by card",
+        )
+    try:
+        terms = usdc_pay.terms(
+            amount_cents=session.deposit_due_cents, wallet_address=wallet, purpose="booking deposit"
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc))
+    return UsdcCheckoutOut(**terms)
+
+
+@router.post("/{package_id}/checkout/usdc", response_model=UsdcCheckoutOut)
+def owner_usdc_terms(
+    package_id: int,
+    kind: str = Form("package"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """USDC payment terms for the package invoice (owner view)."""
+    package = db.get(ReleasePackage, package_id)
+    if package is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Package not found")
+    _require_owner(package, user)
+    if kind == "deposit":
+        return _usdc_deposit_terms(package, db)
+    return _usdc_terms_for_package(package, "release package invoice", db)
+
+
+@router.post("/public/{delivery_token}/checkout/usdc", response_model=UsdcCheckoutOut)
+def public_usdc_terms(
+    delivery_token: str,
+    kind: str = Form("package"),
+    db: Session = Depends(get_db),
+):
+    """USDC payment terms for the client from the delivery page."""
+    package = db.scalar(
+        select(ReleasePackage).where(ReleasePackage.delivery_token == delivery_token)
+    )
+    if package is None or package.status != "ready":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Delivery link not found")
+    if kind == "deposit":
+        return _usdc_deposit_terms(package, db)
+    return _usdc_terms_for_package(package, "release package invoice", db)
+
+
+@router.post("/webhooks/usdc", response_model=UsdcVerifyOut)
+def usdc_verify(payload: UsdcVerifyIn, db: Session = Depends(get_db)):
+    """Verify a client's USDC transfer on Base and mark the invoice paid.
+
+    Reads the tx receipt over JSON-RPC, finds the Transfer log to the
+    engineer's wallet covering the amount, then applies the same state
+    change as the Stripe webhook — idempotently.
+    """
+    if not usdc_pay.enabled():
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "USDC checkout is not configured — set SOUNDHUB_BASE_RPC_URL",
+        )
+
+    if payload.kind in ("deposit", "extra_round"):
+        session = db.get(ReviewSession, payload.session_id) if payload.session_id else None
+        if session is None:
+            return UsdcVerifyOut(ok=False, handled=False)
+        owner = db.get(User, session.owner_id)
+        wallet = owner.wallet_address if owner else None
+        if not usdc_pay.has_payee(wallet):
+            return UsdcVerifyOut(ok=False, handled=False)
+        amount = (
+            session.deposit_due_cents
+            if payload.kind == "deposit"
+            else (session.extra_round_price_cents or 0)
+        )
+        if not amount:
+            return UsdcVerifyOut(ok=False, handled=False)
+        if payload.kind == "deposit" and session.deposit_status == "paid":
+            return UsdcVerifyOut(ok=True, handled=True, already_paid=True)
+        try:
+            transfer = usdc_pay.verify_transfer(
+                payload.tx_hash,
+                to_address=usdc_pay.payee_for(wallet),
+                min_units=usdc_pay.usdc_units(amount),
+            )
+        except ValueError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+        if payload.kind == "deposit":
+            session.deposit_status = "paid"
+            session.updated_at = utcnow()
+            ledger.append(
+                db,
+                "deposit.paid",
+                session_id=session.id,
+                actor="client",
+                entity_type="session",
+                entity_id=session.id,
+                payload={
+                    "session": session.name,
+                    "method": "usdc",
+                    "tx_hash": payload.tx_hash,
+                    "ref": usdc_pay.sha256_ref(payload.tx_hash),
+                },
+            )
+        else:
+            session.rounds_paid = (session.rounds_paid or 0) + 1
+            session.updated_at = utcnow()
+            ledger.append(
+                db,
+                "round.extra_paid",
+                session_id=session.id,
+                actor="client",
+                entity_type="round",
+                entity_id=session.id,
+                payload={
+                    "round": session.round_number + 1,
+                    "method": "usdc",
+                    "tx_hash": payload.tx_hash,
+                    "ref": usdc_pay.sha256_ref(payload.tx_hash),
+                },
+            )
+        db.commit()
+        return UsdcVerifyOut(ok=True, handled=True, transfer=transfer)
+
+    package = (
+        db.get(ReleasePackage, payload.package_id)
+        if payload.package_id
+        else (
+            db.scalar(select(ReleasePackage).where(ReleasePackage.delivery_token == payload.delivery_token))
+            if payload.delivery_token
+            else None
+        )
+    )
+    if package is None:
+        return UsdcVerifyOut(ok=False, handled=False)
+    if package.invoice_status == "paid":
+        return UsdcVerifyOut(ok=True, handled=True, already_paid=True)  # idempotent
+    owner = db.get(User, package.session.owner_id) if package.session else None
+    wallet = owner.wallet_address if owner else None
+    if not usdc_pay.has_payee(wallet):
+        return UsdcVerifyOut(ok=False, handled=False)
+    amount = package.amount_due_cents
+    if not amount:
+        return UsdcVerifyOut(ok=False, handled=False)
+    try:
+        transfer = usdc_pay.verify_transfer(
+            payload.tx_hash,
+            to_address=usdc_pay.payee_for(wallet),
+            min_units=usdc_pay.usdc_units(amount),
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+    package.invoice_status = "paid"
+    _event(db, package, "invoice.paid", "client", f"usdc {payload.tx_hash[:10]}…")
+    ledger.append(
+        db,
+        "invoice.paid",
+        session_id=package.session_id,
+        package_id=package.id,
+        actor="client",
+        entity_type="package",
+        entity_id=package.id,
+        payload={
+            "package": package.name,
+            "method": "usdc",
+            "tx_hash": payload.tx_hash,
+            "ref": usdc_pay.sha256_ref(payload.tx_hash),
+        },
+    )
+    db.commit()
+    return UsdcVerifyOut(ok=True, handled=True, transfer=transfer)

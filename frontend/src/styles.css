@@ -223,9 +223,9 @@ h2 {
 /* ---------------- buttons ---------------- */
 
 .btn {
-  background: #1f1f1f;
-  color: #ffffff;
-  border: 1px solid #1f1f1f;
+  background: var(--text);
+  color: var(--bg);
+  border: 1px solid var(--text);
   padding: 9px 16px;
   border-radius: 3px;
   font-weight: 600;
@@ -235,8 +235,8 @@ h2 {
 }
 
 .btn:hover {
-  background: #333333;
-  border-color: #333333;
+  background: var(--muted);
+  border-color: var(--muted);
   filter: none;
   text-decoration: none;
 }
@@ -3053,6 +3053,18 @@ pre.diff-raw code {
   color: var(--blue);
 }
 
+.rs-diff-badge.changed {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.rs-diff-count {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
 .rs-diff-label {
   color: var(--muted);
   font-weight: 600;
@@ -3102,9 +3114,28 @@ pre.diff-raw code {
   font-size: 11px;
   line-height: 1.45;
   background: var(--bg2);
+  white-space: pre;
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 10px;
+}
+
+.rs-diff-raw pre .rd-add {
+  background: var(--green-soft, #e3f2e8);
+  color: #1e7a44;
+  display: block;
+}
+
+.rs-diff-raw pre .rd-del {
+  background: var(--red-soft, #fbe4e4);
+  color: #b33434;
+  display: block;
+}
+
+.rs-diff-raw pre .rd-hunk {
+  color: var(--blue);
+  font-weight: 700;
+  display: block;
 }
 
 .rs-ab-bar {
@@ -4054,6 +4085,40 @@ pre.diff-raw code {
   flex-wrap: wrap;
 }
 
+.public-delivery-pay-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.usdc-pay {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.usdc-pay .rs-btn {
+  border: 1px solid var(--border);
+}
+
+.usdc-pay-status {
+  font-size: 11.5px;
+  color: var(--muted);
+  max-width: 260px;
+}
+
+.usdc-pay-status code {
+  font-size: 10.5px;
+}
+
+.usdc-pay-ok {
+  font-size: 12px;
+  color: var(--green, #2e7d32);
+  font-weight: 600;
+}
+
 .public-delivery-gate-text {
   font-weight: 700;
   color: var(--red);
@@ -4440,6 +4505,106 @@ pre.diff-raw code {
   text-align: center;
 }
 
+/* ---------- reputation panel (portfolio) ---------- */
+.rep-panel {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg2);
+  padding: 18px;
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rep-verified {
+  display: inline-block;
+  margin-left: 8px;
+  vertical-align: middle;
+  background: var(--green-soft, #e3f2e8);
+  color: #1e7a44;
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: help;
+}
+.rep-stats {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.rep-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rep-stat-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.rep-stat-label {
+  font-size: 11.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.rep-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rep-bio {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.rep-bio-text {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text);
+  max-width: 720px;
+  line-height: 1.5;
+}
+.rep-note {
+  margin: 0;
+  font-size: 11.5px;
+}
+.rep-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 520px;
+}
+.rep-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.rep-edit input,
+.rep-edit select,
+.rep-edit textarea {
+  font-size: 13.5px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg2);
+  color: var(--text);
+}
+.rep-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+.rep-edit-msg {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--blue);
+}
+
 /* ---------- kettle ---------- */
 .kettle {
   min-height: 100vh;
@@ -4504,26 +4669,6 @@ pre.diff-raw code {
   line-height: 1.5;
 }
 
-/* panels blend with the page background */
-[data-theme="light"] .portfolio-card,
-[data-theme="light"] .kettle-term {
-  background: var(--bg2);
-  border-color: var(--border);
-}
-[data-theme="light"] .kettle-term h3 {
-  color: var(--accent);
-}
-[data-theme="light"] .rs-pay-prompt,
-[data-theme="light"] .public-review-note.wm {
-  background: var(--accent-soft);
-  border-color: var(--accent-soft);
-  color: var(--accent);
-}
-[data-theme="light"] .rs-wm-chip {
-  background: var(--accent-soft);
-  border-color: var(--accent-soft);
-  color: var(--accent);
-}
 
 /* ================= Client brief (expectations before the first bounce) ================= */
 
@@ -4615,15 +4760,6 @@ pre.diff-raw code {
   border: 1px solid var(--accent-soft);
   border-radius: 8px;
   padding: 8px 10px;
-}
-
-[data-theme="light"] .public-brief {
-  background: var(--bg2);
-  border-color: var(--border);
-}
-[data-theme="light"] .public-brief-chip {
-  background: var(--bg3);
-  border-color: var(--border);
 }
 
 /* ================= Reference tracks (mix/reference A/B) ================= */
@@ -4808,13 +4944,6 @@ pre.diff-raw code {
 .public-ref-audio {
   height: 36px;
   max-width: 240px;
-}
-
-[data-theme="light"] .rs-ref-row,
-[data-theme="light"] .public-refs,
-[data-theme="light"] .public-ref {
-  background: var(--bg2);
-  border-color: var(--border);
 }
 
 /* ====== change orders ====== */
@@ -5108,11 +5237,6 @@ pre.diff-raw code {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-[data-theme="dark"] .rs-reminders {
-  border-color: #333;
-  background: #1d1d22;
-}
-
 /* ====== Team & approval policy ====== */
 .rs-team {
   margin: 14px 0;
@@ -5146,10 +5270,6 @@ pre.diff-raw code {
 }
 .rs-team-members {
   margin: 6px 0;
-}
-[data-theme="dark"] .rs-team {
-  border-color: #333;
-  background: #1d1d22;
 }
 .public-approval-chain {
   margin-bottom: 10px;
@@ -7955,15 +8075,6 @@ pre.diff-raw code {
 .rs-btn.approve:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-}
-
-.rs-pay-prompt .rs-btn.approve {
-  background: var(--accent);
-  color: #fff;
-}
-
-.rs-pay-prompt .rs-btn.approve:hover {
-  background: var(--accent-hover);
 }
 
 .portfolio-avatar {

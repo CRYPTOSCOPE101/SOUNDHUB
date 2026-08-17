@@ -899,6 +899,40 @@ def test_snd_serve_bridge_health_and_push(tmp_path, monkeypatch):
         srv.server_close()
 
 
+def test_snd_serve_bridge_comments_proxy(tmp_path, monkeypatch):
+    """GET /comments?token=… proxies the public requests export so the REAPER
+    panel (and M4L fallback) can pull open review comments via the bridge."""
+    import urllib.error
+    import urllib.request
+
+    export_md = (
+        "# Open requests \u2014 Neon Warehouse\n"
+        "Round 2 \u00b7 1 active\n\n"
+        "- [1:23.400] Aisha \u2014 bass masks the vocal  _(v2 \u00b7 open)_\n"
+    ).encode()
+    base, fake, srv = _start_bridge(tmp_path, monkeypatch, [
+        ("/requests/export", 200, export_md),
+    ])
+    try:
+        with urllib.request.urlopen(f"{base}/comments?token=tok123&format=markdown", timeout=5) as r:
+            body = r.read().decode()
+        assert "bass masks the vocal" in body
+        assert r.status == 200
+        # the bridge asked the backend public export (no auth token on the wire)
+        method, url, _, _ = fake.requests[-1]
+        assert method == "GET" and "api/sessions/public/tok123/requests/export" in url
+
+        # missing token -> 400, unknown session -> 404
+        try:
+            urllib.request.urlopen(f"{base}/comments", timeout=5)
+            assert False, "expected 400"
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 400
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
 def test_snd_serve_bridge_negative_cases(tmp_path, monkeypatch):
     """Bridge error behaviors the M4L device can hit: malformed JSON body,
     review mode without a master, and a repeat push of the same export

@@ -4,7 +4,15 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import User
-from ..schemas import TokenOut, UserLogin, UserOut, UserRegister, WalletLogin, WalletNonceOut
+from ..schemas import (
+    ProfileUpdate,
+    TokenOut,
+    UserLogin,
+    UserOut,
+    UserRegister,
+    WalletLogin,
+    WalletNonceOut,
+)
 from ..security import create_access_token, get_current_user, hash_password, verify_password
 from ..wallet_auth import issue_challenge, verify_challenge
 
@@ -67,4 +75,19 @@ def wallet_login(payload: WalletLogin, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
+    return user
+
+
+@router.patch("/me", response_model=UserOut)
+def update_me(payload: ProfileUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update the public seller profile (bio / specialty / location)."""
+    if payload.bio is not None:
+        user.bio = payload.bio.strip()
+    if payload.specialty is not None:
+        user.specialty = payload.specialty.strip()
+    if payload.location is not None:
+        user.location = payload.location.strip()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
     return user

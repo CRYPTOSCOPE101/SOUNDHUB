@@ -41,6 +41,13 @@ def _migrate() -> None:
                 text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_wallet_address ON users (wallet_address)")
             )
         for col, ddl in (
+            ("bio", "TEXT DEFAULT ''"),
+            ("specialty", "VARCHAR(64) DEFAULT ''"),
+            ("location", "VARCHAR(128) DEFAULT ''"),
+        ):
+            if col not in users_cols:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {ddl}"))
+        for col, ddl in (
             ("release_token_id", "INTEGER"),
             ("release_contract", "VARCHAR(256)"),
             ("release_name", "VARCHAR(256)"),

@@ -4,6 +4,7 @@ import { api, getToken } from "../api";
 import { fmtClock, WaveformCanvas, CommentComposer, ApprovalPanel, VersionDiffPanel } from "../components/ReviewShared";
 import ABCompare from "../components/ABCompare";
 import ReferenceCompare from "../components/ReferenceCompare";
+import UsdcPayButton from "../components/UsdcPayButton";
 import {
   humanSize,
   shortDate,
@@ -589,6 +590,9 @@ function ReleasePackagePanel({
                   >
                     💳 Open checkout
                   </button>
+                  <UsdcPayButton
+                    target={{ packageId: pkg.id, kind: pkg.invoice_status === "deposit_due" ? "deposit" : "package", purposeLabel: "release package invoice" }}
+                  />
                 </span>
               )}
             </div>

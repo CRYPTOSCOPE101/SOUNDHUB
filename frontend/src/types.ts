@@ -336,10 +336,24 @@ export interface PortfolioTrack {
   delivery_token: string | null;
 }
 
+export interface Reputation {
+  delivered_count: number;
+  approved_count: number;
+  session_count: number;
+  avg_rounds: number | null;
+  on_time_rate: number | null;
+  verified: boolean;
+  badges: string[];
+  bio: string;
+  specialty: string;
+  location: string;
+}
+
 export interface Portfolio {
   username: string;
   track_count: number;
   tracks: PortfolioTrack[];
+  reputation: Reputation | null;
 }
 
 export interface SearchEngineer {
@@ -491,6 +505,32 @@ export interface CheckoutOut {
   session_id: string;
   amount_due_cents: number;
   currency: string;
+}
+
+export interface UsdcCheckoutOut {
+  network: string;
+  chain_id: number;
+  token_address: string;
+  payee_address: string;
+  amount_usdc_units: number;
+  amount_usdc: number;
+  decimals: number;
+  purpose: string;
+  expires_at: number;
+}
+
+export interface UsdcTransfer {
+  from: string;
+  to: string;
+  value: number;
+  log_index: number;
+}
+
+export interface UsdcVerifyOut {
+  ok: boolean;
+  handled: boolean;
+  already_paid?: boolean;
+  transfer?: UsdcTransfer | null;
 }
 
 export const DELIVERABLE_TYPES = ["master", "instrumental", "acapella", "clean_edit", "stems", "artwork", "other"] as const;

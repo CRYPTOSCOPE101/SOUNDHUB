@@ -28,6 +28,16 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_CURRENCY = os.environ.get("STRIPE_CURRENCY", "usd")
 STRIPE_API_BASE = os.environ.get("STRIPE_API_BASE", "https://api.stripe.com")
 
+# USDC checkout (Base). BASE_RPC_URL unset → USDC flow disabled (card/manual only).
+USDC_TOKEN_ADDRESS = os.environ.get(
+    "SOUNDHUB_USDC_TOKEN", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"  # native USDC on Base
+)
+USDC_DECIMALS = int(os.environ.get("SOUNDHUB_USDC_DECIMALS", "6"))
+USDC_CHAIN_ID = int(os.environ.get("SOUNDHUB_USDC_CHAIN_ID", "8453"))  # Base
+BASE_RPC_URL = os.environ.get("SOUNDHUB_BASE_RPC_URL", "")  # e.g. https://mainnet.base.org
+# Fallback payee when the engineer has no wallet linked yet (dev/demo only).
+USDC_FALLBACK_PAYEE = os.environ.get("SOUNDHUB_USDC_FALLBACK_PAYEE", "")
+
 # Reminders. SMTP_HOST unset → log-only transport (no real email sent).
 FRONTEND_URL = os.environ.get("SOUNDHUB_FRONTEND_URL", "http://localhost:5173")
 SMTP_HOST = os.environ.get("SMTP_HOST", "")
