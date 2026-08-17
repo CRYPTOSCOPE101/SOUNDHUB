@@ -5100,8 +5100,8 @@ pre.diff-raw code {
 
 .cr-engine {
   display: grid;
-  grid-template-columns: minmax(260px, 340px) 1fr;
-  gap: 32px;
+  grid-template-columns: minmax(280px, 360px) 1fr;
+  gap: 36px;
   align-items: start;
 }
 
@@ -5147,10 +5147,6 @@ pre.diff-raw code {
   gap: 10px;
 }
 
-.cr-engine-tab-icon {
-  font-size: 16px;
-}
-
 .cr-engine-tab-desc {
   display: block;
   margin-top: 8px;
@@ -5172,11 +5168,11 @@ pre.diff-raw code {
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--bg2);
-  padding: 28px 30px;
+  padding: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 380px;
+  min-height: 460px;
   animation: eng-panel-in 0.35s ease both;
 }
 
@@ -5197,10 +5193,15 @@ pre.diff-raw code {
   width: 100%;
 }
 
-/* --- Codegraph: circular knowledge graph (CodeRabbit-style) --- */
+/* --- Codegraph: circular hash chain on a dark canvas (CodeRabbit-style) --- */
 .cg {
   width: 100%;
-  max-width: 560px;
+  max-width: 640px;
+  /* the canvas stays dark in both themes, like the CodeRabbit panel */
+  background: #141416;
+  border: 1px solid #2b2b30;
+  border-radius: 16px;
+  padding: 12px;
 }
 
 .cg-svg {
@@ -5210,28 +5211,27 @@ pre.diff-raw code {
 }
 
 .cg-ring {
-  stroke: var(--border);
   stroke-width: 1.5;
   stroke-dasharray: 3 6;
-  transform-origin: 175px 165px;
+  transform-origin: 175px 155px;
   animation: cg-ring-spin 60s linear infinite;
 }
 
 .cg-ring-a {
-  stroke: var(--green);
-  opacity: 0.4;
+  stroke: #10b981; /* mint green */
+  opacity: 0.45;
 }
 
 .cg-ring-b {
-  stroke: var(--blue);
-  opacity: 0.4;
+  stroke: #6366f1; /* indigo */
+  opacity: 0.45;
   animation-duration: 44s;
   animation-direction: reverse;
 }
 
 .cg-ring-c {
-  stroke: var(--accent);
-  opacity: 0.45;
+  stroke: #ff5722; /* codeRabbit orange */
+  opacity: 0.5;
   animation-duration: 30s;
 }
 
@@ -5241,15 +5241,19 @@ pre.diff-raw code {
 }
 
 .cg-block rect {
-  fill: var(--bg);
-  stroke: var(--border);
+  fill: #1b1b20;
+  stroke: #3a3a42;
   stroke-width: 1.3;
   transition: stroke 0.2s;
 }
 
+.cg-block-genesis rect {
+  stroke: #6366f1;
+}
+
 .cg-block-head rect {
-  stroke: var(--accent);
-  fill: var(--accent-soft);
+  stroke: #ff5722;
+  fill: rgba(255, 87, 34, 0.12);
   animation: cg-block-glow 2.4s ease-in-out infinite;
 }
 
@@ -5272,30 +5276,34 @@ pre.diff-raw code {
   }
   50% {
     stroke-width: 2.2;
-    filter: drop-shadow(0 0 6px var(--accent-soft));
+    filter: drop-shadow(0 0 6px rgba(255, 87, 34, 0.4));
   }
 }
 
 .cg-block-hash {
-  fill: var(--muted);
+  fill: #8b8b96;
   font-family: JetBrains Mono, Fira Code, Consolas, monospace;
   font-size: 10px;
 }
 
+.cg-block-genesis .cg-block-hash {
+  fill: #a5a5f0;
+}
+
 .cg-block-head .cg-block-hash {
-  fill: var(--accent);
+  fill: #ff8a5c;
   font-size: 13px;
   font-weight: 800;
 }
 
 .cg-block-label {
-  fill: var(--text);
-  font-size: 12px;
+  fill: #e8e6e1;
+  font-size: 11.5px;
   font-weight: 700;
 }
 
 .cg-block-head .cg-block-label {
-  fill: var(--accent);
+  fill: #ff8a5c;
 }
 
 @keyframes cg-ring-spin {
@@ -5308,7 +5316,7 @@ pre.diff-raw code {
 }
 
 .cg-edge {
-  stroke: var(--border);
+  stroke: #4a4a54;
   stroke-width: 1;
   opacity: 0.7;
   stroke-dasharray: 4 8;
@@ -5316,7 +5324,7 @@ pre.diff-raw code {
 }
 
 .cg-edge-core {
-  stroke: var(--accent);
+  stroke: #ff5722;
   opacity: 0.55;
 }
 
@@ -5329,46 +5337,8 @@ pre.diff-raw code {
   }
 }
 
-.cg-node {
-  fill: var(--bg4);
-  animation: cg-pulse 2.6s ease-in-out infinite;
-}
-
-.cg-node-core {
-  fill: var(--accent);
-}
-
-.cg-node-mid {
-  fill: var(--blue);
-}
-
-.cg-node-outer {
-  fill: var(--green);
-}
-
-@keyframes cg-pulse {
-  0%,
-  100% {
-    opacity: 0.45;
-    transform: scale(0.82);
-    transform-origin: center;
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
-  }
-}
-
-.cg-hub-label {
-  fill: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .cg-tag-line {
-  stroke: var(--border);
+  stroke: #4a4a54;
   stroke-width: 1;
   stroke-dasharray: 2 5;
   opacity: 0.8;
@@ -5376,19 +5346,19 @@ pre.diff-raw code {
 }
 
 .cg-tag-box {
-  fill: var(--bg);
-  stroke: var(--green);
+  fill: rgba(27, 27, 32, 0.6);
+  stroke: #10b981;
   stroke-width: 1.2;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .cg-tag-box-solid {
-  fill: var(--green);
-  stroke: var(--green);
+  fill: #10b981;
+  stroke: #10b981;
 }
 
 .cg-tag-text {
-  fill: var(--green);
+  fill: #7fd08a;
   font-size: 12.5px;
   font-weight: 700;
 }

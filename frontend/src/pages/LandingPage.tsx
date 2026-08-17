@@ -653,7 +653,6 @@ function EngineTabs() {
             }}
           >
             <span className="cr-engine-tab-head">
-              <span className="cr-engine-tab-icon">{t.icon}</span>
               <span className="cr-engine-tab-title">{t.title}</span>
             </span>
             {t.id === tab && (
