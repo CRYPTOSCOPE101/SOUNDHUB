@@ -19,9 +19,8 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(256), nullable=True)
     wallet_address: Mapped[str | None] = mapped_column(String(42), unique=True, index=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    # public seller profile (reputation layer)
-    bio: Mapped[str] = mapped_column(Text, default="")  # what the engineer does / how they work
-    specialty: Mapped[str] = mapped_column(String(64), default="")  # mix / master / mix_master / production / stems
+    bio: Mapped[str] = mapped_column(Text, default="")
+    specialty: Mapped[str] = mapped_column(String(64), default="")
     location: Mapped[str] = mapped_column(String(128), default="")
 
     projects: Mapped[list["Project"]] = relationship(back_populates="owner")
@@ -36,7 +35,6 @@ class Project(Base):
     slug: Mapped[str] = mapped_column(String(160))
     description: Mapped[str] = mapped_column(Text, default="")
     default_branch: Mapped[str] = mapped_column(String(64), default="main")
-    # on-chain release NFT binding (SoundHubRelease token)
     release_token_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     release_contract: Mapped[str | None] = mapped_column(String(42), nullable=True)
     release_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
@@ -57,9 +55,6 @@ class Project(Base):
 
 
 class Branch(Base):
-    """A named pointer to a commit (git-like). History of a branch is the
-    parent chain walked from `head_commit_id`."""
-
     __tablename__ = "branches"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -109,8 +104,6 @@ class FileSnapshot(Base):
 
 
 class ReviewSession(Base):
-    """A review workspace for a track: versions to share, comments, approvals."""
-
     __tablename__ = "review_sessions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -146,69 +139,62 @@ class ReviewSession(Base):
     members: Mapped[list["SessionMember"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
-
-    # Team roles & approval chain (labels). Default = solo client: no
-    # enterprise complexity for the freelance engineer. Enforced presets
-    # (label_workflow, post_production) gate approvals by role and scope.
-    approval_preset: Mapped[str] = mapped_column(String(32), default="solo_client")
-
-    # Share-link settings (professional review links)
-    share_password: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    share_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    share_permission: Mapped[str] = mapped_column(String(32), default="comment")  # comment | view | download
-    share_allowlist: Mapped[str] = mapped_column(Text, default="")  # comma-separated emails
-
-    # Mix review rounds (controlled revisions)
-    round_number: Mapped[int] = mapped_column(Integer, default=1)
-    feedback_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    feedback_owner: Mapped[str] = mapped_column(String(128), default="")  # who consolidates draft notes
-    included_rounds: Mapped[int] = mapped_column(Integer, default=1)  # paid/included revision rounds
-    rounds_open: Mapped[bool] = mapped_column(default=True)  # can clients still add notes?
-
-    # Booking deposit ("new job, not a revision" — engineers ask for a deposit upfront)
-    deposit_due_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    deposit_status: Mapped[str] = mapped_column(String(32), default="none")  # none | deposit_due | paid | waived
-
-    # Paid extra revision rounds (beyond included_rounds)
-    extra_round_price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    rounds_paid: Mapped[int] = mapped_column(Integer, default=0)  # extra rounds already paid for
-
-    # Public portfolio (showcase of approved work) + preview protection
-    portfolio_public: Mapped[bool] = mapped_column(default=False)
-    watermark_enabled: Mapped[bool] = mapped_column(default=True)
-
-    # Client brief — expectations fixed before the first bounce
-    service_type: Mapped[str] = mapped_column(String(32), default="mix")  # mix | master | mix_master | production | stems
-    genre: Mapped[str] = mapped_column(String(128), default="")
-    goal: Mapped[str] = mapped_column(String(64), default="")  # streaming | label | sync | dj | social | other
-    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    review_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    reference_links: Mapped[str] = mapped_column(Text, default="")  # one per line
-    do_not_change: Mapped[str] = mapped_column(Text, default="")  # e.g. "don't touch the vocal balance"
-    required_deliverables: Mapped[str] = mapped_column(Text, default="")  # comma-separated: master, instrumental…
-
-    # Late-change protection: project retention, recall/revision fees, and
-    # rounds granted by accepted change orders ("we came back after 3 months").
-    retention_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    recall_fee_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)  # mastering recall / new pass
-    revision_fee_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)  # one-off mix revision
-    change_rounds_granted: Mapped[int] = mapped_column(Integer, default=0)  # rounds from accepted change orders
-
     change_orders: Mapped[list["ChangeOrder"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
-
-    # Reminder automation — the engineer picks what to send and how often;
-    # the client can opt out of non-critical reminders (never transactional
-    # mail like payment receipts or delivery links).
-    reminders_enabled: Mapped[bool] = mapped_column(default=True)
-    reminder_categories: Mapped[str] = mapped_column(Text, default="")  # comma list; empty = all
-    reminders_client_opt_out: Mapped[bool] = mapped_column(default=False)
-    client_email: Mapped[str] = mapped_column(String(256), default="")  # where client reminders go
-
     notifications: Mapped[list["Notification"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
+
+    # Team roles & approval chain
+    approval_preset: Mapped[str] = mapped_column(String(32), default="solo_client")
+
+    # Share-link settings
+    share_password: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    share_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    share_permission: Mapped[str] = mapped_column(String(32), default="comment")
+    share_allowlist: Mapped[str] = mapped_column(Text, default="")
+
+    # Mix review rounds
+    round_number: Mapped[int] = mapped_column(Integer, default=1)
+    feedback_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    feedback_owner: Mapped[str] = mapped_column(String(128), default="")
+    included_rounds: Mapped[int] = mapped_column(Integer, default=1)
+    rounds_open: Mapped[bool] = mapped_column(default=True)
+
+    # Booking deposit
+    deposit_due_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    deposit_status: Mapped[str] = mapped_column(String(32), default="none")
+
+    # Paid extra revision rounds
+    extra_round_price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rounds_paid: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Public portfolio + preview protection
+    portfolio_public: Mapped[bool] = mapped_column(default=False)
+    watermark_enabled: Mapped[bool] = mapped_column(default=True)
+
+    # Client brief
+    service_type: Mapped[str] = mapped_column(String(32), default="mix")
+    genre: Mapped[str] = mapped_column(String(128), default="")
+    goal: Mapped[str] = mapped_column(String(64), default="")
+    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reference_links: Mapped[str] = mapped_column(Text, default="")
+    do_not_change: Mapped[str] = mapped_column(Text, default="")
+    required_deliverables: Mapped[str] = mapped_column(Text, default="")
+
+    # Late-change protection
+    retention_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    recall_fee_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    revision_fee_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    change_rounds_granted: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Reminder automation
+    reminders_enabled: Mapped[bool] = mapped_column(default=True)
+    reminder_categories: Mapped[str] = mapped_column(Text, default="")
+    reminders_client_opt_out: Mapped[bool] = mapped_column(default=False)
+    client_email: Mapped[str] = mapped_column(String(256), default="")
 
 
 class ReviewVersion(Base):
@@ -216,8 +202,8 @@ class ReviewVersion(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
-    number: Mapped[int] = mapped_column(Integer, default=1)  # 1-based, human label v{n}
-    label: Mapped[str] = mapped_column(String(64))  # e.g. "v13"
+    number: Mapped[int] = mapped_column(Integer, default=1)
+    label: Mapped[str] = mapped_column(String(64))
     message: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(32), default="in_review")
     filename: Mapped[str] = mapped_column(String(256))
@@ -227,7 +213,8 @@ class ReviewVersion(Base):
     audio_format: Mapped[str] = mapped_column(String(16), default="wav")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     round_number: Mapped[int] = mapped_column(Integer, default=1)
-    watermark_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)  # cached watermarked preview blob
+    watermark_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    commit_id: Mapped[int | None] = mapped_column(ForeignKey("commits.id"), nullable=True, index=True)
 
     __table_args__ = (UniqueConstraint("session_id", "number", name="uq_review_version_number"),)
 
@@ -240,26 +227,15 @@ class ReviewVersion(Base):
     stems: Mapped[list["StemAsset"]] = relationship(
         back_populates="version", cascade="all, delete-orphan"
     )
-    # Project commit this audio version was pushed from (snd push / API).
-    # NULL for plain audio uploads — no DAW diff is possible for those.
-    commit_id: Mapped[int | None] = mapped_column(ForeignKey("commits.id"), nullable=True, index=True)
 
 
 class SessionMember(Base):
-    """A named participant of a review session with an explicit role.
-
-    The engineer is the session owner; everyone else (artist, A&R, label
-    admin, producer, director, feedback owner, viewer) is invited by email.
-    Approval chains in enforced presets match these roles to the scope they
-    may sign off: Artist → mix, A&R → master, Label admin → release.
-    """
-
     __tablename__ = "session_members"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
     email: Mapped[str] = mapped_column(String(256))
-    role: Mapped[str] = mapped_column(String(32))  # artist | a_r | label_admin | producer | director | feedback_owner | viewer | engineer
+    role: Mapped[str] = mapped_column(String(32))
     invited_by: Mapped[str] = mapped_column(String(128), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -274,43 +250,34 @@ class ReviewComment(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"), index=True)
     author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    author_name: Mapped[str | None] = mapped_column(String(128), nullable=True)  # guest reviewers
-    time_s: Mapped[float] = mapped_column(default=0.0)  # seconds into the track
+    author_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    time_s: Mapped[float] = mapped_column(default=0.0)
     body: Mapped[str] = mapped_column(Text)
     resolved: Mapped[bool] = mapped_column(default=False)
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("review_comments.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    # voice notes — original audio stays available; transcription is best-effort
     voice_blob_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    voice_format: Mapped[str] = mapped_column(String(16), default="")  # webm | ogg | mp3 | wav…
+    voice_format: Mapped[str] = mapped_column(String(16), default="")
     voice_duration_s: Mapped[float] = mapped_column(default=0.0)
-    transcript: Mapped[str] = mapped_column(Text, default="")  # "" = transcription pending/unavailable
+    transcript: Mapped[str] = mapped_column(Text, default="")
 
     version: Mapped["ReviewVersion"] = relationship(
         back_populates="comments", foreign_keys=[version_id]
     )
     author: Mapped["User"] = relationship()
 
-    # request lifecycle: draft → open → acknowledged → in_progress → fixed → verified → approved
     status: Mapped[str] = mapped_column(String(32), default="open")
     fixed_in: Mapped[int | None] = mapped_column(ForeignKey("review_versions.id"), nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ReviewRound(Base):
-    """A closed revision round: one consolidated list of change requests.
-
-    Round 1 = initial mix review. Submitting feedback consolidates draft notes
-    into open requests and increments the round; the next version belongs to
-    the new round.
-    """
-
     __tablename__ = "review_rounds"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
     number: Mapped[int] = mapped_column(Integer, default=1)
-    status: Mapped[str] = mapped_column(String(32), default="open")  # open | submitted | closed
+    status: Mapped[str] = mapped_column(String(32), default="open")
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     note: Mapped[str] = mapped_column(Text, default="")
@@ -322,90 +289,60 @@ class ReviewRound(Base):
 
 
 class ChangeOrder(Base):
-    """A late change request after the project was approved / delivered.
-
-    Flow: client requests a change → engineer quotes (courtesy / paid round /
-    new mastering pass) or declines → client accepts the price + deadline →
-    the new invoice is paid → the revision round reopens.
-
-    status: requested → quoted → accepted → (declined | paid)
-    round_granted: the reopened round was already credited to the session
-    (idempotent — a webhook replay can never grant twice).
-    """
-
     __tablename__ = "change_orders"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
-    created_by: Mapped[str] = mapped_column(String(128), default="")  # client / reviewer email
-    reason: Mapped[str] = mapped_column(String(32))  # mix_revision | new_stem_request | format_change | mastering_recall
+    created_by: Mapped[str] = mapped_column(String(128), default="")
+    reason: Mapped[str] = mapped_column(String(32))
     description: Mapped[str] = mapped_column(Text, default="")
-    status: Mapped[str] = mapped_column(String(32), default="requested")  # requested | quoted | accepted | declined | paid
-    decision: Mapped[str | None] = mapped_column(String(32), nullable=True)  # courtesy | paid_round | new_mastering_pass
+    status: Mapped[str] = mapped_column(String(32), default="requested")
+    decision: Mapped[str | None] = mapped_column(String(32), nullable=True)
     price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     currency: Mapped[str] = mapped_column(String(8), default="usd")
     deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    target_round: Mapped[int] = mapped_column(Integer, default=1)  # the round that reopens
+    target_round: Mapped[int] = mapped_column(Integer, default=1)
     round_granted: Mapped[bool] = mapped_column(default=False)
     quoted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     declined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     quote_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    quote_version: Mapped[int] = mapped_column(Integer, default=0)  # re-quotes bump this; accepted quotes are frozen
+    quote_version: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     session: Mapped["ReviewSession"] = relationship(back_populates="change_orders")
 
 
 class ReferenceTrack(Base):
-    """A reference track for mix/reference comparison.
-
-    References are private to the review session and by construction
-    NON-DELIVERABLE: they live in their own table, are never linked from
-    `release_deliverables` (which only references `review_versions`), and are
-    never exposed on the public delivery link. A server-side guard in the
-    deliverable endpoints keeps it that way.
-
-    source_type: external_url (just a link, opened separately) or
-    private_upload (a file the user has rights to, used for in-app A/B).
-    """
-
     __tablename__ = "reference_tracks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
     title: Mapped[str] = mapped_column(String(200))
     artist: Mapped[str] = mapped_column(String(128), default="")
-    source_type: Mapped[str] = mapped_column(String(16))  # external_url | private_upload
+    source_type: Mapped[str] = mapped_column(String(16))
     external_url: Mapped[str] = mapped_column(String(2000), default="")
-    blob_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)  # private_upload only
+    blob_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
     filename: Mapped[str] = mapped_column(String(256), default="")
     size: Mapped[int] = mapped_column(Integer, default=0)
     audio_format: Mapped[str] = mapped_column(String(16), default="")
     duration_s: Mapped[float] = mapped_column(default=0.0)
-    purpose: Mapped[str] = mapped_column(String(32), default="overall")  # balance | low_end | vocal | width | arrangement | overall
-    visibility: Mapped[str] = mapped_column(String(32), default="reviewers")  # engineer_only | reviewers
+    purpose: Mapped[str] = mapped_column(String(32), default="overall")
+    visibility: Mapped[str] = mapped_column(String(32), default="reviewers")
     note: Mapped[str] = mapped_column(Text, default="")
     created_by: Mapped[str] = mapped_column(String(128), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    # loudness analysis (same measurements as versions — neutral, no scoring)
     integrated_lufs: Mapped[float | None] = mapped_column(nullable=True)
     true_peak_dbtp: Mapped[float | None] = mapped_column(nullable=True)
     sample_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
     channels: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    analysis_status: Mapped[str] = mapped_column(String(16), default="pending")  # pending | done | unavailable
+    analysis_status: Mapped[str] = mapped_column(String(16), default="pending")
 
     session: Mapped["ReviewSession"] = relationship(back_populates="references")
 
 
 class ReferenceComparison(Base):
-    """A level-matched A/B between a mix version and a private reference.
-
-    Gains are derived from loudness and applied ONLY in the Web Audio preview
-    graph — the mix and the reference files are never modified.
-    """
-
     __tablename__ = "reference_comparisons"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -426,12 +363,6 @@ class ReferenceComparison(Base):
 
 
 class ReviewApproval(Base):
-    """An approval decision on a version: a verifiable artifact, not just a badge.
-
-    scope: mix | master | arrangement | release. A "needs_changes" decision is
-    also stored here (approved=False) so the history is complete.
-    """
-
     __tablename__ = "review_approvals"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -441,7 +372,7 @@ class ReviewApproval(Base):
     approved: Mapped[bool] = mapped_column(default=True)
     note: Mapped[str] = mapped_column(Text, default="")
     approver_name: Mapped[str] = mapped_column(String(128), default="")
-    role: Mapped[str] = mapped_column(String(32), default="")  # team role that signed off (policy checks)
+    role: Mapped[str] = mapped_column(String(32), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     session: Mapped["ReviewSession"] = relationship(back_populates="approvals")
@@ -449,14 +380,12 @@ class ReviewApproval(Base):
 
 
 class ShareAccessEvent(Base):
-    """Audit trail for a share link: who opened, downloaded, commented, approved."""
-
     __tablename__ = "share_access_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
-    actor: Mapped[str] = mapped_column(String(128), default="")  # email or username
-    action: Mapped[str] = mapped_column(String(32))  # opened | commented | downloaded | approved
+    actor: Mapped[str] = mapped_column(String(128), default="")
+    action: Mapped[str] = mapped_column(String(32))
     detail: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -464,19 +393,11 @@ class ShareAccessEvent(Base):
 
 
 class StemAsset(Base):
-    """One stem within a version: a submix render (drums / bass / vocal / synths…).
-
-    Stems are matched between versions by `logical_name`, never by filename, so
-    `NeonBass_final_03.wav` and `Bass_v13.wav` both compare as `bass`. The blob
-    is content-addressed (same immutable storage as versions), so a locked
-    release package can never be silently altered by a stem replacement.
-    """
-
     __tablename__ = "stem_assets"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"), index=True)
-    logical_name: Mapped[str] = mapped_column(String(32))  # drums | bass | vocal | synths | other
+    logical_name: Mapped[str] = mapped_column(String(32))
     display_name: Mapped[str] = mapped_column(String(128))
     blob_sha: Mapped[str] = mapped_column(String(64), index=True)
     size: Mapped[int] = mapped_column(Integer, default=0)
@@ -488,13 +409,6 @@ class StemAsset(Base):
 
 
 class AudioAnalysis(Base):
-    """Loudness analysis for one audio version (computed after upload).
-
-    Integrated LUFS / true peak are measured in a background job; the waveform
-    peaks are returned immediately on upload. Short-term LUFS for loop regions
-    is estimated from the same peaks on demand.
-    """
-
     __tablename__ = "audio_analyses"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -504,19 +418,13 @@ class AudioAnalysis(Base):
     channels: Mapped[int | None] = mapped_column(Integer, nullable=True)
     integrated_lufs: Mapped[float | None] = mapped_column(nullable=True)
     true_peak_dbtp: Mapped[float | None] = mapped_column(nullable=True)
-    analysis_status: Mapped[str] = mapped_column(String(16), default="pending")  # pending | done | unavailable
+    analysis_status: Mapped[str] = mapped_column(String(16), default="pending")
     analysed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     version: Mapped["ReviewVersion"] = relationship()
 
 
 class VersionComparison(Base):
-    """A level-matched A/B between two versions of the same session.
-
-    The gains are computed from loudness analysis and applied ONLY in the
-    preview graph — source files and the locked release package are untouched.
-    """
-
     __tablename__ = "version_comparisons"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -528,7 +436,7 @@ class VersionComparison(Base):
     end_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     base_gain_db: Mapped[float] = mapped_column(default=0.0)
     compare_gain_db: Mapped[float] = mapped_column(default=0.0)
-    level_match: Mapped[str] = mapped_column(String(32), default="none")  # none | integrated_lufs | short_term_lufs
+    level_match: Mapped[str] = mapped_column(String(32), default="none")
     short_term_lufs: Mapped[dict] = mapped_column(JSON, default=dict)
     mode: Mapped[str] = mapped_column(String(32), default="full_mix")
     stem_logical_name: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -540,22 +448,14 @@ class VersionComparison(Base):
 
 
 class LedgerEvent(Base):
-    """One immutable decision-log entry, chained by hash.
-
-    event_hash = SHA256(prev_event_hash || canonical_payload) makes the
-    history tamper-evident: rewriting an old event invalidates every
-    subsequent hash. On-chain anchoring (release lock, daily Merkle root)
-    stays an optional proof layer, not a UX requirement.
-    """
-
     __tablename__ = "ledger_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    event: Mapped[str] = mapped_column(String(48), index=True)  # e.g. request.verified
+    event: Mapped[str] = mapped_column(String(48), index=True)
     session_id: Mapped[int | None] = mapped_column(ForeignKey("review_sessions.id"), index=True, nullable=True)
     package_id: Mapped[int | None] = mapped_column(ForeignKey("release_packages.id"), nullable=True)
-    actor: Mapped[str] = mapped_column(String(128), default="")  # email or username
-    entity_type: Mapped[str] = mapped_column(String(32), default="")  # request | version | approval | package | round
+    actor: Mapped[str] = mapped_column(String(128), default="")
+    entity_type: Mapped[str] = mapped_column(String(32), default="")
     entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -566,41 +466,30 @@ class LedgerEvent(Base):
 
 
 class ReleasePackage(Base):
-    """Final delivery: the immutable release package bound to an approved version.
-
-    Locking a package computes SHA-256 checksums for every deliverable, writes a
-    manifest, and freezes the files — the approved master can never be silently
-    swapped for a different bounce.
-    """
-
     __tablename__ = "release_packages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
     approved_version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"))
     name: Mapped[str] = mapped_column(String(160), default="Final delivery")
-    status: Mapped[str] = mapped_column(String(32), default="draft")  # draft | ready | delivered | archived
-    invoice_status: Mapped[str] = mapped_column(String(32), default="none")  # none | deposit_due | balance_due | paid | waived
-    amount_due_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Stripe Checkout amount
+    status: Mapped[str] = mapped_column(String(32), default="draft")
+    invoice_status: Mapped[str] = mapped_column(String(32), default="none")
+    amount_due_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     currency: Mapped[str] = mapped_column(String(8), default="usd")
-    stripe_session_id: Mapped[str | None] = mapped_column(String(128), nullable=True)  # idempotency for webhooks
+    stripe_session_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     immutable_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     manifest_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     delivery_token: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     locked_by: Mapped[str] = mapped_column(String(128), default="")
-    # Delivery templates + archive / session-file handoff
-    template: Mapped[str] = mapped_column(String(32), default="custom")  # final_master | stem_handoff | archive_handoff | label_sync | dj_promo | post_production | custom
-    plugin_manifest: Mapped[str] = mapped_column(Text, default="")  # DAW version, plugins, versions, missing-plugin fallback
-    session_manifest: Mapped[dict] = mapped_column(JSON, default=dict)  # sample rate, bit depth, tempo, key, start time…
-    consolidate_audio: Mapped[bool] = mapped_column(default=False)  # all audio aligned to one start point
+    template: Mapped[str] = mapped_column(String(32), default="custom")
+    plugin_manifest: Mapped[str] = mapped_column(Text, default="")
+    session_manifest: Mapped[dict] = mapped_column(JSON, default=dict)
+    consolidate_audio: Mapped[bool] = mapped_column(default=False)
     archive_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    archive_status: Mapped[str] = mapped_column(String(32), default="available_now")  # available_now | needs_preparation | archived | permanently_deleted
+    archive_status: Mapped[str] = mapped_column(String(32), default="available_now")
     last_verified_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    invoice_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # invoice.due_7d/1d/overdue reminders
-    # Forced-lock evidence: a lock that skips blocking preflight checks keeps
-    # its reason + confirm-er in the manifest and ledger ("immutable proof"
-    # stays trustworthy even when the engineer overrides QC).
+    invoice_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     force_locked_reason: Mapped[str] = mapped_column(Text, default="")
     force_locked_by: Mapped[str] = mapped_column(String(128), default="")
 
@@ -615,27 +504,18 @@ class ReleasePackage(Base):
 
 
 class Notification(Base):
-    """One reminder email (or future channel) about a session event.
-
-    dedup_key = f"{session_id}:{kind}:{date}:{scope_id}" — the unique
-    constraint enforces "no more than one email of the same type per 24h"
-    at the database level, so a cron can re-run safely.
-
-    status: queued → sent | failed | dismissed.
-    """
-
     __tablename__ = "notifications"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
-    kind: Mapped[str] = mapped_column(String(48))  # e.g. feedback.deadline_48h
+    kind: Mapped[str] = mapped_column(String(48))
     channel: Mapped[str] = mapped_column(String(16), default="email")
     recipient: Mapped[str] = mapped_column(String(256), default="")
     subject: Mapped[str] = mapped_column(String(256), default="")
     body: Mapped[str] = mapped_column(Text, default="")
     cta_url: Mapped[str] = mapped_column(String(500), default="")
     cta_label: Mapped[str] = mapped_column(String(64), default="")
-    status: Mapped[str] = mapped_column(String(16), default="queued")  # queued | sent | failed | dismissed
+    status: Mapped[str] = mapped_column(String(16), default="queued")
     dedup_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
     error: Mapped[str] = mapped_column(Text, default="")
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -645,13 +525,11 @@ class Notification(Base):
 
 
 class Deliverable(Base):
-    """One file in a release package (master / instrumental / acapella / artwork…)."""
-
     __tablename__ = "release_deliverables"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     package_id: Mapped[int] = mapped_column(ForeignKey("release_packages.id"), index=True)
-    type: Mapped[str] = mapped_column(String(32))  # master | instrumental | acapella | clean_edit | stems | artwork
+    type: Mapped[str] = mapped_column(String(32))
     filename: Mapped[str] = mapped_column(String(256))
     blob_sha: Mapped[str] = mapped_column(String(64), index=True)
     size: Mapped[int] = mapped_column(Integer, default=0)
@@ -670,13 +548,11 @@ class Deliverable(Base):
 
 
 class DeliveryEvent(Base):
-    """Audit trail + the seed of the decision ledger."""
-
     __tablename__ = "delivery_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     package_id: Mapped[int] = mapped_column(ForeignKey("release_packages.id"), index=True)
-    event: Mapped[str] = mapped_column(String(48))  # package.created | deliverable.added | package.locked | delivery.link_opened | delivery.downloaded | invoice.paid
+    event: Mapped[str] = mapped_column(String(48))
     actor: Mapped[str] = mapped_column(String(128), default="")
     detail: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -690,8 +566,6 @@ class DeliveryEvent(Base):
 
 
 class SessionTemplate(Base):
-    """Reusable session templates (mixing, mastering, production, etc.)."""
-
     __tablename__ = "session_templates"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -716,14 +590,12 @@ class SessionTemplate(Base):
 
 
 class SessionTag(Base):
-    """Tags for organizing sessions (genre, mood, status, priority, etc.)."""
-
     __tablename__ = "session_tags"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(64))
-    color: Mapped[str] = mapped_column(String(7), default="#6366f1")  # hex color
+    color: Mapped[str] = mapped_column(String(7), default="#6366f1")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     __table_args__ = (UniqueConstraint("owner_id", "name", name="uq_tag_owner_name"),)
@@ -732,8 +604,6 @@ class SessionTag(Base):
 
 
 class SessionTagLink(Base):
-    """Many-to-many link between sessions and tags."""
-
     __tablename__ = "session_tag_links"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -748,17 +618,15 @@ class SessionTagLink(Base):
 
 
 class ActivityEvent(Base):
-    """Activity feed — who did what, when, on which session/project."""
-
     __tablename__ = "activity_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     session_id: Mapped[int | None] = mapped_column(ForeignKey("review_sessions.id"), nullable=True)
     project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
-    event_type: Mapped[str] = mapped_column(String(48))  # session.created, version.uploaded, comment.added, approval.submitted, etc.
+    event_type: Mapped[str] = mapped_column(String(48))
     actor_name: Mapped[str] = mapped_column(String(128), default="")
-    entity_type: Mapped[str] = mapped_column(String(32), default="")  # session, version, comment, approval, etc.
+    entity_type: Mapped[str] = mapped_column(String(32), default="")
     entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     detail: Mapped[str] = mapped_column(Text, default="")
     metadata_json: Mapped[str | None] = mapped_column(JSON, nullable=True)
@@ -768,8 +636,6 @@ class ActivityEvent(Base):
 
 
 class SessionGroup(Base):
-    """Folders for organizing sessions (client projects, label releases, etc.)."""
-
     __tablename__ = "session_groups"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -790,15 +656,13 @@ class SessionGroup(Base):
 
 
 class VersionPin(Base):
-    """Pinned versions — mark important versions for quick access."""
-
     __tablename__ = "version_pins"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
     version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"), index=True)
     pinned_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    label: Mapped[str] = mapped_column(String(64), default="")  # e.g. "client approved", "final master"
+    label: Mapped[str] = mapped_column(String(64), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     __table_args__ = (UniqueConstraint("session_id", "version_id", name="uq_session_version_pin"),)
@@ -809,8 +673,6 @@ class VersionPin(Base):
 
 
 class SessionGroupLink(Base):
-    """Link sessions to groups (many-to-many)."""
-
     __tablename__ = "session_group_links"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -825,17 +687,15 @@ class SessionGroupLink(Base):
 
 
 class Webhook(Base):
-    """Webhook configurations — notify external services on events."""
-
     __tablename__ = "webhooks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     url: Mapped[str] = mapped_column(String(512))
-    secret: Mapped[str | None] = mapped_column(String(128), nullable=True)  # HMAC signing secret
-    events: Mapped[str] = mapped_column(Text, default="*")  # comma-separated event types, or * for all
+    secret: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    events: Mapped[str] = mapped_column(Text, default="*")
     is_active: Mapped[bool] = mapped_column(default=True)
-    last_status: Mapped[int | None] = mapped_column(Integer, nullable=True)  # last HTTP status code
+    last_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_error: Mapped[str] = mapped_column(Text, default="")
     last_triggered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -847,8 +707,6 @@ class Webhook(Base):
 
 
 class WebhookDelivery(Base):
-    """Delivery attempts for a webhook — audit trail."""
-
     __tablename__ = "webhook_deliveries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

@@ -1,3 +1,4 @@
+"""Auth router — register, login, wallet auth, profile."""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -58,7 +59,6 @@ def wallet_login(payload: WalletLogin, db: Session = Depends(get_db)):
     address = payload.address.lower()
     user = db.scalar(select(User).where(User.wallet_address == address))
     if user is None:
-        # auto-create an account bound to the wallet
         base = address[:10]
         username = base
         n = 2
@@ -80,7 +80,6 @@ def me(user: User = Depends(get_current_user)):
 
 @router.patch("/me", response_model=UserOut)
 def update_me(payload: ProfileUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Update the public seller profile (bio / specialty / location)."""
     if payload.bio is not None:
         user.bio = payload.bio.strip()
     if payload.specialty is not None:

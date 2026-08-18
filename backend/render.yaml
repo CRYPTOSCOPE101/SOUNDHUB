@@ -1,0 +1,12 @@
+# render.yaml — SoundHub backend on Render
+services:
+  - type: web
+    name: soundhub-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: SOUNDHUB_SECRET_KEY
+        generateValue: true

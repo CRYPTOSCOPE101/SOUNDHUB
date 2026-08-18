@@ -57,7 +57,7 @@ def verify_challenge(address: str, message: str, signature: str) -> bool:
 
     try:
         recovered = Account.recover_message(encode_defunct(text=message), signature=signature)
-    except Exception:  # noqa: BLE001 - bad signature formats
+    except Exception:
         return False
     return recovered.lower() == address.lower()
 
