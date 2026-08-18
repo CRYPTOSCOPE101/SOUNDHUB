@@ -37,7 +37,10 @@ def load_config() -> dict:
     try:
         with open(CONFIG_PATH, encoding="utf-8") as f:
             return json.load(f)
-    except (OSError, json.JSONDecodeError):
+    except FileNotFoundError:
+        return {}
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"warning: ignoring unreadable config {CONFIG_PATH}: {exc}", file=sys.stderr)
         return {}
 
 

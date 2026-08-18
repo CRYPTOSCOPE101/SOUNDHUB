@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
+import { reportError } from "../errors";
 import ReleaseSection from "../components/ReleaseSection";
 import {
   DAW_COLORS,
@@ -81,7 +82,10 @@ export default function ProjectPage() {
     fetch(api.fileUrl(pid, readmeFile.path, false, branch))
       .then((r) => r.text())
       .then((t) => setReadme(t))
-      .catch(() => setReadme(null));
+      .catch((e: unknown) => {
+        reportError(`loading ${readmeFile.path}`, e);
+        setReadme(null);
+      });
   }, [tree, pid, branch]);
 
   const submit = async (e: FormEvent) => {

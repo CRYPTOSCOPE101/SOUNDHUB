@@ -4,6 +4,7 @@ The engineer picks what to send and how often; the client can opt out
 of non-critical reminders (never transactional mail like payment receipts).
 """
 import hashlib
+import logging
 import smtplib
 from datetime import datetime, timezone
 from email.message import EmailMessage
@@ -13,6 +14,8 @@ from sqlalchemy.orm import Session
 
 from .. import config
 from ..models import Notification, ReviewSession
+
+logger = logging.getLogger(__name__)
 
 
 def _deliver(msg: EmailMessage) -> None:
@@ -28,8 +31,13 @@ def _deliver(msg: EmailMessage) -> None:
     with smtplib.SMTP(host, port, timeout=15) as smtp:
         try:
             smtp.starttls()
-        except smtplib.SMTPException:
-            pass
+        except smtplib.SMTPException as exc:
+            # Never hand credentials to a server that refused STARTTLS.
+            if config.SMTP_USER:
+                raise smtplib.SMTPException(
+                    f"STARTTLS failed on {host}:{port} and SMTP_USER is set: {exc}"
+                ) from exc
+            logger.warning("STARTTLS unavailable on %s:%s — sending unencrypted: %s", host, port, exc)
         if config.SMTP_USER:
             smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
         smtp.send_message(msg)
@@ -154,6 +162,7 @@ def send_pending(db: Session) -> dict:
             n.sent_at = datetime.now(timezone.utc)
             sent += 1
         except Exception as e:
+            logger.warning("notification %s (%s) delivery failed: %s", n.id, n.kind, e, exc_info=True)
             n.status = "failed"
             n.error = str(e)[:500]
             failed += 1

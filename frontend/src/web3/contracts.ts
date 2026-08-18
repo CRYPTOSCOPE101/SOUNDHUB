@@ -1,4 +1,5 @@
 import { Contract, type BrowserProvider, type Signer } from "ethers";
+import { reportError } from "../errors";
 
 export interface Deployment {
   network: string;
@@ -31,8 +32,9 @@ export async function getDeployment(): Promise<Deployment> {
       _cache = d;
       return d;
     }
-  } catch {
-    /* fall through */
+    reportError(`fetching /contracts.json (HTTP ${res.status}) — using default deployment`, res.statusText);
+  } catch (e) {
+    reportError("fetching /contracts.json — using default deployment", e);
   }
   return DEFAULT_DEPLOYMENT;
 }

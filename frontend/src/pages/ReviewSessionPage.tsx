@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, getToken } from "../api";
+import { reportError } from "../errors";
 import { fmtClock, WaveformCanvas, CommentComposer, ApprovalPanel, VersionDiffPanel } from "../components/ReviewShared";
 import ABCompare from "../components/ABCompare";
 import ReferenceCompare from "../components/ReferenceCompare";
@@ -257,7 +258,7 @@ function ReleasePackagePanel({
     void api.listReleaseTemplates().then((t) => {
       setTemplates(t);
       setSelectedTemplate(t.some((x) => x.id === "final_master") ? "final_master" : (t[0]?.id ?? "custom"));
-    }).catch(() => undefined);
+    }).catch((e: unknown) => reportError("loading release templates", e));
   }, [load]);
 
   const create = async () => {
@@ -368,8 +369,8 @@ function ReleasePackagePanel({
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* ignore */
+    } catch (e) {
+      reportError("copying delivery link to clipboard", e);
     }
   };
 
@@ -1893,7 +1894,8 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
+    } catch (e) {
+      reportError("copying share link to clipboard", e);
       setCopied(false);
     }
   };
@@ -1904,8 +1906,8 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
       await navigator.clipboard.writeText(url);
       setHighlight(c.id);
       setTimeout(() => setHighlight(null), 2500);
-    } catch {
-      /* ignore */
+    } catch (e) {
+      reportError("copying comment link to clipboard", e);
     }
   };
 

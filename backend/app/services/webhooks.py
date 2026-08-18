@@ -2,6 +2,7 @@
 import hashlib
 import hmac
 import json
+import logging
 import time
 from datetime import datetime, timezone
 
@@ -9,6 +10,8 @@ import httpx
 from sqlalchemy.orm import Session
 
 from ..models import Webhook, WebhookDelivery
+
+logger = logging.getLogger(__name__)
 
 
 def dispatch(db: Session, event_type: str, payload: dict) -> None:
@@ -58,6 +61,7 @@ def _deliver(db: Session, webhook: Webhook, event_type: str, payload: dict) -> N
             else:
                 webhook.last_error = ""
     except Exception as e:
+        logger.warning("webhook %s delivery of %s failed: %s", webhook.id, event_type, e, exc_info=True)
         duration_ms = int((time.time() - start) * 1000)
         delivery = WebhookDelivery(
             webhook_id=webhook.id,

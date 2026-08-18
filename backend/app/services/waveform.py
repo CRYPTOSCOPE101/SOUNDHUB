@@ -4,10 +4,15 @@ Generates peak data from audio blobs. Uses a synthetic fallback for
 formats that can't be decoded locally.
 """
 import hashlib
+import io
+import logging
 import math
 import struct
+import wave
 
 from ..config import TMP_DIR
+
+logger = logging.getLogger(__name__)
 
 
 def generate(blob_sha: str, data: bytes, filename: str, audio_format: str) -> dict:
@@ -26,9 +31,6 @@ def generate(blob_sha: str, data: bytes, filename: str, audio_format: str) -> di
 def _extract_wav_peaks(data: bytes) -> tuple[list[float], float]:
     """Extract peaks from WAV data (PCM 16-bit)."""
     try:
-        import wave
-        import io
-
         buf = io.BytesIO(data)
         with wave.open(buf, "rb") as w:
             n_channels = w.getnchannels()
@@ -55,7 +57,12 @@ def _extract_wav_peaks(data: bytes) -> tuple[list[float], float]:
                     peaks.append(max_val / 32768.0)
 
             return peaks, duration_s
-    except Exception:
+    except (wave.Error, struct.error, EOFError, ValueError, MemoryError):
+        logger.info(
+            "wav peak extraction failed (%d bytes) — falling back to synthetic waveform",
+            len(data),
+            exc_info=True,
+        )
         return [], 0.0
 
 

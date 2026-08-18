@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
+import { reportError } from "../errors";
 import ReferenceCompare from "../components/ReferenceCompare";
 import { fmtClock, WaveformCanvas, ApprovalPanel, VersionDiffPanel } from "../components/ReviewShared";
 import ABCompare from "../components/ABCompare";
@@ -143,7 +144,10 @@ export default function PublicReviewPage() {
           api
             .publicChangeOrders(token)
             .then(setChangeOrders)
-            .catch(() => setChangeOrders([]));
+            .catch((e: unknown) => {
+              reportError("loading change orders", e);
+              setChangeOrders([]);
+            });
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Review link not found";
@@ -169,7 +173,10 @@ export default function PublicReviewPage() {
     api
       .publicReferences(token)
       .then((r) => setRefs(r))
-      .catch(() => setRefs([]));
+      .catch((e: unknown) => {
+        reportError("loading reference tracks", e);
+        setRefs([]);
+      });
   }, [token, session?.round_number]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const compareReference = async (ref: ReferenceTrack) => {

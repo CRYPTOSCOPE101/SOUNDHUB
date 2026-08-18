@@ -3,6 +3,7 @@
 Flow: client requests a nonce → signs a message with their wallet
 (personal_sign) → server recovers the signer and issues a JWT.
 """
+import logging
 import secrets
 import threading
 import time
@@ -17,6 +18,8 @@ _lock = threading.Lock()
 _pending: dict[str, dict] = {}  # nonce -> {"address": str, "expires": float}
 
 DOMAIN = "soundhub.xyz"
+
+logger = logging.getLogger(__name__)
 
 
 def _cleanup() -> None:
@@ -58,6 +61,9 @@ def verify_challenge(address: str, message: str, signature: str) -> bool:
     try:
         recovered = Account.recover_message(encode_defunct(text=message), signature=signature)
     except Exception:
+        # Any recovery failure means an unusable signature — log it so bad
+        # clients and malformed signatures are diagnosable, then reject.
+        logger.warning("signature recovery failed for %s", address, exc_info=True)
         return False
     return recovered.lower() == address.lower()
 

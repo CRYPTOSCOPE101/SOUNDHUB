@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { errorMessage, reportError } from "../errors";
 import type { SearchResults } from "../types";
 
 interface SiteHeaderProps {
@@ -59,6 +60,7 @@ function HeaderSearch() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -75,6 +77,7 @@ function HeaderSearch() {
     const query = q.trim();
     if (!query) {
       setResults(null);
+      setSearchError(null);
       setOpen(false);
       return;
     }
@@ -84,9 +87,15 @@ function HeaderSearch() {
         .search(query)
         .then((r) => {
           setResults(r);
+          setSearchError(null);
           setOpen(true);
         })
-        .catch(() => setResults({ query, engineers: [], sessions: [] }))
+        .catch((e: unknown) => {
+          reportError(`search for "${query}"`, e);
+          setResults({ query, engineers: [], sessions: [] });
+          setSearchError(errorMessage(e, "Search is unavailable right now."));
+          setOpen(true);
+        })
         .finally(() => setBusy(false));
     }, 200);
     return () => clearTimeout(t);
@@ -124,7 +133,7 @@ function HeaderSearch() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onFocus={() => {
-            if (results && total > 0) setOpen(true);
+            if (searchError || (results && total > 0)) setOpen(true);
           }}
           onKeyDown={onKey}
           aria-label="Search"
@@ -133,7 +142,10 @@ function HeaderSearch() {
       </div>
       {open && results && q.trim() && (
         <div className="bc-search-menu">
-          {total === 0 && <div className="bc-search-empty">Nothing public found for “{q.trim()}”.</div>}
+          {searchError && <div className="bc-search-empty">Search failed: {searchError}</div>}
+          {!searchError && total === 0 && (
+            <div className="bc-search-empty">Nothing public found for “{q.trim()}”.</div>
+          )}
           {results.engineers.length > 0 && (
             <>
               <div className="bc-search-group">Engineers</div>

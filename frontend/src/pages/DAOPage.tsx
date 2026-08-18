@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { formatEther } from "ethers";
+import { reportError } from "../errors";
 import {
   getDeployment,
   getGovernor,
@@ -52,7 +53,10 @@ export default function DAOPage() {
         const id = args[0] as bigint;
         const [state, voted] = await Promise.all([
           gov.state(id),
-          gov.hasVoted(id, wallet.address).catch(() => false),
+          gov.hasVoted(id, wallet.address).catch((e: unknown) => {
+            reportError(`checking vote status for proposal ${id}`, e);
+            return false;
+          }),
         ]);
         list.push({ id, state: Number(state), voted: Boolean(voted) });
       }
