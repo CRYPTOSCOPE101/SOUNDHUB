@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SoundHub × Cubase — panel</title>
+  <style>
+    :root {
+      --bg: #1e1e28; --panel: #2a2a3a; --text: #e8e8f0; --muted: #9a9ab0;
+      --accent: #bf00ff; --green: #3ddc84;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, sans-serif; background: var(--bg);
+      color: var(--text); padding: 24px;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+    .row { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    label { font-size: 12px; color: var(--muted); }
+    input, button {
+      background: var(--panel); color: var(--text); border: 1px solid #3c3c50;
+      border-radius: 6px; padding: 7px 10px; font-size: 13px;
+    }
+    input[type="number"] { width: 90px; }
+    button { cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .status { color: var(--muted); font-size: 12px; min-height: 16px; margin-bottom: 12px; }
+    .card {
+      background: var(--panel); border: 1px solid #3c3c50; border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 10px; display: flex; justify-content: space-between; gap: 12px;
+    }
+    .card .name { font-weight: 600; }
+    .card .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .card .price { color: var(--green); font-weight: 600; white-space: nowrap; }
+    .tag { font-size: 11px; border: 1px solid #555; border-radius: 4px; padding: 1px 6px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>🎛 SoundHub × Cubase</h1>
+  <div class="sub">Panel for Cubase — reads project context over MIDI (soundhub.js), recommends from the SoundHub backend.</div>
+
+  <div class="row">
+    <label for="backend">Backend</label>
+    <input id="backend" value="http://127.0.0.1:8000" size="26" />
+    <label for="bpm">BPM</label>
+    <input id="bpm" type="number" min="40" max="240" value="128" />
+    <button id="suggest" class="primary">Suggest</button>
+  </div>
+
+  <div class="row">
+    <label for="midi">MIDI port (from soundhub.js)</label>
+    <select id="midi"><option value="">— not connected —</option></select>
+    <button id="connect">Connect</button>
+    <span class="tag" id="transport">transport: —</span>
+  </div>
+
+  <div class="status" id="status"></div>
+  <div id="results"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
