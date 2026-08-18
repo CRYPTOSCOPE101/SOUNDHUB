@@ -2,7 +2,13 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent  # backend/
+# Optional local overrides in backend/.env (gitignored). Real environment
+# variables always win — load_dotenv does not override what is already set,
+# so Render/Fly secrets keep precedence over the local file.
+load_dotenv(BASE_DIR / ".env")
 DATA_DIR = Path(os.environ.get("SOUNDHUB_DATA_DIR", BASE_DIR / "data"))
 BLOB_DIR = DATA_DIR / "blobs"
 TMP_DIR = DATA_DIR / "tmp"

@@ -357,9 +357,36 @@ def evaluate(db: Session) -> dict:
     return {"evaluated": evaluated, "created": created}
 
 
+def _deliver(msg) -> None:
+    """Transport: send one EmailMessage via SMTP; raises on any failure.
+
+    Port 465 → implicit TLS (`SMTP_SSL`, used by Resend's relay). Any other
+    port (587/25) → STARTTLS when the server offers it, falling back to a
+    plain-text relay for local dev. The caller marks the notification failed
+    on exception.
+    """
+    import smtplib
+
+    host = config.SMTP_HOST
+    port = config.SMTP_PORT
+    if port == 465:
+        with smtplib.SMTP_SSL(host, port, timeout=15) as smtp:
+            if config.SMTP_USER:
+                smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
+            smtp.send_message(msg)
+        return
+    with smtplib.SMTP(host, port, timeout=15) as smtp:
+        try:
+            smtp.starttls()
+        except smtplib.SMTPException:
+            pass  # no TLS offered — plain relay (dev only)
+        if config.SMTP_USER:
+            smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
+        smtp.send_message(msg)
+
+
 def _smtp_send(notification: Notification) -> None:
     """Deliver via SMTP; raises on any failure (caller marks notification.failed)."""
-    import smtplib
     from email.message import EmailMessage
 
     msg = EmailMessage()
@@ -367,10 +394,7 @@ def _smtp_send(notification: Notification) -> None:
     msg["From"] = config.SMTP_FROM
     msg["To"] = notification.recipient
     msg.set_content(f"{notification.body}\n\n{notification.cta_label}: {notification.cta_url}")
-    with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=15) as smtp:
-        if config.SMTP_USER:
-            smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
-        smtp.send_message(msg)
+    _deliver(msg)
 
 
 def send_pending(db: Session) -> dict:

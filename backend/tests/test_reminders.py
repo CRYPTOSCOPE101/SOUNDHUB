@@ -355,3 +355,122 @@ def test_opt_out_blocks_future_noncritical(client):
     _upload(client, token, s["id"], make_wav())
     _evaluate(client, token)
     assert "review.opened" not in _kinds(_notifs(client, token, s["id"]))
+
+
+# ---------- SMTP transport (port 465 = implicit TLS, 587 = STARTTLS) ----------
+
+
+class _FakeSmtp:
+    """Records login/send; used to unit-test the transport without a server."""
+
+    used_ssl = False
+    started_tls = False
+    logged_in = None
+    sent = None
+
+    @classmethod
+    def reset(cls):
+        cls.used_ssl = False
+        cls.started_tls = False
+        cls.logged_in = None
+        cls.sent = None
+
+    def __init__(self, host="", port=0, timeout=0):
+        self.host = host
+        self.port = port
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def login(self, user, password):
+        type(self).logged_in = (user, password)
+
+    def send_message(self, msg):
+        type(self).sent = msg
+
+    def starttls(self):
+        type(self).started_tls = True
+
+
+class _FakeSmtpSsl(_FakeSmtp):
+    used_ssl = True
+
+
+def _notif():
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        subject="Neon Warehouse — your mix is ready",
+        recipient="aisha@example.com",
+        body="v1 is ready for review.",
+        cta_label="Listen & leave notes",
+        cta_url="http://front.local/r/tok123",
+    )
+
+
+def test_smtp_deliver_uses_implicit_tls_on_465(monkeypatch):
+    """Port 465 (Resend) → SMTP_SSL + login + send."""
+    import smtplib
+
+    from app import config
+    from app.services.reminders import _smtp_send
+
+    _FakeSmtp.reset()
+    monkeypatch.setattr(config, "SMTP_HOST", "smtp.resend.com")
+    monkeypatch.setattr(config, "SMTP_PORT", 465)
+    monkeypatch.setattr(config, "SMTP_USER", "resend")
+    monkeypatch.setattr(config, "SMTP_PASSWORD", "re_secret")
+    monkeypatch.setattr(smtplib, "SMTP_SSL", _FakeSmtpSsl)
+    monkeypatch.setattr(smtplib, "SMTP", _FakeSmtp)
+
+    _smtp_send(_notif())
+    assert _FakeSmtpSsl.used_ssl is True
+    assert _FakeSmtpSsl.logged_in == ("resend", "re_secret")
+    assert _FakeSmtpSsl.sent["To"] == "aisha@example.com"
+    assert _FakeSmtpSsl.sent["From"] == config.SMTP_FROM
+    assert "http://front.local/r/tok123" in _FakeSmtpSsl.sent.get_content()
+
+
+def test_smtp_deliver_uses_starttls_on_587(monkeypatch):
+    """Port 587 (Mailgun/SendGrid) → SMTP + starttls + login + send."""
+    import smtplib
+
+    from app import config
+    from app.services.reminders import _smtp_send
+
+    _FakeSmtp.reset()
+    monkeypatch.setattr(config, "SMTP_HOST", "smtp.mailgun.org")
+    monkeypatch.setattr(config, "SMTP_PORT", 587)
+    monkeypatch.setattr(config, "SMTP_USER", "postmaster@mg.soundhub.com")
+    monkeypatch.setattr(config, "SMTP_PASSWORD", "pw")
+    monkeypatch.setattr(smtplib, "SMTP_SSL", _FakeSmtpSsl)
+    monkeypatch.setattr(smtplib, "SMTP", _FakeSmtp)
+
+    _smtp_send(_notif())
+    assert _FakeSmtp.used_ssl is False  # plain SMTP, not SSL
+    assert _FakeSmtp.started_tls is True
+    assert _FakeSmtp.logged_in == ("postmaster@mg.soundhub.com", "pw")
+    assert _FakeSmtp.sent is not None
+
+
+def test_smtp_deliver_no_auth_when_user_unset(monkeypatch):
+    """SMTP_USER empty (open relay/dev) → send without login."""
+    import smtplib
+
+    from app import config
+    from app.services.reminders import _smtp_send
+
+    _FakeSmtp.reset()
+    monkeypatch.setattr(config, "SMTP_HOST", "127.0.0.1")
+    monkeypatch.setattr(config, "SMTP_PORT", 25)
+    monkeypatch.setattr(config, "SMTP_USER", "")
+    monkeypatch.setattr(config, "SMTP_PASSWORD", "")
+    monkeypatch.setattr(smtplib, "SMTP_SSL", _FakeSmtpSsl)
+    monkeypatch.setattr(smtplib, "SMTP", _FakeSmtp)
+
+    _smtp_send(_notif())
+    assert _FakeSmtp.logged_in is None
+    assert _FakeSmtp.sent is not None
