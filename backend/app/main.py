@@ -6,12 +6,16 @@ from sqlalchemy.orm import Session
 
 from .database import get_db, init_db
 from .routers import (
+    activity,
+    analytics,
     assets,
     auth,
     change_orders,
     comparisons,
     diffs,
     files,
+    groups,
+    pins,
     portfolio,
     projects,
     references,
@@ -20,6 +24,9 @@ from .routers import (
     roles,
     search,
     sessions,
+    tags,
+    templates,
+    webhooks,
 )
 
 app = FastAPI(
@@ -52,6 +59,13 @@ app.include_router(references.router)
 app.include_router(reminders.router)
 app.include_router(roles.router)
 app.include_router(search.router)
+app.include_router(activity.router)
+app.include_router(analytics.router)
+app.include_router(templates.router)
+app.include_router(tags.router)
+app.include_router(groups.router)
+app.include_router(pins.router)
+app.include_router(webhooks.router)
 
 # The landing page CTA "Open a sample review" points here directly — a fixed,
 # human-readable token so the demo review is always reachable at /r/demo-review-token

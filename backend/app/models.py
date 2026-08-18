@@ -682,3 +682,183 @@ class DeliveryEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     package: Mapped["ReleasePackage"] = relationship(back_populates="events")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Professional features — templates, tags, activity feed, groups, pins, webhooks
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class SessionTemplate(Base):
+    """Reusable session templates (mixing, mastering, production, etc.)."""
+
+    __tablename__ = "session_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    service_type: Mapped[str] = mapped_column(String(32), default="mix_master")
+    genre: Mapped[str] = mapped_column(String(64), default="")
+    included_rounds: Mapped[int] = mapped_column(Integer, default=2)
+    extra_round_price_cents: Mapped[int] = mapped_column(Integer, default=0)
+    deposit_due_cents: Mapped[int] = mapped_column(Integer, default=0)
+    required_deliverables: Mapped[str] = mapped_column(Text, default="master,instrumental")
+    brief_template: Mapped[str] = mapped_column(Text, default="")
+    is_public: Mapped[bool] = mapped_column(default=False)
+    use_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    owner: Mapped["User"] = relationship()
+
+
+class SessionTag(Base):
+    """Tags for organizing sessions (genre, mood, status, priority, etc.)."""
+
+    __tablename__ = "session_tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    color: Mapped[str] = mapped_column(String(7), default="#6366f1")  # hex color
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("owner_id", "name", name="uq_tag_owner_name"),)
+
+    owner: Mapped["User"] = relationship()
+
+
+class SessionTagLink(Base):
+    """Many-to-many link between sessions and tags."""
+
+    __tablename__ = "session_tag_links"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    tag_id: Mapped[int] = mapped_column(ForeignKey("session_tags.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("session_id", "tag_id", name="uq_session_tag"),)
+
+    session: Mapped["ReviewSession"] = relationship()
+    tag: Mapped["SessionTag"] = relationship()
+
+
+class ActivityEvent(Base):
+    """Activity feed — who did what, when, on which session/project."""
+
+    __tablename__ = "activity_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("review_sessions.id"), nullable=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(48))  # session.created, version.uploaded, comment.added, approval.submitted, etc.
+    actor_name: Mapped[str] = mapped_column(String(128), default="")
+    entity_type: Mapped[str] = mapped_column(String(32), default="")  # session, version, comment, approval, etc.
+    entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    detail: Mapped[str] = mapped_column(Text, default="")
+    metadata_json: Mapped[str | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User | None"] = relationship()
+
+
+class SessionGroup(Base):
+    """Folders for organizing sessions (client projects, label releases, etc.)."""
+
+    __tablename__ = "session_groups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    color: Mapped[str] = mapped_column(String(7), default="#3b82f6")
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("session_groups.id"), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    owner: Mapped["User"] = relationship()
+    children: Mapped[list["SessionGroup"]] = relationship(back_populates="parent")
+    parent: Mapped["SessionGroup | None"] = relationship(back_populates="children", remote_side=[id])
+
+
+class VersionPin(Base):
+    """Pinned versions — mark important versions for quick access."""
+
+    __tablename__ = "version_pins"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    version_id: Mapped[int] = mapped_column(ForeignKey("review_versions.id"), index=True)
+    pinned_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    label: Mapped[str] = mapped_column(String(64), default="")  # e.g. "client approved", "final master"
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("session_id", "version_id", name="uq_session_version_pin"),)
+
+    session: Mapped["ReviewSession"] = relationship()
+    version: Mapped["ReviewVersion"] = relationship()
+    user: Mapped["User"] = relationship()
+
+
+class SessionGroupLink(Base):
+    """Link sessions to groups (many-to-many)."""
+
+    __tablename__ = "session_group_links"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("review_sessions.id"), index=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("session_groups.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("session_id", "group_id", name="uq_session_group"),)
+
+    session: Mapped["ReviewSession"] = relationship()
+    group: Mapped["SessionGroup"] = relationship()
+
+
+class Webhook(Base):
+    """Webhook configurations — notify external services on events."""
+
+    __tablename__ = "webhooks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    url: Mapped[str] = mapped_column(String(512))
+    secret: Mapped[str | None] = mapped_column(String(128), nullable=True)  # HMAC signing secret
+    events: Mapped[str] = mapped_column(Text, default="*")  # comma-separated event types, or * for all
+    is_active: Mapped[bool] = mapped_column(default=True)
+    last_status: Mapped[int | None] = mapped_column(Integer, nullable=True)  # last HTTP status code
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    last_triggered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    owner: Mapped["User"] = relationship()
+
+
+class WebhookDelivery(Base):
+    """Delivery attempts for a webhook — audit trail."""
+
+    __tablename__ = "webhook_deliveries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    webhook_id: Mapped[int] = mapped_column(ForeignKey("webhooks.id"), index=True)
+    event_type: Mapped[str] = mapped_column(String(48))
+    payload: Mapped[str] = mapped_column(JSON)
+    status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    response_body: Mapped[str] = mapped_column(Text, default="")
+    success: Mapped[bool] = mapped_column(default=False)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    webhook: Mapped["Webhook"] = relationship()
