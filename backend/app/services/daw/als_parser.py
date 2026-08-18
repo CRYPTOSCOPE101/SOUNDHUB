@@ -4,10 +4,31 @@
 tempo, time signature, tracks, devices/plugins and referenced samples.
 All extraction is defensive: never raise on unexpected structure.
 """
-import gzip
+import re
+import zlib
 import xml.etree.ElementTree as ET
 
 from .base import DAWInfo, ParseError, TrackInfo
+
+# A .als is a few MB of XML; anything larger is a decompression bomb rather
+# than a project file. Entities are rejected outright (expat expands internal
+# ones, so a "billion laughs" DTD would otherwise blow up the worker).
+MAX_DECOMPRESSED_SIZE = 256 * 1024 * 1024
+_DOCTYPE_RE = re.compile(rb"<!(DOCTYPE|ENTITY)", re.IGNORECASE)
+
+
+def gunzip_bounded(data: bytes, limit: int = MAX_DECOMPRESSED_SIZE) -> bytes:
+    """Decompress gzip data, refusing anything that expands past `limit`."""
+    obj = zlib.decompressobj(wbits=16 + zlib.MAX_WBITS)
+    out = obj.decompress(data, limit)
+    if obj.unconsumed_tail:
+        raise ParseError("project XML is too large")
+    return out
+
+
+def has_doctype(raw: bytes) -> bool:
+    return bool(_DOCTYPE_RE.search(raw[:4096]))
+
 
 _TRACK_TAGS = {
     "AudioTrack": "audio",
@@ -75,11 +96,13 @@ def _parse_track(el: ET.Element, kind: str) -> TrackInfo:
 def parse_als(data: bytes) -> DAWInfo:
     if data[:2] == b"\x1f\x8b":
         try:
-            raw = gzip.decompress(data)
-        except OSError as exc:
+            raw = gunzip_bounded(data)
+        except zlib.error as exc:
             raise ParseError(f"bad gzip: {exc}") from exc
     else:
         raw = data
+    if has_doctype(raw):
+        raise ParseError("XML doctype/entity declarations are not allowed")
     try:
         root = ET.fromstring(raw)
     except ET.ParseError as exc:

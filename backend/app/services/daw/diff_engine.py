@@ -74,8 +74,9 @@ def normalize_content(path: str, data: bytes) -> str:
         return data.decode("utf-8", errors="replace")
     elif lower.endswith(".als"):
         try:
-            import gzip
-            return gzip.decompress(data).decode("utf-8", errors="replace")
+            from .als_parser import gunzip_bounded
+
+            return gunzip_bounded(data).decode("utf-8", errors="replace")
         except Exception:
             return ""
     return ""

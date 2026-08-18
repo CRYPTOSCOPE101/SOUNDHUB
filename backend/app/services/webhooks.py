@@ -1,14 +1,40 @@
 """HTTP webhook dispatching with HMAC signing."""
 import hashlib
 import hmac
+import ipaddress
 import json
+import socket
 import time
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy.orm import Session
 
 from ..models import Webhook, WebhookDelivery
+
+
+def validate_url(url: str) -> str:
+    """Reject webhook targets that point at non-public networks (SSRF)."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError("Webhook URL must be an absolute http(s) URL")
+    try:
+        infos = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
+    except socket.gaierror as exc:
+        raise ValueError(f"Webhook host cannot be resolved: {parsed.hostname}") from exc
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            raise ValueError("Webhook URL must not point at a private or loopback address")
+    return url
 
 
 def dispatch(db: Session, event_type: str, payload: dict) -> None:

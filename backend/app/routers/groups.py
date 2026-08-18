@@ -3,11 +3,26 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..models import ReviewSession
 from ..schemas import SessionGroupCreate, SessionGroupLinkCreate, SessionGroupLinkOut, SessionGroupOut, SessionGroupUpdate
 from ..security import get_current_user
 from ..services import groups as groups_svc
 
 router = APIRouter(prefix="/api/groups", tags=["groups"])
+
+
+def _own_session(db: Session, session_id: int, user) -> ReviewSession:
+    session = db.get(ReviewSession, session_id)
+    if session is None or session.owner_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    return session
+
+
+def _own_group(db: Session, group_id: int, user):
+    group = groups_svc.get_group(db, group_id)
+    if group is None or group.owner_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
+    return group
 
 
 @router.get("", response_model=list[SessionGroupOut])
@@ -41,10 +56,13 @@ def delete_group(group_id: int, user=Depends(get_current_user), db: Session = De
 
 @router.post("/session/{session_id}", response_model=SessionGroupLinkOut, status_code=status.HTTP_201_CREATED)
 def link_session(session_id: int, payload: SessionGroupLinkCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    _own_session(db, session_id, user)
+    _own_group(db, payload.group_id, user)
     link = groups_svc.link_session(db, session_id, payload.group_id)
     return SessionGroupLinkOut.model_validate(link, from_attributes=True)
 
 
 @router.delete("/session/{session_id}/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
 def unlink_session(session_id: int, group_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    _own_session(db, session_id, user)
     groups_svc.unlink_session(db, session_id, group_id)
