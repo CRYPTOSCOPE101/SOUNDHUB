@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SoundHub Backend — Deployment</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 40px; }
+  h1 { color: #58a6ff; font-size: 28px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 16px; margin-bottom: 30px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+  .card h2 { font-size: 16px; margin-bottom: 12px; }
+  .card .detail { font-size: 12px; color: #c9d1d9; line-height: 1.8; }
+  .card .detail .key { color: #8b949e; }
+  .card .detail .val { color: #3fb950; }
+  .card .detail code { color: #f0883e; background: #0d1117; padding: 1px 4px; border-radius: 2px; }
+  .card.render { border-color: #a371f7; }
+  .card.render h2 { color: #a371f7; }
+  .card.fly { border-color: #58a6ff; }
+  .card.fly h2 { color: #58a6ff; }
+  .card.docker { border-color: #3fb950; }
+  .card.docker h2 { color: #3fb950; }
+  .env { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-top: 20px; }
+  .env h2 { color: #f0883e; font-size: 16px; margin-bottom: 12px; }
+  .env-table { width: 100%; border-collapse: collapse; }
+  .env-table th { text-align: left; padding: 8px; background: #0d1117; color: #8b949e; font-size: 11px; border-bottom: 1px solid #30363d; }
+  .env-table td { padding: 8px; border-bottom: 1px solid #21262d; font-size: 12px; }
+  .env-table .var { color: #58a6ff; }
+  .env-table .default { color: #8b949e; }
+  .env-table .required { color: #f85149; }
+</style>
+</head>
+<body>
+  <h1>🚀 Deployment</h1>
+  <p class="subtitle">Docker + Render + Fly.io — ready to deploy</p>
+  
+  <div class="grid">
+    <div class="card render">
+      <h2>🟣 Render</h2>
+      <div class="detail">
+        <span class="key">Runtime:</span> <span class="val">Python 3.12</span><br>
+        <span class="key">Build:</span> <code>pip install -r requirements.txt</code><br>
+        <span class="key">Start:</span> <code>uvicorn app.main:app --host 0.0.0.0 --port $PORT</code><br>
+        <span class="key">Health:</span> <code>/api/health</code><br>
+        <span class="key">Plan:</span> <span class="val">Free tier</span><br>
+        <span class="key">Auto-deploy:</span> <span class="val">On push to main</span>
+      </div>
+    </div>
+    
+    <div class="card fly">
+      <h2>🪁 Fly.io</h2>
+      <div class="detail">
+        <span class="key">Runtime:</span> <span class="val">Python 3.12-slim</span><br>
+        <span class="key">Port:</span> <span class="val">8000</span><br>
+        <span class="key">Health:</span> <code>/api/health</code><br>
+        <span class="key">Auto-stop:</span> <span class="val">true</span><br>
+        <span class="key">Auto-start:</span> <span class="val">true</span><br>
+        <span class="key">HTTPS:</span> <span class="val">forced</span>
+      </div>
+    </div>
+    
+    <div class="card docker">
+      <h2>🐳 Docker</h2>
+      <div class="detail">
+        <span class="key">Base:</span> <span class="val">python:3.12-slim</span><br>
+        <span class="key">WORKDIR:</span> <span class="val">/app</span><br>
+        <span class="key">Install:</span> <code>pip install -r requirements.txt</code><br>
+        <span class="key">Expose:</span> <span class="val">8000</span><br>
+        <span class="key">CMD:</span> <code>uvicorn app.main:app</code><br>
+        <span class="key">Size:</span> <span class="val">~150MB</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="env">
+    <h2>🔑 Environment Variables</h2>
+    <table class="env-table">
+      <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+      <tr><td class="var">SOUNDHUB_DATABASE_URL</td><td class="default">sqlite:///data/soundhub.db</td><td>Database connection string</td></tr>
+      <tr><td class="var">SOUNDHUB_SECRET_KEY</td><td class="default">dev-secret-...</td><td>JWT signing key</td></tr>
+      <tr><td class="var">SOUNDHUB_FRONTEND_URL</td><td class="default">http://localhost:5173</td><td>Frontend URL for links</td></tr>
+      <tr><td class="var">STRIPE_SECRET_KEY</td><td class="default">(empty)</td><td>Stripe API key</td></tr>
+      <tr><td class="var">STRIPE_WEBHOOK_SECRET</td><td class="default">(empty)</td><td>Stripe webhook verification</td></tr>
+      <tr><td class="var">SOUNDHUB_BASE_RPC_URL</td><td class="default">(empty)</td><td>Base network RPC</td></tr>
+      <tr><td class="var">SMTP_HOST</td><td class="default">(empty)</td><td>Email server host</td></tr>
+      <tr><td class="var">SMTP_PORT</td><td class="default">587</td><td>Email server port</td></tr>
+      <tr><td class="var">SMTP_USER</td><td class="default">(empty)</td><td>Email auth user</td></tr>
+      <tr><td class="var">SMTP_PASSWORD</td><td class="default">(empty)</td><td>Email auth password</td></tr>
+      <tr><td class="var">SMTP_FROM</td><td class="default">SoundHub &lt;no-reply@soundhub.local&gt;</td><td>From address</td></tr>
+    </table>
+  </div>
+</body>
+</html>

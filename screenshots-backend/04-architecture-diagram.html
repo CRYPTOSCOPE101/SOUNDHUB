@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SoundHub Backend — Architecture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 40px; }
+  h1 { color: #58a6ff; font-size: 28px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 16px; margin-bottom: 30px; }
+  .diagram { display: flex; flex-direction: column; gap: 20px; max-width: 900px; }
+  .layer { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+  .layer-title { color: #58a6ff; font-size: 14px; font-weight: bold; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .components { display: flex; gap: 12px; flex-wrap: wrap; }
+  .component { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px 14px; font-size: 12px; }
+  .component .name { color: #c9d1d9; font-weight: bold; }
+  .component .desc { color: #8b949e; font-size: 11px; }
+  .arrow { text-align: center; color: #30363d; font-size: 20px; }
+  .highlight { border-color: #58a6ff; }
+  .highlight .name { color: #58a6ff; }
+  .money { border-color: #3fb950; }
+  .money .name { color: #3fb950; }
+</style>
+</head>
+<body>
+  <h1>🏗 Architecture</h1>
+  <p class="subtitle">SoundHub Backend — Layer Diagram</p>
+  
+  <div class="diagram">
+    <div class="layer">
+      <div class="layer-title">🌐 Frontend (React SPA)</div>
+      <div class="components">
+        <div class="component"><div class="name">Landing Page</div><div class="desc">Marketing + demo</div></div>
+        <div class="component"><div class="name">Review Session UI</div><div class="desc">Player + comments</div></div>
+        <div class="component"><div class="name">Dashboard</div><div class="desc">Sessions, projects</div></div>
+        <div class="component"><div class="name">Marketplace</div><div class="desc">Browse + purchase</div></div>
+      </div>
+    </div>
+    
+    <div class="arrow">↕️</div>
+    
+    <div class="layer">
+      <div class="layer-title">🔌 API Layer (FastAPI — 70 endpoints)</div>
+      <div class="components">
+        <div class="component highlight"><div class="name">Auth</div><div class="desc">JWT + Web3 wallet</div></div>
+        <div class="component highlight"><div class="name">Sessions</div><div class="desc">Core review loop</div></div>
+        <div class="component highlight"><div class="name">Projects</div><div class="desc">Git-like versioning</div></div>
+        <div class="component highlight"><div class="name">Release Packages</div><div class="desc">Lock + deliver</div></div>
+        <div class="component"><div class="name">Templates</div><div class="desc">Reusable configs</div></div>
+        <div class="component"><div class="name">Tags</div><div class="desc">Organization</div></div>
+        <div class="component"><div class="name">Groups</div><div class="desc">Folders</div></div>
+        <div class="component"><div class="name">Webhooks</div><div class="desc">Notifications</div></div>
+        <div class="component"><div class="name">Analytics</div><div class="desc">Statistics</div></div>
+        <div class="component"><div class="name">Search</div><div class="desc">Global search</div></div>
+      </div>
+    </div>
+    
+    <div class="arrow">↕️</div>
+    
+    <div class="layer">
+      <div class="layer-title">⚙️ Services Layer (15+ modules)</div>
+      <div class="components">
+        <div class="component"><div class="name">Storage</div><div class="desc">SHA-256 blobs</div></div>
+        <div class="component"><div class="name">Waveform</div><div class="desc">Peak generation</div></div>
+        <div class="component"><div class="name">Analysis</div><div class="desc">LUFS + true peak</div></div>
+        <div class="component"><div class="name">Watermark</div><div class="desc">Preview protection</div></div>
+        <div class="component highlight"><div class="name">Ledger</div><div class="desc">Hash chain</div></div>
+        <div class="component"><div class="name">Versioning</div><div class="desc">File snapshots</div></div>
+        <div class="component"><div class="name">Roles</div><div class="desc">Approval gates</div></div>
+        <div class="component"><div class="name">Reminders</div><div class="desc">SMTP + dedup</div></div>
+        <div class="component"><div class="name">DAW Parsers</div><div class="desc">ALS/RPP/CPR/FLP</div></div>
+        <div class="component money"><div class="name">Stripe Pay</div><div class="desc">Checkout</div></div>
+        <div class="component money"><div class="name">USDC Pay</div><div class="desc">On-chain (Base)</div></div>
+      </div>
+    </div>
+    
+    <div class="arrow">↕️</div>
+    
+    <div class="layer">
+      <div class="layer-title">🗄 Data Layer (32 tables)</div>
+      <div class="components">
+        <div class="component"><div class="name">SQLAlchemy ORM</div><div class="desc">30+ models</div></div>
+        <div class="component"><div class="name">SQLite / PostgreSQL</div><div class="desc">Dev / Prod</div></div>
+        <div class="component"><div class="name">Blob Storage</div><div class="content-addressed</div></div>
+        <div class="component"><div class="name">Ledger Events</div><div class="desc">Tamper-evident</div></div>
+      </div>
+    </div>
+    
+    <div class="arrow">↕️</div>
+    
+    <div class="layer">
+      <div class="layer-title">🌍 External Services</div>
+      <div class="components">
+        <div class="component"><div class="name">SMTP</div><div class="desc">Email delivery</div></div>
+        <div class="component"><div class="name">Stripe</div><div class="desc">Card payments</div></div>
+        <div class="component"><div class="name">Base Network</div><div class="desc">USDC payments</div></div>
+        <div class="component"><div class="name">Render</div><div class="desc">Hosting</div></div>
+        <div class="component"><div class="name">Vercel</div><div class="desc">Frontend CDN</div></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

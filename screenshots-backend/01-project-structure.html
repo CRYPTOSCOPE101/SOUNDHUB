@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SoundHub Backend — Project Structure</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 40px; }
+  h1 { color: #58a6ff; font-size: 28px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 16px; margin-bottom: 30px; }
+  .tree { font-size: 14px; line-height: 1.8; }
+  .dir { color: #58a6ff; font-weight: bold; }
+  .file { color: #c9d1d9; }
+  .file.py { color: #f0883e; }
+  .file.txt { color: #8b949e; }
+  .file.yaml { color: #a371f7; }
+  .file.docker { color: #3fb950; }
+  .comment { color: #8b949e; }
+  .stats { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-top: 30px; display: flex; gap: 40px; }
+  .stat { text-align: center; }
+  .stat-num { font-size: 36px; font-weight: bold; color: #58a6ff; }
+  .stat-label { color: #8b949e; font-size: 14px; }
+</style>
+</head>
+<body>
+  <h1>📂 Project Structure</h1>
+  <p class="subtitle">SoundHub Backend — Complete File Tree</p>
+  
+  <div class="tree">
+    <span class="dir">soundhub-backend/</span><br>
+    ├── <span class="file docker">Dockerfile</span><br>
+    ├── <span class="file yaml">fly.toml</span> <span class="comment"># Fly.io config</span><br>
+    ├── <span class="file yaml">render.yaml</span> <span class="comment"># Render config</span><br>
+    ├── <span class="file txt">requirements.txt</span> <span class="comment"># Python dependencies</span><br>
+    ├── <span class="file txt">.env.example</span> <span class="comment"># Environment variables</span><br>
+    │<br>
+    ├── <span class="dir">app/</span><br>
+    │   ├── <span class="file py">main.py</span> <span class="comment"># FastAPI app — 70 endpoints</span><br>
+    │   ├── <span class="file py">config.py</span> <span class="comment"># ENV-based configuration</span><br>
+    │   ├── <span class="file py">database.py</span> <span class="comment"># SQLAlchemy + 32 tables</span><br>
+    │   ├── <span class="file py">models.py</span> <span class="comment"># 30+ ORM models</span><br>
+    │   ├── <span class="file py">schemas.py</span> <span class="comment"># Pydantic schemas</span><br>
+    │   ├── <span class="file py">security.py</span> <span class="comment"># JWT + PBKDF2 auth</span><br>
+    │   ├── <span class="file py">wallet_auth.py</span> <span class="comment"># Web3 wallet auth</span><br>
+    │   │<br>
+    │   ├── <span class="dir">routers/</span> <span class="comment"># 20 API routers</span><br>
+    │   │   ├── <span class="file py">auth.py</span> <span class="comment"># register, login, wallet</span><br>
+    │   │   ├── <span class="file py">sessions.py</span> <span class="comment"># review loop (core)</span><br>
+    │   │   ├── <span class="file py">projects.py</span> <span class="comment"># git-like versioning</span><br>
+    │   │   ├── <span class="file py">files.py</span> <span class="comment"># blob upload/download</span><br>
+    │   │   ├── <span class="file py">diffs.py</span> <span class="comment"># smart DAW diff</span><br>
+    │   │   ├── <span class="file py">assets.py</span> <span class="comment"># stems</span><br>
+    │   │   ├── <span class="file py">change_orders.py</span> <span class="comment"># late change requests</span><br>
+    │   │   ├── <span class="file py">release_packages.py</span> <span class="comment"># lock, deliver, invoice</span><br>
+    │   │   ├── <span class="file py">comparisons.py</span> <span class="comment"># A/B version compare</span><br>
+    │   │   ├── <span class="file py">portfolio.py</span> <span class="comment"># public profiles</span><br>
+    │   │   ├── <span class="file py">references.py</span> <span class="comment"># reference tracks</span><br>
+    │   │   ├── <span class="file py">reminders.py</span> <span class="comment"># email reminders</span><br>
+    │   │   ├── <span class="file py">roles.py</span> <span class="comment"># team roles</span><br>
+    │   │   ├── <span class="file py">search.py</span> <span class="comment"># global search</span><br>
+    │   │   ├── <span class="file py">activity.py</span> <span class="comment"># activity feed</span><br>
+    │   │   ├── <span class="file py">analytics.py</span> <span class="comment"># session stats</span><br>
+    │   │   ├── <span class="file py">templates.py</span> <span class="comment"># session templates</span><br>
+    │   │   ├── <span class="file py">tags.py</span> <span class="comment"># tags</span><br>
+    │   │   ├── <span class="file py">groups.py</span> <span class="comment"># folders</span><br>
+    │   │   ├── <span class="file py">pins.py</span> <span class="comment"># version pins</span><br>
+    │   │   └── <span class="file py">webhooks.py</span> <span class="comment"># webhook dispatch</span><br>
+    │   │<br>
+    │   └── <span class="dir">services/</span> <span class="comment"># 15+ service modules</span><br>
+    │       ├── <span class="file py">storage.py</span> <span class="comment"># SHA-256 content-addressed blobs</span><br>
+    │       ├── <span class="file py">waveform.py</span> <span class="comment"># peak generation</span><br>
+    │       ├── <span class="file py">analysis.py</span> <span class="comment"># LUFS, true peak</span><br>
+    │       ├── <span class="file py">watermark.py</span> <span class="comment"># audible watermarking</span><br>
+    │       ├── <span class="file py">ledger.py</span> <span class="comment"># tamper-evident hash chain</span><br>
+    │       ├── <span class="file py">versioning.py</span> <span class="comment"># file snapshots</span><br>
+    │       ├── <span class="file py">roles.py</span> <span class="comment"># approval gates</span><br>
+    │       ├── <span class="file py">reminders.py</span> <span class="comment"># SMTP + dedup</span><br>
+    │       ├── <span class="file py">activity.py</span> <span class="comment"># event tracking</span><br>
+    │       ├── <span class="file py">analytics.py</span> <span class="comment"># stats</span><br>
+    │       ├── <span class="file py">webhooks.py</span> <span class="comment"># HTTP dispatch</span><br>
+    │       ├── <span class="file py">templates.py</span> <span class="comment"># session templates</span><br>
+    │       ├── <span class="file py">tags.py</span> <span class="comment"># tag management</span><br>
+    │       ├── <span class="file py">groups.py</span> <span class="comment"># folder org</span><br>
+    │       ├── <span class="file py">stripe_pay.py</span> <span class="comment"># Stripe Checkout</span><br>
+    │       ├── <span class="file py">usdc_pay.py</span> <span class="comment"># USDC on Base</span><br>
+    │       ├── <span class="file py">reputation.py</span> <span class="comment"># engineer scoring</span><br>
+    │       ├── <span class="file py">licenses.py</span> <span class="comment"># license management</span><br>
+    │       ├── <span class="file py">catalog.py</span> <span class="comment"># marketplace</span><br>
+    │       └── <span class="dir">daw/</span> <span class="comment"># DAW parsers</span><br>
+    │           ├── <span class="file py">__init__.py</span><br>
+    │           ├── <span class="file py">registry.py</span> <span class="comment"># format detection</span><br>
+    │           └── <span class="file py">diff_engine.py</span> <span class="comment"># smart diff</span><br>
+  </div>
+  
+  <div class="stats">
+    <div class="stat"><div class="stat-num">59</div><div class="stat-label">Files</div></div>
+    <div class="stat"><div class="stat-num">4,992</div><div class="stat-label">Lines of Code</div></div>
+    <div class="stat"><div class="stat-num">20</div><div class="stat-label">Routers</div></div>
+    <div class="stat"><div class="stat-num">15+</div><div class="stat-label">Services</div></div>
+    <div class="stat"><div class="stat-num">70</div><div class="stat-label">Endpoints</div></div>
+  </div>
+</body>
+</html>

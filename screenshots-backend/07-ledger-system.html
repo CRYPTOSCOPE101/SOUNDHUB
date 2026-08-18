@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SoundHub Backend — Tamper-Evident Ledger</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 40px; }
+  h1 { color: #58a6ff; font-size: 28px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 16px; margin-bottom: 30px; }
+  .chain { display: flex; flex-direction: column; gap: 0; max-width: 700px; }
+  .event { display: flex; gap: 16px; align-items: flex-start; }
+  .hash-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px 16px; min-width: 120px; text-align: center; }
+  .hash-box .label { color: #8b949e; font-size: 10px; text-transform: uppercase; }
+  .hash-box .hash { color: #3fb950; font-size: 11px; font-family: monospace; word-break: break-all; }
+  .event-card { flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px; }
+  .event-card .event-type { color: #58a6ff; font-size: 13px; font-weight: bold; }
+  .event-card .event-meta { color: #8b949e; font-size: 11px; margin-top: 4px; }
+  .arrow-down { text-align: center; color: #3fb950; font-size: 16px; padding: 4px 0; }
+  .formula { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-top: 30px; max-width: 700px; }
+  .formula-title { color: #f0883e; font-size: 14px; font-weight: bold; margin-bottom: 10px; }
+  .formula-line { font-size: 13px; color: #c9d1d9; line-height: 1.8; }
+  .formula-line .keyword { color: #ff7b72; }
+  .formula-line .func { color: #d2a8ff; }
+  .formula-line .string { color: #a5d6ff; }
+  .verify { background: #161b22; border: 1px solid #3fb950; border-radius: 8px; padding: 20px; margin-top: 20px; max-width: 700px; }
+  .verify-title { color: #3fb950; font-size: 14px; font-weight: bold; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+  <h1>🔗 Tamper-Evident Ledger</h1>
+  <p class="subtitle">SHA-256 hash chain — rewriting an old event invalidates every subsequent hash</p>
+  
+  <div class="chain">
+    <div class="event">
+      <div class="hash-box">
+        <div class="label">Event Hash</div>
+        <div class="hash">a1f9b2c3d4e5...</div>
+      </div>
+      <div class="event-card">
+        <div class="event-type">version.created</div>
+        <div class="event-meta">actor: engineer · v12 uploaded · round 1</div>
+      </div>
+    </div>
+    
+    <div class="arrow-down">↓ SHA-256(prev_hash || payload)</div>
+    
+    <div class="event">
+      <div class="hash-box">
+        <div class="label">Event Hash</div>
+        <div class="hash">77c2d3e4f5a6...</div>
+      </div>
+      <div class="event-card">
+        <div class="event-type">feedback.draft_created</div>
+        <div class="event-meta">actor: Aisha (A&R) · @ 1.5s · "Kick and bass clash"</div>
+      </div>
+    </div>
+    
+    <div class="arrow-down">↓ SHA-256(prev_hash || payload)</div>
+    
+    <div class="event">
+      <div class="hash-box">
+        <div class="label">Event Hash</div>
+        <div class="hash">e4b0c1d2e3f4...</div>
+      </div>
+      <div class="event-card">
+        <div class="event-type">approval.created</div>
+        <div class="event-meta">actor: Artist · scope: mix · approved: true</div>
+      </div>
+    </div>
+    
+    <div class="arrow-down">↓ SHA-256(prev_hash || payload)</div>
+    
+    <div class="event">
+      <div class="hash-box">
+        <div class="label">Event Hash</div>
+        <div class="hash">9d31e2f3a4b5...</div>
+      </div>
+      <div class="event-card">
+        <div class="event-type">package.locked</div>
+        <div class="event-meta">actor: engineer · manifest: 51aa6789...</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="formula">
+    <div class="formula-title">📐 Hash Chain Formula</div>
+    <div class="formula-line"><span class="keyword">event_hash</span> = <span class="func">SHA-256</span>(</div>
+    <div class="formula-line">  prev_event_hash ||</div>
+    <div class="formula-line">  <span class="func">canonical</span>({</div>
+    <div class="formula-line">    event, actor, entity_type, entity_id,</div>
+    <div class="formula-line">    payload, occurred_at, prev_event_hash</div>
+    <div class="formula-line">  })</div>
+    <div class="formula-line">)</div>
+  </div>
+  
+  <div class="verify">
+    <div class="verify-title">✅ Verification</div>
+    <div class="formula-line">Walk the chain: each event's <span class="keyword">prev_event_hash</span> must match the previous event's <span class="keyword">event_hash</span>.</div>
+    <div class="formula-line">If any mismatch → the chain is broken → tampering detected.</div>
+    <div class="formula-line" style="margin-top: 10px;">API: <span class="func">GET /api/sessions/{id}/ledger/verify</span></div>
+  </div>
+</body>
+</html>

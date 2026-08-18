@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SoundHub Backend — API Endpoints</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 40px; }
+  h1 { color: #58a6ff; font-size: 28px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 16px; margin-bottom: 30px; }
+  .stats { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 30px; display: flex; gap: 40px; }
+  .stat { text-align: center; }
+  .stat-num { font-size: 36px; font-weight: bold; color: #58a6ff; }
+  .stat-label { color: #8b949e; font-size: 14px; }
+  .group { margin-bottom: 20px; }
+  .group-title { color: #58a6ff; font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #30363d; padding-bottom: 5px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 8px 12px; background: #161b22; color: #8b949e; font-size: 12px; border-bottom: 1px solid #30363d; }
+  td { padding: 8px 12px; border-bottom: 1px solid #21262d; font-size: 13px; }
+  .method { font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+  .get { background: #1f6feb33; color: #58a6ff; }
+  .post { background: #23883333; color: #3fb950; }
+  .patch { background: #9e6a0033; color: #d29922; }
+  .delete { background: #da363333; color: #f85149; }
+  .path { color: #c9d1d9; }
+  .desc { color: #8b949e; }
+  .auth { color: #a371f7; font-size: 11px; }
+</style>
+</head>
+<body>
+  <h1>🔌 API Endpoints</h1>
+  <p class="subtitle">70 endpoints across 20 routers</p>
+  
+  <div class="stats">
+    <div class="stat"><div class="stat-num">70</div><div class="stat-label">Endpoints</div></div>
+    <div class="stat"><div class="stat-num">20</div><div class="stat-label">Routers</div></div>
+    <div class="stat"><div class="stat-num">25</div><div class="stat-label">GET</div></div>
+    <div class="stat"><div class="stat-num">30</div><div class="stat-label">POST</div></div>
+    <div class="stat"><div class="stat-num">10</div><div class="stat-label">PATCH</div></div>
+    <div class="stat"><div class="stat-num">5</div><div class="stat-label">DELETE</div></div>
+  </div>
+  
+  <div class="group">
+    <div class="group-title">🔐 Auth</div>
+    <table>
+      <tr><th>Method</th><th>Path</th><th>Description</th><th>Auth</th></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/auth/register</td><td class="desc">Register new user</td><td class="auth">—</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/auth/login</td><td class="desc">Login with credentials</td><td class="auth">—</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/auth/wallet/nonce</td><td class="desc">Get wallet auth nonce</td><td class="auth">—</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/auth/wallet/login</td><td class="desc">Login with wallet signature</td><td class="auth">—</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/auth/me</td><td class="desc">Get current user</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method patch">PATCH</span></td><td class="path">/api/auth/me</td><td class="desc">Update profile</td><td class="auth">🔒</td></tr>
+    </table>
+  </div>
+  
+  <div class="group">
+    <div class="group-title">🎧 Review Sessions (Core)</div>
+    <table>
+      <tr><th>Method</th><th>Path</th><th>Description</th><th>Auth</th></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/sessions</td><td class="desc">List my sessions</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/sessions</td><td class="desc">Create session</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/sessions/{id}</td><td class="desc">Get session detail</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method patch">PATCH</span></td><td class="path">/api/sessions/{id}/share</td><td class="desc">Update share settings</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method patch">PATCH</span></td><td class="path">/api/sessions/{id}/brief</td><td class="desc">Update client brief</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/sessions/{id}/versions</td><td class="desc">Upload version</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/sessions/{id}/versions/{v}/audio</td><td class="desc">Download audio</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/sessions/{id}/versions/{v}/diff</td><td class="desc">Smart diff</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/sessions/{id}/versions/{v}/comments</td><td class="desc">Add comment</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/sessions/{id}/ledger</td><td class="desc">Decision ledger</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/sessions/{id}/ledger/verify</td><td class="desc">Verify hash chain</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method delete">DELETE</span></td><td class="path">/api/sessions/{id}</td><td class="desc">Delete session</td><td class="auth">🔒</td></tr>
+    </table>
+  </div>
+  
+  <div class="group">
+    <div class="group-title">🌐 Public Share Endpoints</div>
+    <table>
+      <tr><th>Method</th><th>Path</th><th>Description</th><th>Auth</th></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/sessions/public/{token}</td><td class="desc">View shared session</td><td class="auth">—</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/sessions/public/{token}/versions/{v}/audio</td><td class="desc">Download (watermarked)</td><td class="auth">—</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/sessions/public/{token}/versions/{v}/comments</td><td class="desc">Guest comment</td><td class="auth">—</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/sessions/public/{token}/versions/{v}/approvals</td><td class="desc">Guest approve</td><td class="auth">—</td></tr>
+    </table>
+  </div>
+  
+  <div class="group">
+    <div class="group-title">📁 Projects</div>
+    <table>
+      <tr><th>Method</th><th>Path</th><th>Description</th><th>Auth</th></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/projects</td><td class="desc">List projects</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/projects</td><td class="desc">Create project</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/projects/{id}</td><td class="desc">Get project</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/projects/{id}/branches</td><td class="desc">Create branch</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/projects/{id}/commits</td><td class="desc">Create commit</td><td class="auth">🔒</td></tr>
+    </table>
+  </div>
+  
+  <div class="group">
+    <div class="group-title">📦 Release Packages</div>
+    <table>
+      <tr><th>Method</th><th>Path</th><th>Description</th><th>Auth</th></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/release-packages</td><td class="desc">Create package</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method patch">PATCH</span></td><td class="path">/api/release-packages/{id}/lock</td><td class="desc">Lock package</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/release-packages/public/{token}</td><td class="desc">Public delivery</td><td class="auth">—</td></tr>
+    </table>
+  </div>
+  
+  <div class="group">
+    <div class="group-title">🏷 Professional Features</div>
+    <table>
+      <tr><th>Method</th><th>Path</th><th>Description</th><th>Auth</th></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/templates</td><td class="desc">List templates</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/templates</td><td class="desc">Create template</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/tags</td><td class="desc">List tags</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/groups</td><td class="desc">List groups</td><td class="auth">🔒</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/webhooks</td><td class="desc">List webhooks</td><td class="auth">🔒</td></tr>
+    </table>
+  </div>
+</body>
+</html>

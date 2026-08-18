@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SoundHub Backend — Database Schema</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 40px; }
+  h1 { color: #58a6ff; font-size: 28px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 16px; margin-bottom: 30px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .table-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+  .table-card h3 { color: #58a6ff; font-size: 13px; margin-bottom: 8px; }
+  .table-card .cols { font-size: 11px; color: #8b949e; line-height: 1.6; }
+  .table-card .cols .col { color: #c9d1d9; }
+  .table-card .cols .type { color: #f0883e; }
+  .table-card .cols .pk { color: #a371f7; font-weight: bold; }
+  .table-card .cols .fk { color: #3fb950; }
+  .stats { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 30px; display: flex; gap: 40px; }
+  .stat { text-align: center; }
+  .stat-num { font-size: 36px; font-weight: bold; color: #58a6ff; }
+  .stat-label { color: #8b949e; font-size: 14px; }
+  .group-label { color: #8b949e; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; margin: 20px 0 10px; border-bottom: 1px solid #30363d; padding-bottom: 5px; }
+</style>
+</head>
+<body>
+  <h1>🗄 Database Schema</h1>
+  <p class="subtitle">32 tables — SQLAlchemy ORM models</p>
+  
+  <div class="stats">
+    <div class="stat"><div class="stat-num">32</div><div class="stat-label">Tables</div></div>
+    <div class="stat"><div class="stat-num">200+</div><div class="stat-label">Columns</div></div>
+    <div class="stat"><div class="stat-num">50+</div><div class="stat-label">Indexes</div></div>
+    <div class="stat"><div class="stat-num">15+</div><div class="stat-label">Foreign Keys</div></div>
+  </div>
+  
+  <div class="group-label">🔐 Auth & Users</div>
+  <div class="grid">
+    <div class="table-card">
+      <h3>users</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col">username</span> <span class="type">VARCHAR(64) UNIQUE</span><br>
+        <span class="col">password_hash</span> <span class="type">VARCHAR(256)</span><br>
+        <span class="col">wallet_address</span> <span class="type">VARCHAR(42) UNIQUE</span><br>
+        <span class="col">bio</span> <span class="type">TEXT</span><br>
+        <span class="col">specialty</span> <span class="type">VARCHAR(64)</span><br>
+        <span class="col">location</span> <span class="type">VARCHAR(128)</span><br>
+        <span class="col">created_at</span> <span class="type">DATETIME</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="group-label">📁 Projects & Versioning</div>
+  <div class="grid">
+    <div class="table-card">
+      <h3>projects</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">owner_id</span> <span class="type">→ users.id</span><br>
+        <span class="col">name</span> <span class="type">VARCHAR(128)</span><br>
+        <span class="col">slug</span> <span class="type">VARCHAR(160)</span><br>
+        <span class="col">default_branch</span> <span class="type">VARCHAR(64)</span><br>
+        <span class="col">release_token_id</span> <span class="type">INTEGER</span><br>
+        <span class="col">release_contract</span> <span class="type">VARCHAR(42)</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>branches</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">project_id</span> <span class="type">→ projects.id</span><br>
+        <span class="col">name</span> <span class="type">VARCHAR(64)</span><br>
+        <span class="col fk">head_commit_id</span> <span class="type">→ commits.id</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>commits</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">project_id</span> <span class="type">→ projects.id</span><br>
+        <span class="col fk">author_id</span> <span class="type">→ users.id</span><br>
+        <span class="col fk">parent_id</span> <span class="type">→ commits.id</span><br>
+        <span class="col">message</span> <span class="type">TEXT</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>file_snapshots</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">commit_id</span> <span class="type">→ commits.id</span><br>
+        <span class="col">path</span> <span class="type">VARCHAR(1024)</span><br>
+        <span class="col">blob_sha</span> <span class="type">VARCHAR(64)</span><br>
+        <span class="col">size</span> <span class="type">INTEGER</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="group-label">🎧 Review Sessions (Core)</div>
+  <div class="grid">
+    <div class="table-card">
+      <h3>review_sessions</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">owner_id</span> <span class="type">→ users.id</span><br>
+        <span class="col">name</span> <span class="type">VARCHAR(160)</span><br>
+        <span class="col">status</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">share_token</span> <span class="type">VARCHAR(64) UNIQUE</span><br>
+        <span class="col">approval_preset</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">share_password</span> <span class="type">VARCHAR(256)</span><br>
+        <span class="col">round_number</span> <span class="type">INTEGER</span><br>
+        <span class="col">included_rounds</span> <span class="type">INTEGER</span><br>
+        <span class="col">deposit_due_cents</span> <span class="type">INTEGER</span><br>
+        <span class="col">watermark_enabled</span> <span class="type">BOOLEAN</span><br>
+        <span class="col">service_type</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">genre</span> <span class="type">VARCHAR(128)</span><br>
+        <span class="col">client_email</span> <span class="type">VARCHAR(256)</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>review_versions</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">session_id</span> <span class="type">→ review_sessions.id</span><br>
+        <span class="col">number</span> <span class="type">INTEGER</span><br>
+        <span class="col">label</span> <span class="type">VARCHAR(64)</span><br>
+        <span class="col">status</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">filename</span> <span class="type">VARCHAR(256)</span><br>
+        <span class="col">blob_sha</span> <span class="type">VARCHAR(64)</span><br>
+        <span class="col">size</span> <span class="type">INTEGER</span><br>
+        <span class="col">duration_s</span> <span class="type">FLOAT</span><br>
+        <span class="col">round_number</span> <span class="type">INTEGER</span><br>
+        <span class="col fk">commit_id</span> <span class="type">→ commits.id</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>review_comments</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">version_id</span> <span class="type">→ review_versions.id</span><br>
+        <span class="col fk">author_id</span> <span class="type">→ users.id</span><br>
+        <span class="col">author_name</span> <span class="type">VARCHAR(128)</span><br>
+        <span class="col">time_s</span> <span class="type">FLOAT</span><br>
+        <span class="col">body</span> <span class="type">TEXT</span><br>
+        <span class="col">status</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">resolved</span> <span class="type">BOOLEAN</span><br>
+        <span class="col">voice_blob_sha</span> <span class="type">VARCHAR(64)</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>review_rounds</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">session_id</span> <span class="type">→ review_sessions.id</span><br>
+        <span class="col">number</span> <span class="type">INTEGER</span><br>
+        <span class="col">status</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">request_count</span> <span class="type">INTEGER</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="group-label">📦 Delivery & Finance</div>
+  <div class="grid">
+    <div class="table-card">
+      <h3>release_packages</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">session_id</span> <span class="type">→ review_sessions.id</span><br>
+        <span class="col fk">approved_version_id</span> <span class="type">→ review_versions.id</span><br>
+        <span class="col">status</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">manifest_hash</span> <span class="type">VARCHAR(64)</span><br>
+        <span class="col">delivery_token</span> <span class="type">VARCHAR(64) UNIQUE</span><br>
+        <span class="col">template</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">invoice_status</span> <span class="type">VARCHAR(32)</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>release_deliverables</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">package_id</span> <span class="type">→ release_packages.id</span><br>
+        <span class="col">type</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">filename</span> <span class="type">VARCHAR(256)</span><br>
+        <span class="col">blob_sha</span> <span class="type">VARCHAR(64)</span><br>
+        <span class="col">sha256</span> <span class="type">VARCHAR(64)</span><br>
+        <span class="col">format</span> <span class="type">VARCHAR(16)</span><br>
+        <span class="col">integrated_lufs</span> <span class="type">FLOAT</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>ledger_events</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col">event</span> <span class="type">VARCHAR(48)</span><br>
+        <span class="col fk">session_id</span> <span class="type">→ review_sessions.id</span><br>
+        <span class="col">actor</span> <span class="type">VARCHAR(128)</span><br>
+        <span class="col">payload</span> <span class="type">JSON</span><br>
+        <span class="col">prev_event_hash</span> <span class="type">VARCHAR(64)</span><br>
+        <span class="col">event_hash</span> <span class="type">VARCHAR(64)</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>change_orders</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">session_id</span> <span class="type">→ review_sessions.id</span><br>
+        <span class="col">reason</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">status</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">price_cents</span> <span class="type">INTEGER</span><br>
+        <span class="col">round_granted</span> <span class="type">BOOLEAN</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="group-label">🏷 Professional Features</div>
+  <div class="grid">
+    <div class="table-card">
+      <h3>session_templates</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">owner_id</span> <span class="type">→ users.id</span><br>
+        <span class="col">name</span> <span class="type">VARCHAR(128)</span><br>
+        <span class="col">service_type</span> <span class="type">VARCHAR(32)</span><br>
+        <span class="col">included_rounds</span> <span class="type">INTEGER</span><br>
+        <span class="col">use_count</span> <span class="type">INTEGER</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>session_tags</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">owner_id</span> <span class="type">→ users.id</span><br>
+        <span class="col">name</span> <span class="type">VARCHAR(64)</span><br>
+        <span class="col">color</span> <span class="type">VARCHAR(7)</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>session_groups</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">owner_id</span> <span class="type">→ users.id</span><br>
+        <span class="col">name</span> <span class="type">VARCHAR(128)</span><br>
+        <span class="col fk">parent_id</span> <span class="type">→ session_groups.id</span><br>
+        <span class="col">sort_order</span> <span class="type">INTEGER</span>
+      </div>
+    </div>
+    <div class="table-card">
+      <h3>webhooks</h3>
+      <div class="cols">
+        <span class="col pk">id</span> <span class="type">INTEGER PK</span><br>
+        <span class="col fk">owner_id</span> <span class="type">→ users.id</span><br>
+        <span class="col">url</span> <span class="type">VARCHAR(512)</span><br>
+        <span class="col">secret</span> <span class="type">VARCHAR(128)</span><br>
+        <span class="col">events</span> <span class="type">TEXT</span><br>
+        <span class="col">is_active</span> <span class="type">BOOLEAN</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

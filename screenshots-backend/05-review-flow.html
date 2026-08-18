@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SoundHub Backend — Review Session Flow</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 40px; }
+  h1 { color: #58a6ff; font-size: 28px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 16px; margin-bottom: 30px; }
+  .flow { display: flex; flex-direction: column; gap: 0; max-width: 800px; }
+  .step { display: flex; align-items: flex-start; gap: 20px; }
+  .step-num { width: 40px; height: 40px; background: #58a6ff; color: #0d1117; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; flex-shrink: 0; }
+  .step-content { flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+  .step-title { color: #58a6ff; font-size: 16px; font-weight: bold; margin-bottom: 8px; }
+  .step-desc { color: #c9d1d9; font-size: 13px; line-height: 1.6; }
+  .step-api { color: #8b949e; font-size: 12px; margin-top: 8px; }
+  .step-api code { color: #3fb950; background: #0d1117; padding: 2px 6px; border-radius: 3px; }
+  .connector { width: 40px; display: flex; justify-content: center; padding: 5px 0; }
+  .connector-line { width: 2px; height: 20px; background: #30363d; }
+  .step.review { border-color: #a371f7; }
+  .step.review .step-num { background: #a371f7; }
+  .step.review .step-title { color: #a371f7; }
+  .step.approved { border-color: #3fb950; }
+  .step.approved .step-num { background: #3fb950; }
+  .step.approved .step-title { color: #3fb950; }
+</style>
+</head>
+<body>
+  <h1>🎧 Review Session Flow</h1>
+  <p class="subtitle">The core review loop — from upload to approval</p>
+  
+  <div class="flow">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Create Session</div>
+        <div class="step-desc">Engineer creates a review workspace with a name and optional project link. A unique share token is generated.</div>
+        <div class="step-api">API: <code>POST /api/sessions</code></div>
+      </div>
+    </div>
+    
+    <div class="connector"><div class="connector-line"></div></div>
+    
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Configure Brief</div>
+        <div class="step-desc">Set service type (mix/master), genre, deadline, reference links, and "do not change" notes. Fixed before first bounce.</div>
+        <div class="step-api">API: <code>PATCH /api/sessions/{id}/brief</code></div>
+      </div>
+    </div>
+    
+    <div class="connector"><div class="connector-line"></div></div>
+    
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Upload Version</div>
+        <div class="step-desc">Engineer uploads WAV/MP3. Stored as content-addressed blob (SHA-256). Waveform peaks generated immediately. Loudness analysis runs in background.</div>
+        <div class="step-api">API: <code>POST /api/sessions/{id}/versions</code></div>
+      </div>
+    </div>
+    
+    <div class="connector"><div class="connector-line"></div></div>
+    
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Share Link</div>
+        <div class="step-desc">Engineer shares the review link. Optional: password, expiry, allowlist, permission level (view/comment/download).</div>
+        <div class="step-api">API: <code>PATCH /api/sessions/{id}/share</code></div>
+      </div>
+    </div>
+    
+    <div class="connector"><div class="connector-line"></div></div>
+    
+    <div class="step review">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Guest Feedback</div>
+        <div class="step-desc">Reviewers leave timestamped comments (text or voice notes). No account needed. Comments are "draft" until feedback owner consolidates.</div>
+        <div class="step-api">API: <code>POST /api/sessions/public/{token}/versions/{v}/comments</code></div>
+      </div>
+    </div>
+    
+    <div class="connector"><div class="connector-line"></div></div>
+    
+    <div class="step review">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <div class="step-title">Smart Diff</div>
+        <div class="step-desc">Compare versions at project level: BPM, tracks, plugins, samples. Never "binary file changed".</div>
+        <div class="step-api">API: <code>GET /api/sessions/public/{token}/versions/{v}/diff</code></div>
+      </div>
+    </div>
+    
+    <div class="connector"><div class="connector-line"></div></div>
+    
+    <div class="step approved">
+      <div class="step-num">7</div>
+      <div class="step-content">
+        <div class="step-title">Approve Version</div>
+        <div class="step-desc">Reviewer approves (mix/master/release scope) or requests changes. Role-based gates for enforced presets.</div>
+        <div class="step-api">API: <code>POST /api/sessions/public/{token}/versions/{v}/approvals</code></div>
+      </div>
+    </div>
+    
+    <div class="connector"><div class="connector-line"></div></div>
+    
+    <div class="step">
+      <div class="step-num">8</div>
+      <div class="step-content">
+        <div class="step-title">Upload New Version</div>
+        <div class="step-desc">Engineer uploads fixes. Unresolved comments are carried forward. Round number increments.</div>
+        <div class="step-api">API: <code>POST /api/sessions/{id}/versions</code></div>
+      </div>
+    </div>
+    
+    <div class="connector"><div class="connector-line"></div></div>
+    
+    <div class="step approved">
+      <div class="step-num">9</div>
+      <div class="step-content">
+        <div class="step-title">Lock Package</div>
+        <div class="step-desc">Create immutable release package. SHA-256 manifest computed. Files frozen — approved master can never be swapped.</div>
+        <div class="step-api">API: <code>POST /api/release-packages</code> → <code>PATCH /api/release-packages/{id}/lock</code></div>
+      </div>
+    </div>
+    
+    <div class="connector"><div class="connector-line"></div></div>
+    
+    <div class="step approved">
+      <div class="step-num">10</div>
+      <div class="step-content">
+        <div class="step-title">Deliver</div>
+        <div class="step-desc">Public delivery link with token. Client downloads final files. Invoice status tracked. Decision ledger verified.</div>
+        <div class="step-api">API: <code>GET /api/release-packages/public/{token}</code></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

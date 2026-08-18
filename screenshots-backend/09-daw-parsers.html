@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SoundHub Backend — DAW Parsers</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 40px; }
+  h1 { color: #58a6ff; font-size: 28px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 16px; margin-bottom: 30px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  .daw { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+  .daw h2 { font-size: 18px; margin-bottom: 12px; }
+  .daw .format { color: #8b949e; font-size: 12px; margin-bottom: 8px; }
+  .daw .extract { color: #c9d1d9; font-size: 12px; line-height: 1.8; }
+  .daw .extract .item { color: #3fb950; }
+  .daw .status { margin-top: 12px; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; }
+  .daw .status.available { background: #3fb95033; color: #3fb950; }
+  .daw .status.partial { background: #d2992233; color: #d29922; }
+  .daw .status.planned { background: #8b949e33; color: #8b949e; }
+  .daw.ableton { border-color: #58a6ff; }
+  .daw.ableton h2 { color: #58a6ff; }
+  .daw.reaper { border-color: #a371f7; }
+  .daw.reaper h2 { color: #a371f7; }
+  .daw.cubase { border-color: #f0883e; }
+  .daw.cubase h2 { color: #f0883e; }
+  .daw.fl { border-color: #3fb950; }
+  .daw.fl h2 { color: #3fb950; }
+  .diff { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-top: 20px; }
+  .diff h2 { color: #58a6ff; font-size: 18px; margin-bottom: 12px; }
+  .diff-table { width: 100%; border-collapse: collapse; }
+  .diff-table th { text-align: left; padding: 8px; background: #0d1117; color: #8b949e; font-size: 11px; border-bottom: 1px solid #30363d; }
+  .diff-table td { padding: 8px; border-bottom: 1px solid #21262d; font-size: 12px; }
+  .diff-table .changed { color: #d29922; }
+  .diff-table .added { color: #3fb950; }
+  .diff-table .removed { color: #f85149; }
+</style>
+</head>
+<body>
+  <h1>🎹 DAW Parsers</h1>
+  <p class="subtitle">Parse project files from 4 DAW formats — extract structure for smart diff</p>
+  
+  <div class="grid">
+    <div class="daw ableton">
+      <h2>🎛 Ableton Live</h2>
+      <div class="format">.als (gzip-compressed XML)</div>
+      <div class="extract">
+        <span class="item">✓</span> BPM & time signature<br>
+        <span class="item">✓</span> Track names & count<br>
+        <span class="item">✓</span> Plugin detection<br>
+        <span class="item">✓</span> Sample references<br>
+        <span class="item">✓</span> Preset states
+      </div>
+      <div class="status available">Available</div>
+    </div>
+    
+    <div class="daw reaper">
+      <h2>🎚 REAPER</h2>
+      <div class="format">.rpp (text-based format)</div>
+      <div class="extract">
+        <span class="item">✓</span> BPM & time signature<br>
+        <span class="item">✓</span> Track names & count<br>
+        <span class="item">✓</span> VST/AU/JSFX plugins<br>
+        <span class="item">✓</span> FX parameter states<br>
+        <span class="item">✓</span> Full text diff
+      </div>
+      <div class="status available">Available</div>
+    </div>
+    
+    <div class="daw cubase">
+      <h2>🎛 Cubase</h2>
+      <div class="format">.cpr (binary/XML format)</div>
+      <div class="extract">
+        <span class="item">✓</span> Format detection<br>
+        <span class="item">◐</span> Track extraction (partial)<br>
+        <span class="item">◐</span> Plugin detection (partial)
+      </div>
+      <div class="status partial">Partial</div>
+    </div>
+    
+    <div class="daw fl">
+      <h2>🎚 FL Studio</h2>
+      <div class="format">.flp (binary format)</div>
+      <div class="extract">
+        <span class="item">✓</span> Format detection<br>
+        <span class="item">◐</span> Track extraction (partial)<br>
+        <span class="item">◐</span> Plugin detection (partial)
+      </div>
+      <div class="status partial">Partial</div>
+    </div>
+  </div>
+  
+  <div class="diff">
+    <h2>📊 Smart Diff Example</h2>
+    <table class="diff-table">
+      <tr><th>Property</th><th>v12</th><th>v13</th><th>Change</th></tr>
+      <tr><td>BPM</td><td>128</td><td>128</td><td class="added">unchanged</td></tr>
+      <tr><td>Tracks</td><td>12</td><td>14</td><td class="changed">+2 tracks</td></tr>
+      <tr><td>Plugins</td><td>8</td><td>9</td><td class="changed">+1 plugin (Serum)</td></tr>
+      <tr><td>Samples</td><td>42</td><td>45</td><td class="changed">+3 samples</td></tr>
+      <tr><td>Bass Preset</td><td>Vital · Old Patch</td><td>Serum · Dark Bass</td><td class="changed">changed</td></tr>
+      <tr><td>EQ</td><td>—</td><td>-3 dB @ 250 Hz</td><td class="added">+1 setting</td></tr>
+    </table>
+  </div>
+</body>
+</html>

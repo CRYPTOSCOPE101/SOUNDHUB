@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SoundHub Backend — Auth Flow</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 40px; }
+  h1 { color: #58a6ff; font-size: 28px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 16px; margin-bottom: 30px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 24px; }
+  .card h2 { color: #58a6ff; font-size: 18px; margin-bottom: 16px; }
+  .card h2.wallet { color: #a371f7; }
+  .step { display: flex; gap: 12px; margin-bottom: 12px; }
+  .step-num { width: 24px; height: 24px; background: #58a6ff; color: #0d1117; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; flex-shrink: 0; }
+  .step-num.purple { background: #a371f7; }
+  .step-text { font-size: 13px; line-height: 1.5; }
+  .step-text code { color: #3fb950; background: #0d1117; padding: 1px 4px; border-radius: 2px; }
+  .algo { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 16px; margin-top: 16px; }
+  .algo-title { color: #f0883e; font-size: 12px; font-weight: bold; margin-bottom: 8px; }
+  .algo-line { font-size: 12px; color: #c9d1d9; line-height: 1.8; }
+  .algo-line .keyword { color: #ff7b72; }
+  .algo-line .string { color: #a5d6ff; }
+  .algo-line .func { color: #d2a8ff; }
+</style>
+</head>
+<body>
+  <h1>🔐 Authentication Flow</h1>
+  <p class="subtitle">Two auth methods: JWT (password) + Web3 Wallet (signature)</p>
+  
+  <div class="grid">
+    <div class="card">
+      <h2>🔑 JWT Authentication</h2>
+      
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">User registers with username + password</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">Password hashed with <code>PBKDF2-SHA256</code> (260k iterations)</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">JWT token issued with <code>user_id</code> + <code>username</code> + <code>exp</code></div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">Token expires in 7 days (configurable)</div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text">Protected routes check <code>Authorization: Bearer &lt;token&gt;</code></div>
+      </div>
+      
+      <div class="algo">
+        <div class="algo-title">Password Hashing</div>
+        <div class="algo-line"><span class="keyword">salt</span> = <span class="func">os.urandom</span>(<span class="string">16</span>)</div>
+        <div class="algo-line"><span class="keyword">digest</span> = <span class="func">pbkdf2_hmac</span>(<span class="string">"sha256"</span>, password, salt, <span class="string">260000</span>)</div>
+        <div class="algo-line"><span class="keyword">stored</span> = <span class="string">"pbkdf2$260000$</span>{salt_hex}<span class="string">$</span>{digest_hex}<span class="string">"</span></div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2 class="wallet">🦊 Web3 Wallet Authentication</h2>
+      
+      <div class="step">
+        <div class="step-num purple">1</div>
+        <div class="step-text">Client sends <code>wallet_address</code> to <code>/api/auth/wallet/nonce</code></div>
+      </div>
+      <div class="step">
+        <div class="step-num purple">2</div>
+        <div class="step-text">Server generates nonce + message to sign (5min TTL)</div>
+      </div>
+      <div class="step">
+        <div class="step-num purple">3</div>
+        <div class="step-text">User signs message with MetaMask (<code>personal_sign</code>)</div>
+      </div>
+      <div class="step">
+        <div class="step-num purple">4</div>
+        <div class="step-text">Client sends <code>address</code> + <code>message</code> + <code>signature</code></div>
+      </div>
+      <div class="step">
+        <div class="step-num purple">5</div>
+        <div class="step-text">Server recovers signer via <code>eth_account.Account.recover_message</code></div>
+      </div>
+      <div class="step">
+        <div class="step-num purple">6</div>
+        <div class="step-text">If recovered == address → JWT issued. Account auto-created if new.</div>
+      </div>
+      
+      <div class="algo">
+        <div class="algo-title">Signature Verification</div>
+        <div class="algo-line"><span class="keyword">recovered</span> = <span class="func">Account.recover_message</span>(</div>
+        <div class="algo-line">  <span class="func">encode_defunct</span>(text=message),</div>
+        <div class="algo-line">  signature=signature</div>
+        <div class="algo-line">)</div>
+        <div class="algo-line"><span class="keyword">assert</span> recovered.lower() == address.lower()</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

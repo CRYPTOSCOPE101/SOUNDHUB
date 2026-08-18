@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SoundHub Backend — Services Overview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 40px; }
+  h1 { color: #58a6ff; font-size: 28px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 16px; margin-bottom: 30px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .service { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+  .service h3 { color: #58a6ff; font-size: 14px; margin-bottom: 8px; }
+  .service .desc { color: #c9d1d9; font-size: 12px; line-height: 1.5; margin-bottom: 8px; }
+  .service .methods { color: #8b949e; font-size: 11px; }
+  .service .methods code { color: #3fb950; background: #0d1117; padding: 1px 4px; border-radius: 2px; }
+  .service.core { border-color: #58a6ff; }
+  .service.core h3 { color: #58a6ff; }
+  .service.audio { border-color: #a371f7; }
+  .service.audio h3 { color: #a371f7; }
+  .service.pay { border-color: #3fb950; }
+  .service.pay h3 { color: #3fb950; }
+  .service.comm { border-color: #f0883e; }
+  .service.comm h3 { color: #f0883e; }
+</style>
+</head>
+<body>
+  <h1>⚙️ Services Overview</h1>
+  <p class="subtitle">15+ service modules — the business logic layer</p>
+  
+  <div class="grid">
+    <div class="service core">
+      <h3>💾 Storage</h3>
+      <div class="desc">Content-addressed blob storage. Files stored by SHA-256 hash. Identical files stored once — dedup is automatic.</div>
+      <div class="methods"><code>put_blob()</code> <code>read_blob()</code> <code>blob_exists()</code></div>
+    </div>
+    
+    <div class="service audio">
+      <h3>📊 Waveform</h3>
+      <div class="desc">Peak generation for audio visualization. Extracts from WAV PCM data or generates synthetic fallback.</div>
+      <div class="methods"><code>generate()</code> → peaks + duration</div>
+    </div>
+    
+    <div class="service audio">
+      <h3>🔊 Analysis</h3>
+      <div class="desc">Loudness analysis — integrated LUFS, true peak, sample rate, channels. Runs in background after upload.</div>
+      <div class="methods"><code>analyse_version()</code></div>
+    </div>
+    
+    <div class="service audio">
+      <h3>🎵 Watermark</h3>
+      <div class="desc">Audible watermarking for unapproved previews. Leaked preview is traceable and never "the final file".</div>
+      <div class="methods"><code>watermarked_blob()</code></div>
+    </div>
+    
+    <div class="service core">
+      <h3>🔗 Ledger</h3>
+      <div class="desc">Tamper-evident decision log. SHA-256 hash chain: rewriting an old event invalidates every subsequent hash.</div>
+      <div class="methods"><code>append()</code> <code>verify_history()</code></div>
+    </div>
+    
+    <div class="service core">
+      <h3>📁 Versioning</h3>
+      <div class="desc">File snapshots and tree navigation. Track file history across commits. Git-like for DAW projects.</div>
+      <div class="methods"><code>tree_files()</code> <code>file_in_commit()</code> <code>file_history()</code></div>
+    </div>
+    
+    <div class="service core">
+      <h3>👥 Roles</h3>
+      <div class="desc">Team roles and approval gate enforcement. 4 presets: solo_client, artist_team, label_workflow, post_production.</div>
+      <div class="methods"><code>member_role()</code> <code>role_can_approve()</code></div>
+    </div>
+    
+    <div class="service comm">
+      <h3>📧 Reminders</h3>
+      <div class="desc">Email reminders with SMTP transport. Deduplication at DB level. Client opt-out for non-critical.</div>
+      <div class="methods"><code>evaluate()</code> <code>send_pending()</code> <code>_deliver()</code></div>
+    </div>
+    
+    <div class="service comm">
+      <h3>🔔 Webhooks</h3>
+      <div class="desc">HTTP webhook dispatching with HMAC signing. Retry on failure. Full delivery audit trail.</div>
+      <div class="methods"><code>dispatch()</code> → POST to URL</div>
+    </div>
+    
+    <div class="service pay">
+      <h3>💳 Stripe Pay</h3>
+      <div class="desc">Stripe Checkout integration. Session-level charges: deposits, extra rounds, delivery invoices.</div>
+      <div class="methods"><code>create_checkout_session()</code></div>
+    </div>
+    
+    <div class="service pay">
+      <h3>⛓ USDC Pay</h3>
+      <div class="desc">USDC on-chain payments on Base network. Native USDC (0x833589...). 6 decimals.</div>
+      <div class="methods"><code>usdc_to_raw()</code> <code>raw_to_usdc()</code></div>
+    </div>
+    
+    <div class="service pay">
+      <h3>⭐ Reputation</h3>
+      <div class="desc">Engineer reputation scoring from real session data. Badges: Gold (400+), Silver (250+), Bronze (100+).</div>
+      <div class="methods"><code>compute_reputation()</code> <code>badge_for_score()</code></div>
+    </div>
+    
+    <div class="service">
+      <h3>📋 Templates</h3>
+      <div class="desc">Reusable session templates. Mix, mastering, production configs with pricing and deliverables.</div>
+      <div class="methods"><code>list_templates()</code> <code>create_template()</code></div>
+    </div>
+    
+    <div class="service">
+      <h3>🏷 Tags</h3>
+      <div class="desc">Tag management for sessions. Many-to-many links. Filter by genre, mood, status, priority.</div>
+      <div class="methods"><code>link_tag()</code> <code>session_tags()</code></div>
+    </div>
+    
+    <div class="service">
+      <h3>📂 Groups</h3>
+      <div class="desc">Folder organization for sessions. Hierarchical with parent-child. Sort order support.</div>
+      <div class="methods"><code>link_session()</code> <code>group_sessions()</code></div>
+    </div>
+    
+    <div class="service">
+      <h3>🎹 DAW Parsers</h3>
+      <div class="desc">Parse Ableton (.als), REAPER (.rpp), Cubase (.cpr), FL Studio (.flp). Extract BPM, tracks, plugins.</div>
+      <div class="methods"><code>detect_format()</code> <code>get_daw_info()</code></div>
+    </div>
+    
+    <div class="service">
+      <h3>🔍 Diff Engine</h3>
+      <div class="desc">Smart diff for DAW projects. Compares BPM, tracks, plugins, samples. Never "binary file changed".</div>
+      <div class="methods"><code>summary_diff()</code> <code>unified_diff()</code></div>
+    </div>
+    
+    <div class="service">
+      <h3>📊 Analytics</h3>
+      <div class="desc">Session statistics: total sessions, versions, comments, approvals. Sessions by status.</div>
+      <div class="methods"><code>get_user_analytics()</code></div>
+    </div>
+  </div>
+</body>
+</html>
