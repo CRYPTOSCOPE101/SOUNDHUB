@@ -1227,6 +1227,7 @@ export default function LandingPage() {
             <Link to="/market">Marketplace</Link>
             <Link to="/kettle">Kettle for beginners</Link>
             <a href="https://github.com/soundXlab/SoundHub" target="_blank" rel="noopener noreferrer">GitHub · open source</a>
+            <a href="https://deepwiki.com/soundXlab/SoundHub" target="_blank" rel="noopener noreferrer">DeepWiki · docs & architecture</a>
           </div>
         </div>
         <div className="bc-footer-giant" aria-hidden="true">
