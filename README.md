@@ -25,6 +25,9 @@
 <a href="Whitepaper.pdf">
   <img src="https://img.shields.io/badge/Whitepaper-PDF-orange.svg" />
 </a>
+<a href="https://deepwiki.com/soundXlab/SoundHub">
+  <img src="https://deepwiki.com/badge.svg?repo=soundXlab/SoundHub" alt="DeepWiki" />
+</a>
 </div>
 
 # 🎛 What is SoundHub?
