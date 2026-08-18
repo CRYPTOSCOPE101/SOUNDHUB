@@ -227,8 +227,15 @@ def _startup() -> None:
         pass  # reminders are best-effort at startup
 
 
-# Swagger UI with enlarged typography — the default one renders tiny on
-# desktop. Base styles still come from the CDN; this injects font overrides.
+# ── Custom documentation pages ──────────────────────────────────────────
+# /docs      → styled landing page (docs.html)
+# /docs/raw  → Swagger UI with enlarged fonts
+# /redoc     → ReDoc (built-in FastAPI)
+
+import pathlib as _pathlib
+
+_DOCS_HTML = (_pathlib.Path(__file__).parent / "static" / "docs.html").read_text()
+
 _SWAGGER_FONT_CSS = """
 <style>
   .swagger-ui { font-size: 16px; }
@@ -255,6 +262,13 @@ _SWAGGER_FONT_CSS = """
 
 
 @app.get("/docs", include_in_schema=False)
+def docs_landing():
+    from fastapi.responses import HTMLResponse
+
+    return HTMLResponse(_DOCS_HTML)
+
+
+@app.get("/docs/raw", include_in_schema=False)
 def swagger_ui():
     from fastapi.openapi.docs import get_swagger_ui_html
     from fastapi.responses import HTMLResponse

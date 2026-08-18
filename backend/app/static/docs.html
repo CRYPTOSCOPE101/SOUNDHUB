@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SoundHub API Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #fafafa;
+      --bg-sidebar: #111827;
+      --bg-card: #ffffff;
+      --bg-code: #1e1e2e;
+      --bg-code-inline: #f3f4f6;
+      --text: #1f2937;
+      --text-muted: #6b7280;
+      --text-sidebar: #d1d5db;
+      --text-sidebar-active: #ffffff;
+      --accent: #6366f1;
+      --accent-light: #eef2ff;
+      --border: #e5e7eb;
+      --border-light: #f3f4f6;
+      --green: #10b981;
+      --orange: #f59e0b;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      --sidebar-w: 280px;
+    }
+
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+      color: var(--text);
+      background: var(--bg);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-w);
+      height: 100vh;
+      background: var(--bg-sidebar);
+      color: var(--text-sidebar);
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      overflow-y: auto;
+    }
+    .sidebar-brand {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .sidebar-brand h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .sidebar-brand span {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .sidebar nav { padding: 16px 0; flex: 1; }
+    .sidebar .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.3);
+      padding: 16px 20px 6px;
+    }
+    .sidebar a {
+      display: block;
+      padding: 8px 20px;
+      color: var(--text-sidebar);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 450;
+      transition: background 0.15s, color 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .sidebar a:hover {
+      background: rgba(255,255,255,0.04);
+      color: #fff;
+    }
+    .sidebar a.active {
+      color: var(--text-sidebar-active);
+      background: rgba(99,102,241,0.12);
+      border-left-color: var(--accent);
+      font-weight: 500;
+    }
+    .sidebar .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .badge-get    { background: rgba(16,185,129,0.15); color: var(--green); }
+    .badge-post   { background: rgba(59,130,246,0.15); color: var(--blue); }
+    .badge-patch  { background: rgba(245,158,11,0.15); color: var(--orange); }
+    .badge-delete { background: rgba(239,68,68,0.15); color: var(--red); }
+
+    /* ── Main ── */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 64px 48px 48px;
+      background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 50%, #fff1f2 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .hero h2 {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: #111827;
+      margin-bottom: 12px;
+    }
+    .hero p {
+      font-size: 17px;
+      color: var(--text-muted);
+      max-width: 640px;
+      line-height: 1.7;
+    }
+    .hero .badges { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+    .hero .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.8);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .hero .pill .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    /* ── Content ── */
+    .content {
+      max-width: 820px;
+      padding: 40px 48px 80px;
+    }
+    .content section { margin-bottom: 48px; }
+    .content h3 {
+      font-size: 22px;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+      color: #111827;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .content h4 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #374151;
+      margin: 24px 0 10px;
+    }
+    .content p {
+      margin-bottom: 14px;
+      color: #374151;
+    }
+    .content a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .content a:hover { text-decoration: underline; }
+    .content ul, .content ol {
+      padding-left: 22px;
+      margin-bottom: 14px;
+    }
+    .content li { margin-bottom: 6px; color: #374151; }
+
+    /* ── Code ── */
+    .code-block {
+      background: var(--bg-code);
+      border-radius: var(--radius-lg);
+      margin: 16px 0;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .code-header span {
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .code-block pre {
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #e2e8f0;
+    }
+    .code-block pre .cm  { color: #6b7280; }
+    .code-block pre .kw  { color: #c084fc; }
+    .code-block pre .str { color: #34d399; }
+    .code-block pre .num { color: #fbbf24; }
+    .code-block pre .fn  { color: #60a5fa; }
+    .code-block pre .hdr { color: #f472b6; }
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      background: var(--bg-code-inline);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #be185d;
+    }
+
+    /* ── Endpoint cards ── */
+    .endpoint-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin: 12px 0;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.2s;
+    }
+    .endpoint-card:hover { box-shadow: var(--shadow); }
+    .endpoint-card .method-path {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .method-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .method-get    { background: #ecfdf5; color: #059669; }
+    .method-post   { background: #eff6ff; color: #2563eb; }
+    .method-patch  { background: #fffbeb; color: #d97706; }
+    .method-delete { background: #fef2f2; color: #dc2626; }
+    .endpoint-card .path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1f2937;
+    }
+    .endpoint-card .desc {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* ── Table ── */
+    .param-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      margin: 12px 0;
+    }
+    .param-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--bg-code-inline);
+      font-weight: 600;
+      color: #374151;
+      border-bottom: 2px solid var(--border);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .param-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-light);
+      color: #374151;
+    }
+    .param-table tr:last-child td { border-bottom: none; }
+
+    /* ── Info box ── */
+    .info-box {
+      padding: 16px 20px;
+      border-radius: var(--radius);
+      margin: 16px 0;
+      font-size: 14px;
+      line-height: 1.6;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .info-box .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .info-box.note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+    }
+    .info-box.warning {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e;
+    }
+
+    /* ── Search ── */
+    .search-box {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-box input::placeholder { color: rgba(255,255,255,0.3); }
+    .search-box input:focus { border-color: var(--accent); }
+
+    /* ── Responsive ── */
+    @media (max-width: 860px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .hero, .content { padding-left: 24px; padding-right: 24px; }
+      .hero h2 { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Sidebar ─── -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <span>API Reference</span>
+    <h1>SoundHub</h1>
+  </div>
+  <div class="search-box">
+    <input type="text" placeholder="Search…  ⌘K" />
+  </div>
+  <nav>
+    <div class="section-label">Getting Started</div>
+    <a href="#overview">Overview</a>
+    <a href="#authentication">Authentication</a>
+    <a href="#base-url">Base URL</a>
+
+    <div class="section-label">Core</div>
+    <a href="#auth-endpoints">Auth <span class="badge badge-post">POST</span></a>
+    <a href="#projects">Projects <span class="badge badge-get">GET</span></a>
+    <a href="#sessions">Review Sessions <span class="badge badge-get">GET</span></a>
+
+    <div class="section-label">Review</div>
+    <a href="#versions">Versions <span class="badge badge-post">POST</span></a>
+    <a href="#comments">Comments <span class="badge badge-post">POST</span></a>
+    <a href="#approvals">Approvals <span class="badge badge-post">POST</span></a>
+    <a href="#references">References <span class="badge badge-post">POST</span></a>
+
+    <div class="section-label">Delivery</div>
+    <a href="#release-packages">Release Packages <span class="badge badge-get">GET</span></a>
+    <a href="#checkout">Checkout &amp; Payments</a>
+
+    <div class="section-label">Catalog</div>
+    <a href="#assets">Assets <span class="badge badge-get">GET</span></a>
+    <a href="#search">Search <span class="badge badge-get">GET</span></a>
+
+    <div class="section-label">More</div>
+    <a href="#portfolio">Public Portfolio</a>
+    <a href="#reminders">Reminders &amp; Notifications</a>
+    <a href="#errors">Error Handling</a>
+    <a href="#openapi" style="color: var(--accent);">Interactive API ↗</a>
+  </nav>
+</aside>
+
+<!-- ─── Main ─── -->
+<div class="main">
+
+  <!-- Hero -->
+  <div class="hero" id="overview">
+    <h2>SoundHub API</h2>
+    <p>Version control and collaboration for music production projects. Manage sessions across Ableton Live, Cubase, REAPER, and FL Studio — with review, comments, approvals, and release delivery.</p>
+    <div class="badges">
+      <span class="pill"><span class="dot"></span> v0.1.0</span>
+      <span class="pill">REST + JSON</span>
+      <span class="pill">OpenAPI 3.1</span>
+      <span class="pill">JWT Bearer Auth</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Authentication -->
+    <section id="authentication">
+      <h3>Authentication</h3>
+      <p>Every authenticated request requires a <code>Bearer</code> token in the <code>Authorization</code> header. Tokens are obtained by logging in or registering via the <code>/api/auth/login</code> endpoint.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span>Shell</span></div>
+        <pre><span class="cm"># 1. Log in — returns a JWT token</span>
+<span class="fn">curl</span> <span class="str">-X POST https://soundhub-backend.onrender.com/api/auth/login</span> \
+     <span class="hdr">-H</span> <span class="str">"Content-Type: application/json"</span> \
+     <span class="hdr">-d</span> <span class="str">'{"username": "demo", "password": "demo123"}'</span>
+
+<span class="cm"># 2. Use the token in subsequent requests</span>
+<span class="fn">curl</span> <span class="str">https://soundhub-backend.onrender.com/api/projects</span> \
+     <span class="hdr">-H</span> <span class="str">"Authorization: Bearer eyJhbGciOi..."</span></pre>
+      </div>
+
+      <div class="info-box note">
+        <span class="icon">ℹ️</span>
+        <div>Tokens expire after <strong>7 days</strong> by default (configurable via <code>SOUNDHUB_TOKEN_EXPIRE_MINUTES</code>). Include the token in the <code>Authorization: Bearer &lt;token&gt;</code> header for all authenticated endpoints.</div>
+      </div>
+
+      <h4>Wallet Login (EVM)</h4>
+      <p>For Web3-enabled users: request a nonce with your wallet address, sign the message with MetaMask, and verify the signature. This links your on-chain identity to your SoundHub account.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span>JavaScript</span></div>
+        <pre><span class="cm">// 1. Get a nonce to sign</span>
+<span class="kw">const</span> { message } = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/api/auth/wallet/nonce'</span>, {
+  <span class="hdr">method</span>: <span class="str">'POST'</span>,
+  <span class="hdr">body</span>: JSON.<span class="fn">stringify</span>({ <span class="hdr">address</span>: walletAddress })
+}).<span class="fn">then</span>(r => r.<span class="fn">json</span>());
+
+<span class="cm">// 2. Sign the message (via MetaMask)</span>
+<span class="kw">const</span> signature = <span class="kw">await</span> signer.<span class="fn">signMessage</span>(message);
+
+<span class="cm">// 3. Verify and receive a JWT</span>
+<span class="kw">const</span> { access_token } = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/api/auth/wallet/login'</span>, {
+  <span class="hdr">method</span>: <span class="str">'POST'</span>,
+  <span class="hdr">body</span>: JSON.<span class="fn">stringify</span>({ <span class="hdr">address</span>: walletAddress, message, signature })
+}).<span class="fn">then</span>(r => r.<span class="fn">json</span>());</pre>
+      </div>
+    </section>
+
+    <!-- Base URL -->
+    <section id="base-url">
+      <h3>Base URL</h3>
+      <p>All API endpoints are prefixed with <code>/api</code>. Use the production base URL:</p>
+      <div class="code-block">
+        <div class="code-header"><span>Production</span></div>
+        <pre><span class="str">https://soundhub-backend.onrender.com/api</span></pre>
+      </div>
+      <p>In local development, the frontend dev server proxies <code>/api</code> requests to <code>http://localhost:8000/api</code> automatically.</p>
+    </section>
+
+    <!-- Auth Endpoints -->
+    <section id="auth-endpoints">
+      <h3>Auth Endpoints</h3>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/auth/login</span>
+        </div>
+        <p class="desc">Log in with username and password. Returns a JWT access token and user profile.</p>
+        <table class="param-table">
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td><code>username</code></td><td>string</td><td>Username (required)</td></tr>
+          <tr><td><code>password</code></td><td>string</td><td>Password (required)</td></tr>
+        </table>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/auth/register</span>
+        </div>
+        <p class="desc">Create a new account. Same payload and response shape as login.</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-get">GET</span>
+          <span class="path">/api/auth/me</span>
+        </div>
+        <p class="desc">Get the current authenticated user's profile (bio, specialty, wallet address, etc.).</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-patch">PATCH</span>
+          <span class="path">/api/auth/me</span>
+        </div>
+        <p class="desc">Update profile fields: <code>bio</code>, <code>specialty</code>, <code>location</code>.</p>
+      </div>
+    </section>
+
+    <!-- Projects -->
+    <section id="projects">
+      <h3>Projects</h3>
+      <p>Projects are version-controlled containers for your music files — similar to Git repositories. Each project has branches, commits, and a file tree.</p>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-get">GET</span>
+          <span class="path">/api/projects</span>
+        </div>
+        <p class="desc">List all projects owned by the authenticated user.</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/projects</span>
+        </div>
+        <p class="desc">Create a new project.</p>
+        <table class="param-table">
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td><code>name</code></td><td>string</td><td>Project name (required)</td></tr>
+          <tr><td><code>description</code></td><td>string</td><td>Short description</td></tr>
+        </table>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/projects/{id}/commits</span>
+        </div>
+        <p class="desc">Upload a new commit with files (multipart/form-data). Files are versioned with SHA-256 content addressing.</p>
+        <table class="param-table">
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td><code>message</code></td><td>string</td><td>Commit message (required)</td></tr>
+          <tr><td><code>branch</code></td><td>string</td><td>Target branch (default: <code>main</code>)</td></tr>
+          <tr><td><code>files</code></td><td>file[]</td><td>One or more project files (.als, .cpr, .rpp, .flp, etc.)</td></tr>
+        </table>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-get">GET</span>
+          <span class="path">/api/projects/{id}/diff</span>
+        </div>
+        <p class="desc">View the file diff between two commits or branches. Returns changed files with content comparison.</p>
+      </div>
+    </section>
+
+    <!-- Review Sessions -->
+    <section id="sessions">
+      <h3>Review Sessions</h3>
+      <p>Review sessions are the core collaboration workflow — analogous to Frame.io for video. Upload audio versions, collect timestamped comments, track approvals, and manage revisions across rounds.</p>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/sessions</span>
+        </div>
+        <p class="desc">Create a new review session (optionally linked to a project).</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-get">GET</span>
+          <span class="path">/api/sessions/{id}</span>
+        </div>
+        <p class="desc">Get session details including versions, brief, share settings, and reminder config.</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-patch">PATCH</span>
+          <span class="path">/api/sessions/{id}/share</span>
+        </div>
+        <p class="desc">Configure share settings: password, expiry, permissions, feedback due date, deposit, and more.</p>
+      </div>
+
+      <div class="info-box note">
+        <span class="icon">🔗</span>
+        <div>Every session gets a unique <code>share_token</code> for public review links — no account required for reviewers. Use <code>/api/sessions/public/{token}</code> endpoints for unauthenticated access.</div>
+      </div>
+    </section>
+
+    <!-- Versions -->
+    <section id="versions">
+      <h3>Versions</h3>
+      <p>Each review round can have multiple versions. Upload audio files (WAV, MP3, FLAC, etc.) and track their status through the review lifecycle.</p>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/sessions/{id}/versions</span>
+        </div>
+        <p class="desc">Upload a new audio version (multipart/form-data). The backend generates waveforms and loudness analysis automatically.</p>
+        <table class="param-table">
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td><code>file</code></td><td>audio</td><td>Audio file (required, max 2 GiB)</td></tr>
+          <tr><td><code>message</code></td><td>string</td><td>Version notes / changelog</td></tr>
+        </table>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/sessions/{id}/versions/{vId}/status</span>
+        </div>
+        <p class="desc">Set version status: <code>in_review</code>, <code>approved</code>, <code>changes_requested</code>, <code>replaced</code>.</p>
+      </div>
+    </section>
+
+    <!-- Comments -->
+    <section id="comments">
+      <h3>Comments</h3>
+      <p>Timestamped comments are the primary review mechanism. Leave feedback at specific points in the audio, with optional voice messages and threaded replies.</p>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/sessions/{id}/versions/{vId}/comments</span>
+        </div>
+        <p class="desc">Add a timestamped comment (or reply to an existing comment via <code>parent_id</code>).</p>
+        <table class="param-table">
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td><code>time_s</code></td><td>number</td><td>Timestamp in seconds (required)</td></tr>
+          <tr><td><code>body</code></td><td>string</td><td>Comment text (required)</td></tr>
+          <tr><td><code>parent_id</code></td><td>int</td><td>Parent comment ID for threaded replies</td></tr>
+        </table>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/sessions/{id}/versions/{vId}/comments/voice</span>
+        </div>
+        <p class="desc">Record a voice comment — upload an audio file (OGG, M4A, WebM, MP3) alongside the text.</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-patch">PATCH</span>
+          <span class="path">/api/sessions/{id}/versions/{vId}/comments/{cId}</span>
+        </div>
+        <p class="desc">Resolve or unresolve a comment: <code>?resolved=true</code>.</p>
+      </div>
+    </section>
+
+    <!-- Approvals -->
+    <section id="approvals">
+      <h3>Approvals</h3>
+      <p>Track formal approvals with scope, status, and notes. Supports multi-reviewer approval chains.</p>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/sessions/{id}/versions/{vId}/approvals</span>
+        </div>
+        <p class="desc">Submit an approval or rejection for a specific scope (e.g., <code>"mix"</code>, <code>"master"</code>, <code>"arrangement"</code>).</p>
+        <table class="param-table">
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+          <tr><td><code>scope</code></td><td>string</td><td>Approval scope (e.g., <code>"mix"</code>, <code>"master"</code>)</td></tr>
+          <tr><td><code>approved</code></td><td>boolean</td><td><code>true</code> = approved, <code>false</code> = rejected</td></tr>
+          <tr><td><code>note</code></td><td>string</td><td>Optional note from approver</td></tr>
+          <tr><td><code>approver_name</code></td><td>string</td><td>Display name of the approver</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- References -->
+    <section id="references">
+      <h3>Reference Tracks</h3>
+      <p>Compare your mix against reference tracks side-by-side. Upload references or link to external URLs, then run A/B comparison with level matching.</p>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/sessions/{id}/references</span>
+        </div>
+        <p class="desc">Add a reference track from an external URL (SoundCloud, YouTube, etc.).</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/sessions/{id}/references/compare</span>
+        </div>
+        <p class="desc">Run an A/B comparison between a version and a reference track, with automatic LUFS level matching.</p>
+      </div>
+    </section>
+
+    <!-- Release Packages -->
+    <section id="release-packages">
+      <h3>Release Packages</h3>
+      <p>Final delivery packages bundle the approved version with deliverables (master, stems, artwork, metadata) and generate a verified release manifest.</p>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/release-packages</span>
+        </div>
+        <p class="desc">Create a release package from an approved version, with a template for required deliverables.</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/release-packages/{id}/preflight</span>
+        </div>
+        <p class="desc">Run preflight checks: verify audio levels, file formats, required deliverables completeness.</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/release-packages/{id}/lock</span>
+        </div>
+        <p class="desc">Lock the package — generates an immutable release manifest with SHA-256 hash for audit trail.</p>
+      </div>
+    </section>
+
+    <!-- Checkout -->
+    <section id="checkout">
+      <h3>Checkout &amp; Payments</h3>
+      <p>SoundHub supports both fiat (Stripe) and crypto (USDC on Base) payments for deposits, extra review rounds, and release packages.</p>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/sessions/{id}/checkout</span>
+        </div>
+        <p class="desc">Create a Stripe checkout session for a deposit or extra review round payment.</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/release-packages/{id}/checkout/usdc</span>
+        </div>
+        <p class="desc">Generate a USDC payment request for Base chain — returns a payable address and amount.</p>
+      </div>
+
+      <div class="info-box warning">
+        <span class="icon">⚠️</span>
+        <div><strong>Test mode:</strong> Stripe and USDC payments require API keys. Without <code>STRIPE_SECRET_KEY</code> configured, checkout endpoints return manual-invoice mode. See <a href="#openapi" style="color: inherit;">Interactive API</a> for details.</div>
+      </div>
+    </section>
+
+    <!-- Assets -->
+    <section id="assets">
+      <h3>Assets (Marketplace)</h3>
+      <p>The catalog hosts user-uploaded music assets — presets, samples, loops, and project templates. Browse, preview, and download licensed assets.</p>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-get">GET</span>
+          <span class="path">/api/assets</span>
+        </div>
+        <p class="desc">Browse the catalog. Supports filtering by <code>genre</code>, <code>bpm_min</code>, <code>bpm_max</code>, <code>format</code>, and <code>plugins</code>.</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-get">GET</span>
+          <span class="path">/api/assets/{id}/preview</span>
+        </div>
+        <p class="desc">Stream a preview of the asset (audio file).</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/assets/{id}/receipt</span>
+        </div>
+        <p class="desc">Generate a license receipt for a purchased asset (used by the CLI and VST3 agent).</p>
+      </div>
+    </section>
+
+    <!-- Search -->
+    <section id="search">
+      <h3>Search</h3>
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-get">GET</span>
+          <span class="path">/api/search?q={query}</span>
+        </div>
+        <p class="desc">Full-text search across projects, sessions, and assets. Returns grouped results.</p>
+      </div>
+    </section>
+
+    <!-- Portfolio -->
+    <section id="portfolio">
+      <h3>Public Portfolio</h3>
+      <p>Every engineer has a public portfolio page showcasing their approved review versions — visible to clients and the public.</p>
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-get">GET</span>
+          <span class="path">/api/portfolio/{username}</span>
+        </div>
+        <p class="desc">Public portfolio for a user: bio, approved versions, and links to session reviews.</p>
+      </div>
+    </section>
+
+    <!-- Reminders -->
+    <section id="reminders">
+      <h3>Reminders &amp; Notifications</h3>
+      <p>Automated email reminders for review sessions — configurable per session (review due, invoice due, feedback follow-up).</p>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-post">POST</span>
+          <span class="path">/api/reminders/evaluate</span>
+        </div>
+        <p class="desc">Trigger the reminder evaluation engine — scans pending reviews and sends due notifications via SMTP.</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="method-path">
+          <span class="method-tag method-patch">PATCH</span>
+          <span class="path">/api/sessions/{id}/reminders</span>
+        </div>
+        <p class="desc">Update reminder settings: enable/disable review reminders, set due dates, configure email recipients.</p>
+      </div>
+    </section>
+
+    <!-- Errors -->
+    <section id="errors">
+      <h3>Error Handling</h3>
+      <p>The API uses standard HTTP status codes. Error responses always include a <code>detail</code> field:</p>
+
+      <div class="code-block">
+        <div class="code-header"><span>Error Response</span></div>
+        <pre>{
+  <span class="hdr">"detail"</span>: <span class="str">"Invalid username or password"</span>
+}</pre>
+      </div>
+
+      <table class="param-table">
+        <tr><th>Status</th><th>Meaning</th></tr>
+        <tr><td><code>200</code></td><td>Success</td></tr>
+        <tr><td><code>201</code></td><td>Created</td></tr>
+        <tr><td><code>204</code></td><td>No Content (e.g., successful DELETE)</td></tr>
+        <tr><td><code>400</code></td><td>Bad Request — invalid payload or missing fields</td></tr>
+        <tr><td><code>401</code></td><td>Unauthorized — missing or invalid token</td></tr>
+        <tr><td><code>403</code></td><td>Forbidden — insufficient permissions</td></tr>
+        <tr><td><code>404</code></td><td>Not Found — resource does not exist</td></tr>
+        <tr><td><code>422</code></td><td>Validation Error — field type mismatch</td></tr>
+        <tr><td><code>500</code></td><td>Internal Server Error</td></tr>
+      </table>
+    </section>
+
+    <!-- Interactive API Link -->
+    <section id="openapi">
+      <h3>Interactive API Explorer</h3>
+      <p>For a full, interactive reference with "Try it out" buttons for every endpoint:</p>
+
+      <div class="endpoint-card" style="text-align: center; padding: 32px;">
+        <p style="margin-bottom: 16px; font-size: 16px; color: #374151;">Explore all endpoints with the interactive Swagger UI:</p>
+        <a href="/redoc" style="
+          display: inline-block;
+          padding: 10px 24px;
+          background: var(--accent);
+          color: white;
+          border-radius: 8px;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 14px;
+        ">Open ReDoc →</a>
+        <a href="/docs/raw" style="
+          display: inline-block;
+          padding: 10px 24px;
+          background: #374151;
+          color: white;
+          border-radius: 8px;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 14px;
+          margin-left: 8px;
+        ">Open Swagger UI →</a>
+      </div>
+      <p style="margin-top: 12px;">The <code>GET /openapi.json</code> endpoint returns the full OpenAPI 3.1 schema for code generation or custom integrations.</p>
+    </section>
+
+  </div>
+</div>
+
+</body>
+</html>
