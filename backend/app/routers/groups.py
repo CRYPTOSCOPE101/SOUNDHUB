@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from ..access import require_owner
+from ..access import require_owner, session_or_404
 from ..database import get_db
 from ..schemas import SessionGroupCreate, SessionGroupLinkCreate, SessionGroupLinkOut, SessionGroupOut, SessionGroupUpdate
 from ..security import get_current_user
@@ -38,10 +38,13 @@ def delete_group(group_id: int, user=Depends(get_current_user), db: Session = De
 
 @router.post("/session/{session_id}", response_model=SessionGroupLinkOut, status_code=status.HTTP_201_CREATED)
 def link_session(session_id: int, payload: SessionGroupLinkCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    session_or_404(db, session_id, user)
+    require_owner(groups_svc.get_group(db, payload.group_id), user, "Group")
     link = groups_svc.link_session(db, session_id, payload.group_id)
     return SessionGroupLinkOut.model_validate(link, from_attributes=True)
 
 
 @router.delete("/session/{session_id}/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
 def unlink_session(session_id: int, group_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    session_or_404(db, session_id, user)
     groups_svc.unlink_session(db, session_id, group_id)

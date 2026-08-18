@@ -26,7 +26,7 @@ def create_template(payload: SessionTemplateCreate, user=Depends(get_current_use
 @router.get("/{template_id}", response_model=SessionTemplateOut)
 def get_template(template_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
     template = templates_svc.get_template(db, template_id)
-    if template is None:
+    if template is None or (template.owner_id != user.id and not template.is_public):
         raise not_found("Template")
     return SessionTemplateOut.model_validate(template, from_attributes=True)
 

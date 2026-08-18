@@ -17,5 +17,9 @@ services:
     envVars:
       - key: SOUNDHUB_FRONTEND_URL
         value: https://soundhub-app.vercel.app
+      - key: SOUNDHUB_CORS_ORIGINS
+        value: https://soundhub-app.vercel.app
+      - key: SOUNDHUB_ENV
+        value: production
       - key: SOUNDHUB_SECRET_KEY
         generateValue: true

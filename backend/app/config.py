@@ -1,5 +1,7 @@
 """SoundHub backend configuration."""
 import os
+import secrets
+import warnings
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -15,9 +17,27 @@ DATABASE_URL = os.environ.get(
     "SOUNDHUB_DATABASE_URL", f"sqlite:///{DATA_DIR / 'soundhub.db'}"
 )
 
-SECRET_KEY = os.environ.get(
-    "SOUNDHUB_SECRET_KEY", "dev-secret-change-me-9f8e7d6c5b4a39281706"
-)
+ENV = os.environ.get("SOUNDHUB_ENV", "development").lower()
+IS_PRODUCTION = ENV in {"production", "prod"}
+
+
+def _secret_key() -> str:
+    key = os.environ.get("SOUNDHUB_SECRET_KEY", "").strip()
+    if key:
+        return key
+    if IS_PRODUCTION:
+        raise RuntimeError(
+            "SOUNDHUB_SECRET_KEY must be set when SOUNDHUB_ENV=production"
+        )
+    warnings.warn(
+        "SOUNDHUB_SECRET_KEY is not set — generating an ephemeral key. "
+        "Tokens will be invalidated on restart.",
+        stacklevel=2,
+    )
+    return secrets.token_urlsafe(48)
+
+
+SECRET_KEY = _secret_key()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
     os.environ.get("SOUNDHUB_TOKEN_EXPIRE_MINUTES", "10080")
@@ -39,6 +59,15 @@ USDC_DECIMALS = int(os.environ.get("SOUNDHUB_USDC_DECIMALS", "6"))
 USDC_CHAIN_ID = int(os.environ.get("SOUNDHUB_USDC_CHAIN_ID", "8453"))
 BASE_RPC_URL = os.environ.get("SOUNDHUB_BASE_RPC_URL", "")
 USDC_FALLBACK_PAYEE = os.environ.get("SOUNDHUB_USDC_FALLBACK_PAYEE", "")
+
+# CORS — comma-separated list of allowed browser origins.
+CORS_ORIGINS = [
+    o.strip()
+    for o in os.environ.get(
+        "SOUNDHUB_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    if o.strip()
+]
 
 # Email / Reminders
 FRONTEND_URL = os.environ.get("SOUNDHUB_FRONTEND_URL", "http://localhost:5173")

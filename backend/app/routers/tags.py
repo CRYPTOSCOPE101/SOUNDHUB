@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from ..access import require_owner
+from ..access import require_owner, session_or_404
 from ..database import get_db
 from ..schemas import SessionTagCreate, SessionTagLinkCreate, SessionTagLinkOut, SessionTagOut, SessionTagUpdate
 from ..security import get_current_user
@@ -38,10 +38,13 @@ def delete_tag(tag_id: int, user=Depends(get_current_user), db: Session = Depend
 
 @router.post("/session/{session_id}", response_model=SessionTagLinkOut, status_code=status.HTTP_201_CREATED)
 def link_tag(session_id: int, payload: SessionTagLinkCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    session_or_404(db, session_id, user)
+    require_owner(tags_svc.get_tag(db, payload.tag_id), user, "Tag")
     link = tags_svc.link_tag(db, session_id, payload.tag_id)
     return SessionTagLinkOut.model_validate(link, from_attributes=True)
 
 
 @router.delete("/session/{session_id}/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def unlink_tag(session_id: int, tag_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    session_or_404(db, session_id, user)
     tags_svc.unlink_tag(db, session_id, tag_id)

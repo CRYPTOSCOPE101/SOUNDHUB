@@ -4,14 +4,19 @@ Files are stored by their SHA-256 hash — identical files are stored once,
 re-pushing the same .als costs nothing. Dedup is automatic.
 """
 import hashlib
+import re
 from pathlib import Path
 
 from fastapi import UploadFile
 
 from ..config import BLOB_DIR
 
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
 
 def _blob_path(sha: str) -> Path:
+    if not _SHA256_RE.match(sha or ""):
+        raise ValueError(f"Invalid blob id: {sha!r}")
     return BLOB_DIR / sha[:2] / sha[2:4] / sha
 
 
@@ -27,14 +32,20 @@ def put_blob(data: bytes) -> str:
 
 def read_blob(sha: str) -> bytes:
     """Read blob by SHA-256 hash."""
-    path = _blob_path(sha)
+    try:
+        path = _blob_path(sha)
+    except ValueError as exc:
+        raise FileNotFoundError(str(exc)) from exc
     if not path.exists():
         raise FileNotFoundError(f"Blob {sha} not found")
     return path.read_bytes()
 
 
 def blob_exists(sha: str) -> bool:
-    return _blob_path(sha).exists()
+    try:
+        return _blob_path(sha).exists()
+    except ValueError:
+        return False
 
 
 def put_upload_file(upload: UploadFile, max_size: int) -> bytes:
@@ -46,5 +57,8 @@ def put_upload_file(upload: UploadFile, max_size: int) -> bytes:
 
 
 def blob_size(sha: str) -> int:
-    path = _blob_path(sha)
+    try:
+        path = _blob_path(sha)
+    except ValueError:
+        return 0
     return path.stat().st_size if path.exists() else 0
