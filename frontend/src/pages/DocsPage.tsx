@@ -62,6 +62,7 @@ const DOCUMENTS = [
   { name: "Architecture", desc: "How the Max for Live layer, backend and settlement fit together.", href: "https://github.com/soundXlab/SoundHub/blob/main/ARCHITECTURE.md", external: true },
   { name: "Changelog", desc: "Release notes — what changed, how to test, known limits, release checklist.", href: "https://github.com/soundXlab/SoundHub/blob/main/CHANGELOG.md", external: true },
   { name: "Max for Live device", desc: "Install, bridge contract, push button states, troubleshooting.", href: "https://github.com/soundXlab/SoundHub/blob/main/m4l/README.md", external: true },
+  { name: "DeepWiki", desc: "AI-generated architecture docs, codebase overview, and module breakdowns.", href: "https://deepwiki.com/soundXlab/SoundHub", external: true },
 ];
 
 export default function DocsPage() {
