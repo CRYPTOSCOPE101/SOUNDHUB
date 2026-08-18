@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { formatEther, parseEther } from "ethers";
 import { api } from "../api";
+import { reportError } from "../errors";
 import type { CatalogAsset, LicenseReceipt } from "../types";
 import {
   getDeployment,
@@ -200,7 +201,10 @@ export default function MarketplacePage() {
 
   // full catalog for filter options
   useEffect(() => {
-    api.catalog({ limit: 200 }).then(setAllAssets).catch(() => {});
+    api
+      .catalog({ limit: 200 })
+      .then(setAllAssets)
+      .catch((e: unknown) => reportError("loading catalog filter options", e));
   }, []);
 
   // stop preview audio on unmount

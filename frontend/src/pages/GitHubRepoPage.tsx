@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
+import { reportError } from "../errors";
 import { shortDate, type GhBranch, type GhCommit } from "../types";
 
 const REPO_URL = "https://github.com/soundXlab/SoundHub";
@@ -33,7 +34,10 @@ export default function GitHubRepoPage() {
     api
       .ghBranchCommits(selected)
       .then(setCommits)
-      .catch(() => setCommits([]));
+      .catch((e: unknown) => {
+        reportError(`loading commits for branch ${selected}`, e);
+        setCommits([]);
+      });
   }, [selected]);
 
   return (

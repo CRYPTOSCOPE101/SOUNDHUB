@@ -106,10 +106,22 @@ function rpc(method, params, cb) {
     }
     var text = responseText(resp);
     var data;
-    try { data = JSON.parse(text); } catch (e) { data = null; }
-    cb(data, data && data.error ? null : null);
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      cb(null, { error: "invalid JSON-RPC response: " + String(text).substr(0, 200) });
+      return;
+    }
+    cb(data, data && data.error ? data.error : null);
   };
   http.exec();
+}
+
+// Describe a JSON-RPC / transport error object for the status outlet.
+function rpcErrorText(err) {
+  if (!err) return "no response";
+  if (typeof err === "string") return err;
+  return err.message || err.error || JSON.stringify(err);
 }
 
 // Normalize an httprequest response (string / object) into text.
@@ -221,9 +233,9 @@ function loadCatalog() {
   rpc("eth_call", [{
     to: config.market,
     data: MARKET_ABI.nextListingId
-  }, "latest"], function (res, _) {
-    if (!res || res.error) {
-      out(OUT_STATUS, "RPC error: " + (res && res.error ? res.error.message : "no response"));
+  }, "latest"], function (res, err) {
+    if (err || !res || res.error) {
+      out(OUT_STATUS, "RPC error: " + rpcErrorText(err || (res && res.error)));
       return;
     }
     var count = intFromHex(res.result);
@@ -242,9 +254,11 @@ function loadCatalog() {
         rpc("eth_call", [{
           to: config.market,
           data: MARKET_ABI.listings + pad32("0x" + id.toString(16))
-        }, "latest"], function (res2, _2) {
+        }, "latest"], function (res2, err2) {
           done++;
-          if (res2 && res2.result && res2.result !== "0x") {
+          if (err2 || !res2 || res2.error) {
+            postln("listing " + id + " failed: " + rpcErrorText(err2 || (res2 && res2.error)));
+          } else if (res2.result && res2.result !== "0x") {
             var hex = res2.result;
             // static listing struct (32-byte slots, offset in bytes):
             // 0 id | 32 seller | 64 nameOff | 96 uriOff | 128 price |
@@ -315,7 +329,12 @@ function suggestForContext() {
       return;
     }
     var recs;
-    try { recs = JSON.parse(text); } catch (e) { recs = []; }
+    try {
+      recs = JSON.parse(text);
+    } catch (e) {
+      out(OUT_STATUS, "Recommendation failed: bad response — " + String(text).substr(0, 200));
+      return;
+    }
     if (!recs.length) {
       out(OUT_MATCH, "Matches your set: no good match yet (" + ctxLine + ")");
       return;
@@ -342,7 +361,12 @@ function loadAssetById(listingId, name) {
       return;
     }
     var meta;
-    try { meta = JSON.parse(text); } catch (e) { meta = null; }
+    try {
+      meta = JSON.parse(text);
+    } catch (e) {
+      out(OUT_STATUS, "Token request failed: bad response — " + String(text).substr(0, 200));
+      return;
+    }
     if (!meta || !meta.token) {
       out(OUT_STATUS, "No download token returned");
       return;
@@ -355,7 +379,12 @@ function loadAssetById(listingId, name) {
         return;
       }
       var payload;
-      try { payload = JSON.parse(text2); } catch (e) { payload = null; }
+      try {
+        payload = JSON.parse(text2);
+      } catch (e) {
+        out(OUT_STATUS, "Import failed: bad response — " + String(text2).substr(0, 200));
+        return;
+      }
       if (!payload || !payload.data) {
         out(OUT_STATUS, "Import failed: no payload");
         return;

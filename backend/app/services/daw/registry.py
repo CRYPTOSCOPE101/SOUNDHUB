@@ -1,4 +1,9 @@
 """DAW format detection and info extraction."""
+import gzip
+import logging
+import xml.etree.ElementTree as ET
+
+logger = logging.getLogger(__name__)
 
 
 def detect_format(path: str, data: bytes) -> str:
@@ -31,9 +36,6 @@ def get_daw_info(path: str, data: bytes) -> dict | None:
 
 def _parse_ableton(data: bytes) -> dict:
     """Parse Ableton Live Set (.als) — gzip-compressed XML."""
-    import gzip
-    import xml.etree.ElementTree as ET
-
     try:
         xml_data = gzip.decompress(data)
         root = ET.fromstring(xml_data)
@@ -69,8 +71,9 @@ def _parse_ableton(data: bytes) -> dict:
             "tracks": tracks[:50],
             "plugin_count": len(plugins),
         }
-    except Exception:
-        return {"format": "ableton", "error": "parse_failed"}
+    except (OSError, EOFError, ET.ParseError, ValueError) as exc:
+        logger.warning("ableton parse failed (%d bytes): %s", len(data), exc)
+        return {"format": "ableton", "error": "parse_failed", "error_detail": str(exc)[:200]}
 
 
 def _parse_reaper(data: bytes) -> dict:
@@ -90,7 +93,7 @@ def _parse_reaper(data: bytes) -> dict:
                     try:
                         bpm = float(parts[1])
                     except ValueError:
-                        pass
+                        logger.debug("reaper: unparseable TEMPO value %r", parts[1])
             elif line.startswith("TRACK "):
                 tracks.append(line)
             elif "VST" in line or "AU" in line or "JSFX" in line:
@@ -104,8 +107,9 @@ def _parse_reaper(data: bytes) -> dict:
             "plugin_count": len(plugins),
             "plugins": plugins[:30],
         }
-    except Exception:
-        return {"format": "reaper", "error": "parse_failed"}
+    except (UnicodeDecodeError, ValueError, IndexError) as exc:
+        logger.warning("reaper parse failed (%d bytes): %s", len(data), exc)
+        return {"format": "reaper", "error": "parse_failed", "error_detail": str(exc)[:200]}
 
 
 def _parse_cubase(data: bytes) -> dict:

@@ -91,7 +91,8 @@ def build_manifest(project_name: str, files: list[str], root: str, include_media
         try:
             with open(path, "rb") as f:
                 data = f.read()
-        except OSError:
+        except OSError as exc:
+            print(f"warning: skipping unreadable {path}: {exc}", file=sys.stderr)
             continue
         fmt = detect_format(path, data)
         if fmt is None:

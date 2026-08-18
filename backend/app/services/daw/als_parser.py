@@ -5,9 +5,12 @@ tempo, time signature, tracks, devices/plugins and referenced samples.
 All extraction is defensive: never raise on unexpected structure.
 """
 import gzip
+import logging
 import xml.etree.ElementTree as ET
 
 from .base import DAWInfo, ParseError, TrackInfo
+
+logger = logging.getLogger(__name__)
 
 _TRACK_TAGS = {
     "AudioTrack": "audio",
@@ -102,6 +105,7 @@ def parse_als(data: bytes) -> DAWInfo:
             try:
                 info.bpm = float(_val(manual) or 0)
             except ValueError:
+                logger.debug("als: unparseable tempo value %r", _val(manual))
                 info.bpm = None
 
     # Time signature

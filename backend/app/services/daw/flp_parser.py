@@ -38,9 +38,12 @@ All extraction is defensive: truncated/corrupt files degrade to what could
 be read (the chunk walker already stops at padding).
 """
 
+import logging
 import struct
 
 from .base import DAWInfo, ParseError, TrackInfo
+
+logger = logging.getLogger(__name__)
 
 _FL_VERSION_LABELS = {
     0x0000000B: "FL Studio 11",
@@ -135,7 +138,8 @@ def _iter_events(body: bytes):
         else:
             try:
                 size, off = _read_varint(body, off)
-            except ParseError:
+            except ParseError as exc:
+                logger.debug("flp: corrupt event varint at offset %d: %s", off, exc)
                 return
         if off + size > n:
             return  # truncated — stop, keep what we have
@@ -223,8 +227,8 @@ def parse_flp(data: bytes) -> DAWInfo:
                 (tempo,) = struct.unpack_from("<d", body, off_c)
                 if 1.0 <= tempo <= 999.0:
                     info.bpm = tempo
-            except struct.error:
-                pass
+            except struct.error as exc:
+                logger.debug("flp: unreadable FLPI chunk (%d bytes): %s", len(body), exc)
 
         elif key == "FLdt":
             # Deep parsing: channels, plugins, patterns, project metadata.

@@ -4,9 +4,12 @@
 generically: track elements by tag name, plugins by tag containing
 "Plugin", samples by "Sample" tags with a path-ish attribute.
 """
+import logging
 import xml.etree.ElementTree as ET
 
 from .base import DAWInfo, ParseError, TrackInfo
+
+logger = logging.getLogger(__name__)
 
 _TRACK_TAGS = {
     "MidiTrack": "midi",
@@ -53,6 +56,7 @@ def parse_cpr(data: bytes) -> DAWInfo:
                     info.bpm = float(value)
                     break
                 except ValueError:
+                    logger.debug("cpr: unparseable tempo value %r on <%s>", value, tag)
                     continue
 
     # Tracks

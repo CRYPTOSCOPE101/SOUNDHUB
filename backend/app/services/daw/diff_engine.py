@@ -3,7 +3,11 @@
 Compares two DAW projects at the structural level: tempo, tracks,
 plugins, samples. A revision is a story — never "binary file changed".
 """
+import gzip
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def summary_diff(info_a: dict | None, info_b: dict | None) -> dict:
@@ -74,9 +78,9 @@ def normalize_content(path: str, data: bytes) -> str:
         return data.decode("utf-8", errors="replace")
     elif lower.endswith(".als"):
         try:
-            import gzip
             return gzip.decompress(data).decode("utf-8", errors="replace")
-        except Exception:
+        except (OSError, EOFError) as exc:
+            logger.warning("could not gunzip %s for diff: %s", path, exc)
             return ""
     return ""
 
