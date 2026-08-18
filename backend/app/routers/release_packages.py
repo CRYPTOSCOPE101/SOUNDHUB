@@ -94,6 +94,10 @@ def lock_package(package_id: int, user: User = Depends(get_current_user), db: Se
 
 @router.get("/{package_id}/deliverables", response_model=list[DeliverableOut])
 def list_deliverables(package_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    package = db.get(ReleasePackage, package_id)
+    session = db.get(ReviewSession, package.session_id) if package else None
+    if package is None or session is None or session.owner_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Package not found")
     deliverables = db.scalars(
         select(Deliverable).where(Deliverable.package_id == package_id)
     ).all()

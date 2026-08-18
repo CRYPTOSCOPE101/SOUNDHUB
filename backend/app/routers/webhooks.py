@@ -7,8 +7,16 @@ from ..database import get_db
 from ..models import Webhook, WebhookDelivery
 from ..schemas import WebhookCreate, WebhookDeliveryOut, WebhookOut, WebhookUpdate
 from ..security import get_current_user
+from ..services import webhooks as webhooks_svc
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
+
+
+def _validated_url(url: str) -> str:
+    try:
+        return webhooks_svc.validate_url(url)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
 
 
 @router.get("", response_model=list[WebhookOut])
@@ -23,7 +31,7 @@ def list_webhooks(user=Depends(get_current_user), db: Session = Depends(get_db))
 def create_webhook(payload: WebhookCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
     hook = Webhook(
         owner_id=user.id,
-        url=payload.url,
+        url=_validated_url(payload.url),
         secret=payload.secret,
         events=payload.events,
         is_active=payload.is_active,
@@ -40,7 +48,7 @@ def update_webhook(webhook_id: int, payload: WebhookUpdate, user=Depends(get_cur
     if hook is None or hook.owner_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Webhook not found")
     if payload.url is not None:
-        hook.url = payload.url
+        hook.url = _validated_url(payload.url)
     if payload.secret is not None:
         hook.secret = payload.secret
     if payload.events is not None:

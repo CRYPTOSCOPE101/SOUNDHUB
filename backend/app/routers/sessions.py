@@ -1,4 +1,5 @@
 """Review sessions — the core review loop for music production."""
+import hmac
 import secrets
 from pathlib import PurePosixPath
 
@@ -210,11 +211,11 @@ def _check_share_access(session: ReviewSession, actor: str = "", password: str |
     from datetime import datetime, timezone
     if session.share_expires_at and session.share_expires_at < datetime.now(timezone.utc):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This review link has expired")
-    if session.share_password and (password or "") != session.share_password:
+    if session.share_password and not hmac.compare_digest(password or "", session.share_password):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This review link is password protected")
     if session.share_allowlist.strip():
         allowed = {e.strip().lower() for e in session.share_allowlist.split(",") if e.strip()}
-        if actor and actor.strip().lower() not in allowed:
+        if actor.strip().lower() not in allowed:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Your email is not on the access list")
 
 

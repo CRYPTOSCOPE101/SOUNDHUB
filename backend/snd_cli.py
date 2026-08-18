@@ -354,6 +354,21 @@ def start_bridge(*, api: str, token: str, host: str = "127.0.0.1", port: int = 8
         def log_message(self, *a):  # keep the console quiet
             pass
 
+        def _reject_browser_origin(self) -> bool:
+            """Block cross-origin browser calls (CSRF / DNS rebinding).
+
+            The bridge pushes local files with the user's API token, so only
+            same-machine, non-browser clients (M4L device, ReaScript) may call it.
+            """
+            if self.headers.get("Origin") or self.headers.get("Referer"):
+                self._send(403, {"ok": False, "error": "cross-origin requests are not allowed"})
+                return True
+            host = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip("[]")
+            if host and host not in ("localhost", "127.0.0.1", "::1"):
+                self._send(403, {"ok": False, "error": f"unexpected Host header: {host}"})
+                return True
+            return False
+
         def _send(self, code: int, payload: dict) -> None:
             data = _json.dumps(payload, ensure_ascii=False).encode()
             self.send_response(code)
@@ -363,6 +378,8 @@ def start_bridge(*, api: str, token: str, host: str = "127.0.0.1", port: int = 8
             self.wfile.write(data)
 
         def do_GET(self):
+            if self._reject_browser_origin():
+                return
             path = self.path.rstrip("/")
             if path == "/health":
                 self._send(200, {"ok": True, "service": "snd-bridge"})
@@ -410,6 +427,8 @@ def start_bridge(*, api: str, token: str, host: str = "127.0.0.1", port: int = 8
                 self._send(404, {"ok": False, "error": "not found"})
 
         def do_POST(self):
+            if self._reject_browser_origin():
+                return
             if not self.path.rstrip("/").endswith("/push"):
                 self._send(404, {"ok": False, "error": "not found"})
                 return

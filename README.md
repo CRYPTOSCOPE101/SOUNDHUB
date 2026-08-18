@@ -421,7 +421,13 @@ marketplace, faucet and the full propose → vote → queue → execute DAO flow
 
 ## Security note
 
-- MVP uses a dev JWT secret — set `SOUNDHUB_SECRET_KEY` and tighten CORS
-  (`allow_origins`) before any real deployment.
+- `SOUNDHUB_SECRET_KEY` is required when `SOUNDHUB_ENV=production` (the app
+  refuses to boot without it); locally an ephemeral key is generated per run.
+- CORS origins are an allowlist — set `SOUNDHUB_CORS_ORIGINS` (comma-separated)
+  to the frontend origins you deploy; it defaults to the vite dev server.
+- Review-link passwords are stored in plaintext and passed as a `?password=`
+  query parameter — do not treat a share link as a strong access control.
+- The Render blueprint seeds a demo account (`demo` / `demo123`); drop
+  `python -m scripts.seed_demo` from `startCommand` for anything non-demo.
 - Smart contracts are unaudited — test on testnet first.
 - SND supply is fixed (1,000,000) — no mint function.

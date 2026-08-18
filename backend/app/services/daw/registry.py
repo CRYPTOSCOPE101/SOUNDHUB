@@ -31,11 +31,14 @@ def get_daw_info(path: str, data: bytes) -> dict | None:
 
 def _parse_ableton(data: bytes) -> dict:
     """Parse Ableton Live Set (.als) — gzip-compressed XML."""
-    import gzip
     import xml.etree.ElementTree as ET
 
+    from .als_parser import gunzip_bounded, has_doctype
+
     try:
-        xml_data = gzip.decompress(data)
+        xml_data = gunzip_bounded(data)
+        if has_doctype(xml_data):
+            return {}
         root = ET.fromstring(xml_data)
         ns = {"a": "http://www.ableton.com/ns/3"}
 
