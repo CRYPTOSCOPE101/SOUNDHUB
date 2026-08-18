@@ -37,6 +37,7 @@
     .badge-post { background: rgba(59,130,246,0.15); color: var(--blue); }
     .badge-patch { background: rgba(245,158,11,0.15); color: var(--orange); }
     .badge-delete { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge-new { background: rgba(139,92,246,0.15); color: #8b5cf6; }
 
     /* ── Main ── */
     .main { margin-left: var(--sidebar-w); flex: 1; min-width: 0; }
@@ -129,8 +130,7 @@
     <a href="#comments">Comments <span class="badge badge-post">POST</span></a>
     <a href="#voice">Voice Comments <span class="badge badge-post">POST</span></a>
     <a href="#approvals">Approvals <span class="badge badge-post">POST</span></a>
-    <a href="#carrying">Carry Unresolved <span class="badge badge-post">POST</span></a>
-    <a href="#feedback">Submit Feedback <span class="badge badge-post">POST</span></a>
+    <a href="#pins">Version Pins <span class="badge badge-new">NEW</span></a>
 
     <div class="section-label">Share &amp; Brief</div>
     <a href="#share-settings">Share Settings <span class="badge badge-patch">PATCH</span></a>
@@ -166,7 +166,7 @@
     <div class="section-label">Payments</div>
     <a href="#checkout">Checkout (Stripe) <span class="badge badge-post">POST</span></a>
     <a href="#usdc">USDC / Base <span class="badge badge-post">POST</span></a>
-    <a href="#webhooks">Webhooks</a>
+    <a href="#webhooks-payments">Payment Webhooks</a>
 
     <div class="section-label">Catalog &amp; Search</div>
     <a href="#assets">Assets / Marketplace <span class="badge badge-get">GET</span></a>
@@ -177,7 +177,14 @@
 
     <div class="section-label">Notifications</div>
     <a href="#reminders">Reminders <span class="badge badge-post">POST</span></a>
-    <a href="#opt-out">Opt-Out <span class="badge badge-post">POST</span></a>
+
+    <div class="section-label">Professional Features</div>
+    <a href="#session-templates">Session Templates <span class="badge badge-new">NEW</span></a>
+    <a href="#tags">Tags / Labels <span class="badge badge-new">NEW</span></a>
+    <a href="#groups">Session Groups <span class="badge badge-new">NEW</span></a>
+    <a href="#activity-feed">Activity Feed <span class="badge badge-new">NEW</span></a>
+    <a href="#analytics">Analytics <span class="badge badge-new">NEW</span></a>
+    <a href="#webhook-mgmt">Webhook Management <span class="badge badge-new">NEW</span></a>
 
     <div class="section-label">Developer Tools</div>
     <a href="#openapi">Interactive API ↗</a>
@@ -188,7 +195,7 @@
 
 <div class="hero" id="overview">
   <h2>SoundHub API</h2>
-  <p>Version control and collaboration for music production. Full-stack API covering project management, review sessions with A/B comparison, delivery packages with audit trails, payments, and public portfolios.</p>
+  <p>Professional version control and collaboration for music production. Full-stack API with review workflows, A/B comparison, delivery packages, analytics, webhooks, and public portfolios.</p>
   <div class="badges">
     <span class="pill"><span class="dot"></span> v0.1.0</span>
     <span class="pill">REST + JSON</span>
@@ -204,7 +211,7 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="auth">
   <h3>Authentication</h3>
-  <p>Every authenticated request requires a <code>Bearer</code> token in the <code>Authorization</code> header. Tokens are obtained by logging in or registering.</p>
+  <p>Every authenticated request requires a <code>Bearer</code> token in the <code>Authorization</code> header.</p>
   <div class="code-block">
     <div class="code-header"><span>Shell</span></div>
     <pre><span class="cm"># 1. Log in</span>
@@ -216,7 +223,6 @@
 <span class="fn">curl</span> <span class="str">https://soundhub-backend.onrender.com/api/projects</span> \
      <span class="hdr">-H</span> <span class="str">"Authorization: Bearer eyJhbGciOi..."</span></pre>
   </div>
-  <div class="info-box note"><span class="icon">ℹ️</span><div>Tokens expire after <strong>7 days</strong> (configurable via <code>SOUNDHUB_TOKEN_EXPIRE_MINUTES</code>).</div></div>
 </section>
 
 <section id="base-url">
@@ -226,7 +232,6 @@
 
 <section id="errors">
   <h3>Error Handling</h3>
-  <div class="code-block"><div class="code-header"><span>Error Response</span></div><pre>{ <span class="hdr">"detail"</span>: <span class="str">"Invalid username or password"</span> }</pre></div>
   <table class="param-table">
     <tr><th>Status</th><th>Meaning</th></tr>
     <tr><td><code>200</code></td><td>Success</td></tr>
@@ -234,7 +239,6 @@
     <tr><td><code>204</code></td><td>No Content (DELETE)</td></tr>
     <tr><td><code>400</code></td><td>Bad Request — invalid payload</td></tr>
     <tr><td><code>401</code></td><td>Unauthorized — missing or invalid token</td></tr>
-    <tr><td><code>403</code></td><td>Forbidden — not the session owner</td></tr>
     <tr><td><code>404</code></td><td>Not Found</td></tr>
     <tr><td><code>422</code></td><td>Validation Error — field type mismatch</td></tr>
     <tr><td><code>500</code></td><td>Internal Server Error</td></tr>
@@ -252,20 +256,14 @@
 
 <section id="wallet">
   <h3>Wallet Login (EVM)</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/auth/wallet/nonce</span></div><p class="desc">Request a signing nonce for a wallet address. Returns <code>nonce</code> + <code>message</code> to sign.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>address</code></td><td>string</td><td>Ethereum address (0x…)</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/auth/wallet/login</span></div><p class="desc">Verify the signed message and return a JWT. Links on-chain identity to your SoundHub account.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>address</code></td><td>string</td><td>Wallet address</td></tr><tr><td><code>message</code></td><td>string</td><td>Message that was signed</td></tr><tr><td><code>signature</code></td><td>string</td><td>Signed message from MetaMask</td></tr></table>
-  </div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/auth/wallet/nonce</span></div><p class="desc">Request a signing nonce for a wallet address. Returns <code>nonce</code> + <code>message</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/auth/wallet/login</span></div><p class="desc">Verify the signed message and return a JWT. Links on-chain identity to your account.</p></div>
 </section>
 
 <section id="profile">
   <h3>Profile</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/auth/me</span></div><p class="desc">Current user profile: id, username, wallet_address, bio, specialty, location.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/auth/me</span></div><p class="desc">Update profile fields.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>bio</code></td><td>string</td><td>About the engineer</td></tr><tr><td><code>specialty</code></td><td>string</td><td><code>mix_master</code>, <code>recording</code>, <code>mastering</code>, etc.</td></tr><tr><td><code>location</code></td><td>string</td><td>City / country</td></tr></table>
-  </div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/auth/me</span></div><p class="desc">Current user profile.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/auth/me</span></div><p class="desc">Update profile: <code>bio</code>, <code>specialty</code>, <code>location</code>.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -273,51 +271,40 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="projects">
   <h3>Projects</h3>
-  <p>Projects are version-controlled containers — like Git repos for DAW files (.als, .rpp, .flp, .cpr).</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects</span></div><p class="desc">List all projects owned by the authenticated user.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/projects</span></div><p class="desc">Create a new project.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>name</code></td><td>string</td><td>Project name (required)</td></tr><tr><td><code>description</code></td><td>string</td><td>Short description</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}</span></div><p class="desc">Get project details, last commit, and metadata.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/projects/{id}</span></div><p class="desc">Update project name or description.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/projects/{id}</span></div><p class="desc">Delete a project and all its branches/commits.</p></div>
+  <p>Version-controlled containers for DAW files (.als, .rpp, .flp, .cpr).</p>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects</span></div><p class="desc">List all projects.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/projects</span></div><p class="desc">Create a project. Fields: <code>name</code> (required), <code>description</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}</span></div><p class="desc">Get project details.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/projects/{id}</span></div><p class="desc">Update name/description.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/projects/{id}</span></div><p class="desc">Delete a project.</p></div>
 </section>
 
 <section id="branches">
   <h3>Branches</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/branches</span></div><p class="desc">List all branches (GitHub-style).</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/projects/{id}/branches</span></div><p class="desc">Create a new branch from an existing one.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>name</code></td><td>string</td><td>Branch name</td></tr><tr><td><code>from_branch</code></td><td>string</td><td>Source branch (default: <code>main</code>)</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/projects/{id}/branches/{name}</span></div><p class="desc">Delete a branch (except <code>main</code>).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/branches</span></div><p class="desc">List branches.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/projects/{id}/branches</span></div><p class="desc">Create branch from existing. Fields: <code>name</code>, <code>from_branch</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/projects/{id}/branches/{name}</span></div><p class="desc">Delete a branch.</p></div>
 </section>
 
 <section id="commits">
   <h3>Commits &amp; Push</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/commits</span></div><p class="desc">List commits. Optional: <code>?branch=main</code>.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/commits/{commitId}</span></div><p class="desc">Full commit details with file tree and DAW metadata (tracks, plugins, instruments).</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/projects/{id}/commits</span></div><p class="desc">Upload a new commit with files (multipart/form-data).</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>message</code></td><td>string</td><td>Commit message (required)</td></tr><tr><td><code>branch</code></td><td>string</td><td>Target branch (default: <code>main</code>)</td></tr><tr><td><code>files</code></td><td>file[]</td><td>.als, .cpr, .rpp, .flp, etc.</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/projects/{id}/push</span></div><p class="desc"><strong>Atomic push</strong> — used by <code>snd push</code>. Uploads DAW files + optional master audio + stems as one transaction. Returns a stable JSON contract with <code>project_id</code>, <code>version_id</code>, <code>review_url</code>, and dedup stats.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>files</code></td><td>file[]</td><td>DAW project files (required)</td></tr><tr><td><code>message</code></td><td>string</td><td>Commit message</td></tr><tr><td><code>manifest</code></td><td>string</td><td>JSON manifest from <code>snd push</code></td></tr><tr><td><code>branch</code></td><td>string</td><td>Target branch</td></tr><tr><td><code>audio</code></td><td>file</td><td>Master audio — opens a review version</td></tr><tr><td><code>stems</code></td><td>file[]</td><td>Stem renders for A/B</td></tr></table>
-  </div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/commits</span></div><p class="desc">List commits. Query: <code>?branch=main</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/commits/{commitId}</span></div><p class="desc">Commit details with DAW metadata.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/projects/{id}/commits</span></div><p class="desc">Upload files (multipart). Fields: <code>message</code>, <code>branch</code>, <code>files</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/projects/{id}/push</span></div><p class="desc"><strong>Atomic push</strong> — used by <code>snd push</code>. Returns <code>{project_id, version_id, review_url, uploaded, deduplicated}</code>.</p></div>
 </section>
 
 <section id="tree">
   <h3>File Tree &amp; Diff</h3>
   <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/tree</span></div><p class="desc">Recursive file tree. Query: <code>?branch=main</code> or <code>?commit_id=3</code>.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/diff</span></div><p class="desc">File diff between two commits/branches. Query: <code>?path=track.als&from_branch=main&to_branch=feat/v2</code>.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/files/{path}</span></div><p class="desc">Download a file at its latest state. Add <code>?download=1</code> for Content-Disposition.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/files/{path}/info</span></div><p class="desc">File metadata: size, sha256, content type.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/diff</span></div><p class="desc">Diff between commits/branches. Query: <code>?path=&amp;from_branch=&amp;to_branch=</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/projects/{id}/files/{path}</span></div><p class="desc">Download a file. Add <code>?download=1</code>.</p></div>
 </section>
 
 <section id="release-binding">
   <h3>Release Binding</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/projects/{id}/release</span></div><p class="desc">Bind a blockchain release (NFT contract) to a project.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>token_id</code></td><td>int</td><td>NFT token ID</td></tr><tr><td><code>contract_address</code></td><td>string</td><td>Contract address</td></tr><tr><td><code>name</code></td><td>string</td><td>Release name</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/projects/{id}/release</span></div><p class="desc">Remove the release binding from a project.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/projects/{id}/release</span></div><p class="desc">Bind blockchain release. Fields: <code>token_id</code>, <code>contract_address</code>, <code>name</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/projects/{id}/release</span></div><p class="desc">Remove release binding.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -325,58 +312,42 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="sessions">
   <h3>Review Sessions</h3>
-  <p>Frame.io-style collaboration workflow: upload versions, collect timestamped comments, track approvals, manage revisions.</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions</span></div><p class="desc">Create a review session (optionally linked to a project).</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>name</code></td><td>string</td><td>Session name (required)</td></tr><tr><td><code>project_id</code></td><td>int</td><td>Link to an existing project</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}</span></div><p class="desc">Full session details: versions, brief, share settings, team, ledger summary.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions</span></div><p class="desc">List all sessions for the authenticated user.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/sessions/{id}</span></div><p class="desc">Delete a session and all its versions/comments.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions</span></div><p class="desc">Create session. Fields: <code>name</code>, <code>project_id</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}</span></div><p class="desc">Full session details.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions</span></div><p class="desc">List all sessions.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/sessions/{id}</span></div><p class="desc">Delete a session.</p></div>
 </section>
 
 <section id="versions">
   <h3>Versions</h3>
-  <p>Upload audio files (WAV, MP3, FLAC, etc.) and track them through the review lifecycle. The backend generates waveforms and loudness analysis automatically.</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/versions</span></div><p class="desc">Upload a new audio version (multipart/form-data, max 2 GiB).</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>file</code></td><td>audio</td><td>Audio file (required)</td></tr><tr><td><code>message</code></td><td>string</td><td>Version notes</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/versions/{vId}/status</span></div><p class="desc">Set version status: <code>in_review</code>, <code>approved</code>, <code>changes_requested</code>, <code>replaced</code>.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/versions/{vId}/audio</span></div><p class="desc">Stream the version's audio file.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/versions/{vId}/diff</span></div><p class="desc">Compare two consecutive versions (metadata diff).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/versions</span></div><p class="desc">Upload audio version (multipart, max 2 GiB). Fields: <code>file</code>, <code>message</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/versions/{vId}/status</span></div><p class="desc">Set status: <code>in_review</code>, <code>approved</code>, <code>changes_requested</code>, <code>replaced</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/versions/{vId}/audio</span></div><p class="desc">Stream audio.</p></div>
 </section>
 
 <section id="comments">
   <h3>Comments</h3>
-  <p>Timestamped comments with threaded replies and voice messages.</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/versions/{vId}/comments</span></div><p class="desc">Add a comment at a specific timestamp.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>time_s</code></td><td>number</td><td>Timestamp in seconds (required)</td></tr><tr><td><code>body</code></td><td>string</td><td>Comment text (required)</td></tr><tr><td><code>parent_id</code></td><td>int</td><td>Parent comment ID for threaded replies</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/sessions/{id}/versions/{vId}/comments/{cId}</span></div><p class="desc">Resolve or unresolve a comment: <code>?resolved=true</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/versions/{vId}/comments</span></div><p class="desc">Timestamped comment. Fields: <code>time_s</code>, <code>body</code>, <code>parent_id</code> (threaded).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/sessions/{id}/versions/{vId}/comments/{cId}</span></div><p class="desc">Resolve/unresolve: <code>?resolved=true</code>.</p></div>
 </section>
 
 <section id="voice">
   <h3>Voice Comments</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/versions/{vId}/comments/voice</span></div><p class="desc">Record a voice comment — audio file (OGG, M4A, WebM, MP3) + text.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>voice</code></td><td>audio</td><td>Voice recording</td></tr><tr><td><code>body</code></td><td>string</td><td>Transcript / text note</td></tr><tr><td><code>voice_duration_s</code></td><td>number</td><td>Duration in seconds</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/versions/{vId}/comments/{cId}/voice</span></div><p class="desc">Stream the voice comment audio.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/versions/{vId}/comments/voice</span></div><p class="desc">Voice comment (OGG, M4A, WebM, MP3) + text. Fields: <code>voice</code>, <code>body</code>, <code>voice_duration_s</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/versions/{vId}/comments/{cId}/voice</span></div><p class="desc">Stream voice comment audio.</p></div>
 </section>
 
 <section id="approvals">
   <h3>Approvals</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/versions/{vId}/approvals</span></div><p class="desc">Submit a scoped approval or rejection.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>scope</code></td><td>string</td><td><code>"mix"</code>, <code>"master"</code>, <code>"arrangement"</code>, etc.</td></tr><tr><td><code>approved</code></td><td>boolean</td><td>Approval status</td></tr><tr><td><code>note</code></td><td>string</td><td>Optional note</td></tr><tr><td><code>approver_name</code></td><td>string</td><td>Display name</td></tr></table>
-  </div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/versions/{vId}/approvals</span></div><p class="desc">Scoped approval. Fields: <code>scope</code>, <code>approved</code>, <code>note</code>, <code>approver_name</code>.</p></div>
 </section>
 
-<section id="carrying">
-  <h3>Carry Unresolved</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/versions/{vId}/carry</span></div><p class="desc">Create a new version carrying forward all unresolved comments from the previous version.</p></div>
-</section>
-
-<section id="feedback">
-  <h3>Submit Feedback</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/submit-feedback</span></div><p class="desc">Client submits final feedback/note and advances the round. Triggers round increment and may queue a new review round.</p></div>
+<section id="pins">
+  <h3>Version Pins <span class="badge badge-new">NEW</span></h3>
+  <p>Pin important versions for quick access — "client approved", "final master", etc.</p>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/pins</span></div><p class="desc">List pinned versions for a session.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/pins</span></div><p class="desc">Pin a version. Fields: <code>version_id</code>, <code>label</code> (optional).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/sessions/{id}/pins/{pinId}</span></div><p class="desc">Unpin a version.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -384,36 +355,29 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="share-settings">
   <h3>Share Settings</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/sessions/{id}/share</span></div><p class="desc">Configure share parameters for the public review link.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>share_password</code></td><td>string</td><td>Optional password protection</td></tr><tr><td><code>share_expires_at</code></td><td>datetime</td><td>Link expiry</td></tr><tr><td><code>share_permission</code></td><td>string</td><td><code>view</code>, <code>comment</code>, <code>download</code></td></tr><tr><td><code>portfolio_public</code></td><td>bool</td><td>Show in public portfolio/search</td></tr><tr><td><code>watermark_enabled</code></td><td>bool</td><td>Apply audio watermark</td></tr><tr><td><code>feedback_due_at</code></td><td>datetime</td><td>Client feedback deadline</td></tr><tr><td><code>deposit_due_cents</code></td><td>int</td><td>Deposit amount in cents</td></tr><tr><td><code>included_rounds</code></td><td>int</td><td>Number of included review rounds</td></tr><tr><td><code>extra_round_price_cents</code></td><td>int</td><td>Price per extra round</td></tr></table>
-  </div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/sessions/{id}/share</span></div><p class="desc">Configure: <code>share_password</code>, <code>share_expires_at</code>, <code>share_permission</code> (<code>view/comment/download</code>), <code>portfolio_public</code>, <code>watermark_enabled</code>, <code>feedback_due_at</code>, <code>deposit_due_cents</code>, <code>included_rounds</code>, <code>extra_round_price_cents</code>.</p></div>
 </section>
 
 <section id="brief">
   <h3>Session Brief</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/sessions/{id}/brief</span></div><p class="desc">Set the project brief — context for the reviewer.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>service_type</code></td><td>string</td><td><code>mix_master</code>, <code>recording</code>, <code>production</code></td></tr><tr><td><code>genre</code></td><td>string</td><td>Genre / style</td></tr><tr><td><code>goal</code></td><td>string</td><td><code>label</code>, <code>sync</code>, <code>self_release</code></td></tr><tr><td><code>reference_links</code></td><td>string</td><td>Reference track URLs</td></tr><tr><td><code>do_not_change</code></td><td>string</td><td>What to preserve</td></tr><tr><td><code>required_deliverables</code></td><td>string</td><td>e.g. <code>"master, instrumental, clean edit"</code></td></tr></table>
-  </div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/sessions/{id}/brief</span></div><p class="desc">Set brief: <code>service_type</code>, <code>genre</code>, <code>goal</code>, <code>reference_links</code>, <code>do_not_change</code>, <code>required_deliverables</code>.</p></div>
 </section>
 
 <section id="public-share">
   <h3>Public Share Endpoints</h3>
-  <p>Reviewers and clients access sessions via a unique <code>share_token</code> — no account required.</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/public/{token}</span></div><p class="desc">Public session view. Query: <code>?password=…&actor=…</code>.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/versions/{vId}/comments</span></div><p class="desc">Public comment (requires <code>author_name</code>).</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/public/{token}/versions/{vId}/audio</span></div><p class="desc">Stream version audio (public).</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/public/{token}/versions/{vId}/diff</span></div><p class="desc">Version diff (public).</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/versions/{vId}/approvals</span></div><p class="desc">Public approval submission.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/submit-feedback</span></div><p class="desc">Client submits final feedback (query: <code>?actor=…</code>).</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/public/{token}/requests/export</span></div><p class="desc">Export open requests as markdown or CSV. Query: <code>?format=markdown|csv</code>.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/compare</span></div><p class="desc">Public A/B comparison.</p></div>
+  <p>Reviewers access sessions via <code>share_token</code> — no account required.</p>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/public/{token}</span></div><p class="desc">Public session view. Query: <code>?password=&amp;actor=</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/versions/{vId}/comments</span></div><p class="desc">Public comment.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/versions/{vId}/approvals</span></div><p class="desc">Public approval.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/submit-feedback</span></div><p class="desc">Client submits feedback (query: <code>?actor=</code>).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/public/{token}/requests/export</span></div><p class="desc">Export requests as markdown/CSV. Query: <code>?format=markdown|csv</code>.</p></div>
 </section>
 
 <section id="ledger">
   <h3>Ledger &amp; Audit Trail</h3>
-  <p>Every significant event (version upload, comment, approval, payment, feedback) is recorded with SHA-256 proof.</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/ledger</span></div><p class="desc">Full event log with hashes and payloads.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/ledger/verify</span></div><p class="desc">Verify the chain of hashes — returns integrity status.</p></div>
+  <p>Every event recorded with SHA-256 proof.</p>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/ledger</span></div><p class="desc">Full event log with hashes.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/ledger/verify</span></div><p class="desc">Verify chain integrity.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -421,50 +385,26 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="audio-analysis">
   <h3>Audio Analysis</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/versions/{versionId}/audio-analysis</span></div><p class="desc">Loudness analysis: LUFS, true peak, dynamic range, waveform JSON for rendering.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/versions/{versionId}/audio-analysis</span></div><p class="desc">Loudness: LUFS, true peak, dynamic range, waveform JSON.</p></div>
 </section>
 
 <section id="comparisons">
   <h3>Version Comparison (A/B)</h3>
-  <p>Compare any two versions with automatic LUFS level matching for fair A/B testing.</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/comparisons</span></div><p class="desc">Create an A/B comparison.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>base_version_id</code></td><td>int</td><td>Reference version</td></tr><tr><td><code>compare_version_id</code></td><td>int</td><td>Version to compare against</td></tr><tr><td><code>start_ms</code></td><td>int</td><td>Comparison start point</td></tr><tr><td><code>end_ms</code></td><td>int</td><td>End point (optional)</td></tr><tr><td><code>level_match</code></td><td>string</td><td><code>short_term_lufs</code>, <code>integrated_lufs</code>, <code>off</code></td></tr><tr><td><code>mode</code></td><td>string</td><td><code>full_mix</code>, <code>stem</code></td></tr><tr><td><code>stem_logical_name</code></td><td>string</td><td>For stem mode: which stem to isolate</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/comparisons/{comparisonId}</span></div><p class="desc">Get comparison results: waveform overlays, loudness stats.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/compare</span></div><p class="desc">Public A/B comparison (same payload).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/comparisons</span></div><p class="desc">A/B with LUFS level matching. Fields: <code>base_version_id</code>, <code>compare_version_id</code>, <code>start_ms</code>, <code>level_match</code>, <code>mode</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/comparisons/{id}</span></div><p class="desc">Comparison results.</p></div>
 </section>
 
 <section id="stems">
   <h3>Stems</h3>
-  <p>Upload per-stem audio for isolated A/B comparison (drums, vocals, bass, etc.).</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/versions/{versionId}/stems</span></div><p class="desc">Upload a stem (multipart/form-data).</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>logical_name</code></td><td>string</td><td><code>drums</code>, <code>vocals</code>, <code>bass</code>, etc.</td></tr><tr><td><code>display_name</code></td><td>string</td><td>Human-readable name</td></tr><tr><td><code>start_offset_ms</code></td><td>int</td><td>Offset from master start</td></tr><tr><td><code>file</code></td><td>audio</td><td>Stem audio file</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/versions/{versionId}/stems</span></div><p class="desc">List stems for a version.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/versions/{versionId}/stems/{stemId}/audio</span></div><p class="desc">Stream stem audio.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/versions/{versionId}/stems</span></div><p class="desc">Upload stem. Fields: <code>logical_name</code>, <code>display_name</code>, <code>start_offset_ms</code>, <code>file</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/versions/{versionId}/stems</span></div><p class="desc">List stems.</p></div>
 </section>
 
 <section id="references">
   <h3>Reference Tracks</h3>
-  <p>Compare your mix against reference tracks — upload files or link to SoundCloud/YouTube.</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/references</span></div><p class="desc">Add a reference from an external URL.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>title</code></td><td>string</td><td>Track title</td></tr><tr><td><code>external_url</code></td><td>string</td><td>URL to the reference</td></tr><tr><td><code>purpose</code></td><td>string</td><td><code>overall</code>, <code>drums</code>, <code>bass</code>, etc.</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/references/upload</span></div><p class="desc">Upload a reference track file (multipart/form-data).</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/references</span></div><p class="desc">List reference tracks for a session.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/sessions/{id}/references/{refId}</span></div><p class="desc">Update reference metadata.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/sessions/{id}/references/{refId}</span></div><p class="desc">Delete a reference track.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/references/{refId}/audio</span></div><p class="desc">Stream the reference audio.</p></div>
-</section>
-
-<section id="ref-compare">
-  <h3>Reference Comparison</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/references/compare</span></div><p class="desc">A/B between a version and a reference track with automatic LUFS level matching.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>version_id</code></td><td>int</td><td>Your version</td></tr><tr><td><code>reference_id</code></td><td>int</td><td>Reference track</td></tr><tr><td><code>start_ms</code></td><td>int</td><td>Start point</td></tr><tr><td><code>level_match</code></td><td>string</td><td><code>short_term_lufs</code>, <code>integrated_lufs</code></td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/references/compare</span></div><p class="desc">Public version of reference comparison.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/public/{token}/references</span></div><p class="desc">List references (public).</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/public/{token}/references/{refId}/audio</span></div><p class="desc">Stream reference audio (public).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/references</span></div><p class="desc">Add reference from URL. Fields: <code>title</code>, <code>external_url</code>, <code>purpose</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/references/upload</span></div><p class="desc">Upload reference file.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/references/compare</span></div><p class="desc">A/B with reference. Fields: <code>version_id</code>, <code>reference_id</code>, <code>start_ms</code>.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -472,21 +412,19 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="team">
   <h3>Team Policy</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/team</span></div><p class="desc">Current approval policy and preset for a session.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/team</span></div><p class="desc">Approval policy and preset.</p></div>
 </section>
 
 <section id="members">
   <h3>Members</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/members</span></div><p class="desc">List invited team members.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/members</span></div><p class="desc">Invite a member by email with a role.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>email</code></td><td>string</td><td>Invitee email</td></tr><tr><td><code>role</code></td><td>string</td><td><code>client</code>, <code>collaborator</code>, <code>approver</code></td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/sessions/{id}/members/{memberId}</span></div><p class="desc">Remove a member from the session.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/members</span></div><p class="desc">List members.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/members</span></div><p class="desc">Invite by email. Fields: <code>email</code>, <code>role</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/sessions/{id}/members/{memberId}</span></div><p class="desc">Remove member.</p></div>
 </section>
 
 <section id="approval-presets">
   <h3>Approval Presets</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-put">PUT</span><span class="path">/api/sessions/{id}/approval-preset</span></div><p class="desc">Set a predefined approval chain: <code>single</code>, <code>mix_master</code>, <code>label_release</code>, or <code>custom</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-put">PUT</span><span class="path">/api/sessions/{id}/approval-preset</span></div><p class="desc">Set preset: <code>single</code>, <code>mix_master</code>, <code>label_release</code>, <code>custom</code>.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -494,19 +432,10 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="change-orders">
   <h3>Change Orders</h3>
-  <p>Late-stage change requests after approval/delivery — with pricing, acceptance, and payment flow.</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/change-orders</span></div><p class="desc">Client submits a change order request.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>reason</code></td><td>string</td><td>Why the change is needed</td></tr><tr><td><code>description</code></td><td>string</td><td>What to change</td></tr><tr><td><code>actor</code></td><td>string</td><td>Requester name</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/change-orders</span></div><p class="desc">List all change orders (engineer view).</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/sessions/{id}/change-orders/{coId}</span></div><p class="desc">Engineer quotes or declines a change order.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>decision</code></td><td>string</td><td><code>quoted</code>, <code>declined</code></td></tr><tr><td><code>price_cents</code></td><td>int</td><td>Quoted price (if quoted)</td></tr><tr><td><code>deadline_at</code></td><td>datetime</td><td>Delivery deadline</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/change-orders/{coId}/decline</span></div><p class="desc">Decline a change order.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/change-orders/{coId}/accept</span></div><p class="desc">Client accepts the quoted change order.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/change-orders/{coId}/mark-paid</span></div><p class="desc">Mark change order as paid (manual confirmation).</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/change-orders/{coId}/checkout</span></div><p class="desc">Create Stripe checkout for a change order.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/change-orders/{coId}/checkout</span></div><p class="desc">Public Stripe checkout for a change order.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/change-orders</span></div><p class="desc">Client submits change order. Fields: <code>reason</code>, <code>description</code>, <code>actor</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/sessions/{id}/change-orders/{coId}</span></div><p class="desc">Quote or decline. Fields: <code>decision</code>, <code>price_cents</code>, <code>deadline_at</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/change-orders/{coId}/accept</span></div><p class="desc">Client accepts quote.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/change-orders/{coId}/checkout</span></div><p class="desc">Stripe checkout for change order.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -514,53 +443,47 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="release-packages">
   <h3>Release Packages</h3>
-  <p>Final delivery bundles: approved version + deliverables (master, stems, artwork, metadata) + verified release manifest with SHA-256 audit trail.</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages</span></div><p class="desc">Create a release package from an approved version.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/release-packages</span></div><p class="desc">List packages. Query: <code>?session_id=…</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages</span></div><p class="desc">Create from approved version.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/release-packages</span></div><p class="desc">List. Query: <code>?session_id=</code>.</p></div>
 </section>
 
 <section id="templates">
   <h3>Package Templates</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/release-packages/templates</span></div><p class="desc">Available delivery templates with required deliverable types.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/release-packages/templates</span></div><p class="desc">Available delivery templates.</p></div>
 </section>
 
 <section id="deliverables">
   <h3>Deliverables</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/deliverables/from-version</span></div><p class="desc">Attach a version's audio as a deliverable.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>type</code></td><td>string</td><td><code>master</code>, <code>instrumental</code>, <code>vocals</code>, <code>stems_zip</code>, <code>artwork</code>, etc.</td></tr><tr><td><code>from_version_id</code></td><td>int</td><td>Version to pull audio from</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/deliverables/upload</span></div><p class="desc">Upload a deliverable file directly (artwork, metadata CSV, etc.).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/deliverables/from-version</span></div><p class="desc">Attach version audio. Fields: <code>type</code>, <code>from_version_id</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/deliverables/upload</span></div><p class="desc">Upload deliverable file.</p></div>
 </section>
 
 <section id="lock">
   <h3>Lock &amp; Manifest</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/lock</span></div><p class="desc">Lock the package — generates an immutable release manifest with SHA-256 hash for audit trail.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/release-packages/{id}/manifest</span></div><p class="desc">Get the release manifest JSON + hash.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/lock</span></div><p class="desc">Lock package — generates immutable manifest with SHA-256.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/release-packages/{id}/manifest</span></div><p class="desc">Get manifest JSON + hash.</p></div>
 </section>
 
 <section id="preflight">
   <h3>Preflight</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/preflight</span></div><p class="desc">Run preflight checks: audio levels, file formats, required deliverables completeness.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/preflight</span></div><p class="desc">Check audio levels, formats, deliverables.</p></div>
 </section>
 
 <section id="archive">
   <h3>Archive &amp; Handoff</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/archive</span></div><p class="desc">Set archive status: <code>active</code>, <code>archived</code>, <code>recalled</code>. Supports retention policy and recall fees.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/release-packages/{id}/handoff</span></div><p class="desc">Record handoff details: plugin manifest, session manifest, archive expiry.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/archive</span></div><p class="desc">Set status: <code>active</code>, <code>archived</code>, <code>recalled</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/release-packages/{id}/handoff</span></div><p class="desc">Record handoff details.</p></div>
 </section>
 
 <section id="invoice">
   <h3>Invoice</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/release-packages/{id}/invoice</span></div><p class="desc">Update invoice status and amount for a release package.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>invoice_status</code></td><td>string</td><td><code>pending</code>, <code>sent</code>, <code>paid</code></td></tr><tr><td><code>amount_due_cents</code></td><td>int</td><td>Total amount in cents</td></tr><tr><td><code>currency</code></td><td>string</td><td><code>usd</code> (default)</td></tr></table>
-  </div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/release-packages/{id}/invoice</span></div><p class="desc">Update status + amount. Fields: <code>invoice_status</code>, <code>amount_due_cents</code>, <code>currency</code>.</p></div>
 </section>
 
 <section id="download">
   <h3>Download &amp; Delivery Page</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/release-packages/{id}/download</span></div><p class="desc">Download a deliverable. Query: <code>?deliverable_id=…</code>.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/release-packages/public/{token}</span></div><p class="desc">Public delivery page with all deliverables listed.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/release-packages/public/{token}/files/{deliverableId}</span></div><p class="desc">Download a deliverable from the public delivery link.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/release-packages/{id}/download</span></div><p class="desc">Download. Query: <code>?deliverable_id=</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/release-packages/public/{token}</span></div><p class="desc">Public delivery page.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -568,27 +491,19 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="checkout">
   <h3>Checkout (Stripe)</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/checkout</span></div><p class="desc">Create Stripe checkout for a deposit or extra round.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>kind</code></td><td>string</td><td><code>deposit</code> or <code>extra_round</code></td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/checkout</span></div><p class="desc">Stripe checkout for a release package.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/public/{token}/checkout</span></div><p class="desc">Public Stripe checkout for a release package.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/{id}/checkout</span></div><p class="desc">Stripe checkout. Field: <code>kind</code> (<code>deposit</code>, <code>extra_round</code>).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/checkout</span></div><p class="desc">Package checkout.</p></div>
 </section>
 
 <section id="usdc">
   <h3>USDC / Base Chain</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/checkout/usdc</span></div><p class="desc">Generate USDC payment request on Base — returns payable address, amount, and chain details.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>kind</code></td><td>string</td><td><code>package</code> or <code>deposit</code></td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/public/{token}/checkout/usdc</span></div><p class="desc">Public USDC checkout.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/webhooks/usdc</span></div><p class="desc">Verify a USDC payment by transaction hash and mark the package/session as paid.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>tx_hash</code></td><td>string</td><td>Base chain transaction hash</td></tr><tr><td><code>package_id</code></td><td>int</td><td>Associated release package</td></tr><tr><td><code>kind</code></td><td>string</td><td><code>package</code>, <code>deposit</code>, <code>change_order</code></td></tr></table>
-  </div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/{id}/checkout/usdc</span></div><p class="desc">USDC payment request. Field: <code>kind</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/webhooks/usdc</span></div><p class="desc">Verify USDC payment by tx hash.</p></div>
 </section>
 
-<section id="webhooks">
-  <h3>Webhooks</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/webhooks/stripe</span></div><p class="desc">Stripe webhook receiver — processes <code>checkout.session.completed</code> events and marks payments as confirmed. Verifies webhook signature with <code>STRIPE_WEBHOOK_SECRET</code>.</p></div>
+<section id="webhooks-payments">
+  <h3>Payment Webhooks</h3>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/release-packages/webhooks/stripe</span></div><p class="desc">Stripe webhook — processes <code>checkout.session.completed</code>.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -596,21 +511,15 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="assets">
   <h3>Assets / Marketplace</h3>
-  <p>Browse, preview, and download licensed music assets — presets, samples, loops, and project templates.</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/assets</span></div><p class="desc">Browse catalog. Filters: <code>?genre=techno&bpm_min=120&bpm_max=140&format=als&plugins=Serum</code>.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/assets/recommend</span></div><p class="desc">AI-powered recommendations based on user profile and listening history.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/assets/{id}/preview</span></div><p class="desc">Stream a preview of the asset audio.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/assets/{id}/receipt</span></div><p class="desc">Generate a license receipt for a purchased asset.</p>
-    <table class="param-table"><tr><th>Field</th><th>Type</th><th>Description</th></tr><tr><td><code>buyer</code></td><td>string</td><td>Buyer username</td></tr><tr><td><code>seller</code></td><td>string</td><td>Seller username</td></tr></table>
-  </div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/assets/{id}/token</span></div><p class="desc">Generate a time-limited download token for an asset.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/assets/{id}/download64</span></div><p class="desc">Get base64-encoded asset payload (for VST3/Max integration).</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/assets/{id}/download</span></div><p class="desc">Download the asset file with SHA-256 verification.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/assets</span></div><p class="desc">Browse. Filters: <code>?genre=&amp;bpm_min=&amp;format=&amp;plugins=</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/assets/recommend</span></div><p class="desc">AI recommendations.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/assets/{id}/preview</span></div><p class="desc">Stream preview audio.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/assets/{id}/receipt</span></div><p class="desc">Generate license receipt.</p></div>
 </section>
 
 <section id="search">
   <h3>Search</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/search?q={query}</span></div><p class="desc">Full-text search across engineers (with public portfolios) and public sessions. Returns grouped results with session counts.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/search?q={query}</span></div><p class="desc">Full-text search across engineers and sessions.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -618,9 +527,8 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="portfolio">
   <h3>Public Portfolio</h3>
-  <p>Every engineer with public sessions gets an auto-generated portfolio page.</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/portfolio/{username}</span></div><p class="desc">Public portfolio: bio, specialty, approved versions, and links to session reviews.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/portfolio/{username}/preview/{versionId}</span></div><p class="desc">Stream a portfolio preview of a version's audio.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/portfolio/{username}</span></div><p class="desc">Public portfolio with bio, versions, links.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/portfolio/{username}/preview/{versionId}</span></div><p class="desc">Stream portfolio preview.</p></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -628,15 +536,135 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="reminders">
   <h3>Reminders &amp; Notifications</h3>
-  <p>Automated email reminders for pending reviews, overdue feedback, and invoice due dates. Requires SMTP configuration (<code>SMTP_HOST</code> env var).</p>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/reminders/evaluate</span></div><p class="desc">Trigger the evaluation engine — scans all sessions and sends due notifications. Returns counts: <code>{evaluated, created, sent, failed}</code>.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/reminders</span></div><p class="desc">List queued and sent reminders for a session.</p></div>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/sessions/{id}/reminders</span></div><p class="desc">Update reminder settings: enable/disable, set recipients, configure intervals.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/reminders/evaluate</span></div><p class="desc">Trigger evaluation engine. Returns <code>{evaluated, created, sent, failed}</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/sessions/{id}/reminders</span></div><p class="desc">List reminders.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/sessions/{id}/reminders</span></div><p class="desc">Update reminder settings.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/reminders/opt-out</span></div><p class="desc">Opt out of reminders.</p></div>
 </section>
 
-<section id="opt-out">
-  <h3>Opt-Out</h3>
-  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/sessions/public/{token}/reminders/opt-out</span></div><p class="desc">Client opts out of all future reminders for this session. Returns <code>{opted_out, dismissed}</code>.</p></div>
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- PROFESSIONAL FEATURES -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="session-templates">
+  <h3>Session Templates <span class="badge badge-new">NEW</span></h3>
+  <p>Reusable session configurations — create once, apply to many sessions.</p>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/templates</span></div><p class="desc">List your templates.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/templates/public</span></div><p class="desc">Browse public community templates.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/templates</span></div><p class="desc">Create a template. Fields: <code>name</code>, <code>service_type</code>, <code>genre</code>, <code>included_rounds</code>, <code>extra_round_price_cents</code>, <code>deposit_due_cents</code>, <code>required_deliverables</code>, <code>brief_template</code>, <code>is_public</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/templates/{id}</span></div><p class="desc">Get template details.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/templates/{id}</span></div><p class="desc">Delete a template.</p></div>
+
+  <div class="code-block">
+    <div class="code-header"><span>Example — Create a mixing template</span></div>
+    <pre><span class="fn">curl</span> <span class="str">-X POST https://soundhub-backend.onrender.com/api/templates</span> \
+     <span class="hdr">-H</span> <span class="str">"Authorization: Bearer $TOKEN"</span> \
+     <span class="hdr">-H</span> <span class="str">"Content-Type: application/json"</span> \
+     <span class="hdr">-d</span> <span class="str">'{
+  "name": "Standard Mix",
+  "service_type": "mix_master",
+  "genre": "electronic",
+  "included_rounds": 3,
+  "extra_round_price_cents": 5000,
+  "required_deliverables": "master,instrumental,stems_zip",
+  "brief_template": "Genre: electronic. Reference: [link]. Keep the vocal balance.",
+  "is_public": true
+}'</span></pre>
+  </div>
+</section>
+
+<section id="tags">
+  <h3>Tags / Labels <span class="badge badge-new">NEW</span></h3>
+  <p>Organize sessions with colored labels — genre, mood, priority, status, etc.</p>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/tags</span></div><p class="desc">List your tags.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/tags</span></div><p class="desc">Create a tag. Fields: <code>name</code>, <code>color</code> (hex).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/tags/{id}</span></div><p class="desc">Delete a tag.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/tags/sessions/{sessionId}/tags/{tagId}</span></div><p class="desc">Add tag to session.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/tags/sessions/{sessionId}/tags/{tagId}</span></div><p class="desc">Remove tag from session.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/tags/sessions/{sessionId}</span></div><p class="desc">Get tags for a session.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/tags/{id}/sessions</span></div><p class="desc">Get all sessions with this tag.</p></div>
+</section>
+
+<section id="groups">
+  <h3>Session Groups <span class="badge badge-new">NEW</span></h3>
+  <p>Folders for organizing sessions — supports nested hierarchy.</p>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/groups</span></div><p class="desc">List top-level groups.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/groups</span></div><p class="desc">Create group. Fields: <code>name</code>, <code>description</code>, <code>color</code>, <code>parent_id</code>, <code>sort_order</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/groups/{id}</span></div><p class="desc">Update group fields.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/groups/{id}</span></div><p class="desc">Delete group (children moved up).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/groups/sessions/{sessionId}/groups/{groupId}</span></div><p class="desc">Add session to group.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/groups/sessions/{sessionId}/groups/{groupId}</span></div><p class="desc">Remove session from group.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/groups/{id}/sessions</span></div><p class="desc">Get sessions in a group.</p></div>
+</section>
+
+<section id="activity-feed">
+  <h3>Activity Feed <span class="badge badge-new">NEW</span></h3>
+  <p>Track every action across sessions and projects — who did what, when.</p>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/activity/sessions/{sessionId}</span></div><p class="desc">Activity for a session. Query: <code>?limit=50&amp;offset=0</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/activity/projects/{projectId}</span></div><p class="desc">Activity for a project.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/activity/me</span></div><p class="desc">Your recent activity across all sessions.</p></div>
+
+  <div class="code-block">
+    <div class="code-header"><span>Example — Activity event structure</span></div>
+    <pre>{
+  <span class="hdr">"id"</span>: <span class="num">42</span>,
+  <span class="hdr">"event_type"</span>: <span class="str">"comment.added"</span>,
+  <span class="hdr">"actor_name"</span>: <span class="str">"aisha"</span>,
+  <span class="hdr">"entity_type"</span>: <span class="str">"comment"</span>,
+  <span class="hdr">"entity_id"</span>: <span class="num">108</span>,
+  <span class="hdr">"detail"</span>: <span class="str">"Kick and bass clash at the drop"</span>,
+  <span class="hdr">"session_id"</span>: <span class="num">5</span>,
+  <span class="hdr">"created_at"</span>: <span class="str">"2026-08-18T14:23:05+00:00"</span>
+}</pre>
+  </div>
+</section>
+
+<section id="analytics">
+  <h3>Analytics <span class="badge badge-new">NEW</span></h3>
+  <p>Professional metrics and insights for sessions and users.</p>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/analytics/sessions/{sessionId}</span></div><p class="desc">Session stats: versions, comments, approvals, access count, duration, turnaround time.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/analytics/me</span></div><p class="desc">Your aggregate stats: total sessions, versions, comments, status distribution.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/analytics/me/activity</span></div><p class="desc">Activity summary for last N days. Query: <code>?days=7</code>.</p></div>
+
+  <div class="code-block">
+    <div class="code-header"><span>Example — Session analytics</span></div>
+    <pre>{
+  <span class="hdr">"session_id"</span>: <span class="num">5</span>,
+  <span class="hdr">"name"</span>: <span class="str">"Neon Warehouse v12"</span>,
+  <span class="hdr">"status"</span>: <span class="str">"in_review"</span>,
+  <span class="hdr">"total_versions"</span>: <span class="num">3</span>,
+  <span class="hdr">"version_statuses"</span>: {<span class="str">"in_review"</span>: <span class="num">2</span>, <span class="str">"approved"</span>: <span class="num">1</span>},
+  <span class="hdr">"total_comments"</span>: <span class="num">7</span>,
+  <span class="hdr">"unresolved_comments"</span>: <span class="num">2</span>,
+  <span class="hdr">"access_count"</span>: <span class="num">23</span>,
+  <span class="hdr">"duration_days"</span>: <span class="num">12</span>,
+  <span class="hdr">"first_version_hours"</span>: <span class="num">4.2</span>
+}</pre>
+  </div>
+</section>
+
+<section id="webhook-mgmt">
+  <h3>Webhook Management <span class="badge badge-new">NEW</span></h3>
+  <p>Notify external services (Slack, Discord, CI/CD, etc.) when events happen.</p>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/webhooks</span></div><p class="desc">List your webhooks.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/webhooks</span></div><p class="desc">Create webhook. Fields: <code>url</code>, <code>events</code> (comma-separated or <code>*</code>), <code>secret</code> (HMAC signing).</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-patch">PATCH</span><span class="path">/api/webhooks/{id}</span></div><p class="desc">Update webhook. Fields: <code>url</code>, <code>events</code>, <code>is_active</code>.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-delete">DEL</span><span class="path">/api/webhooks/{id}</span></div><p class="desc">Delete webhook.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-post">POST</span><span class="path">/api/webhooks/{id}/test</span></div><p class="desc">Send test event to verify endpoint.</p></div>
+  <div class="endpoint-card"><div class="method-path"><span class="method-tag method-get">GET</span><span class="path">/api/webhooks/{id}/deliveries</span></div><p class="desc">Delivery history with status codes and timing. Query: <code>?limit=20</code>.</p></div>
+
+  <div class="code-block">
+    <div class="code-header"><span>Example — Create a Slack webhook</span></div>
+    <pre><span class="fn">curl</span> <span class="str">-X POST https://soundhub-backend.onrender.com/api/webhooks</span> \
+     <span class="hdr">-H</span> <span class="str">"Authorization: Bearer $TOKEN"</span> \
+     <span class="hdr">-H</span> <span class="str">"Content-Type: application/json"</span> \
+     <span class="hdr">-d</span> <span class="str">'{
+  "url": "https://hooks.slack.com/services/T.../B.../xxx",
+  "events": "session.created,comment.added,approval.submitted",
+  "secret": "your-hmac-secret"
+}'</span></pre>
+  </div>
+
+  <div class="info-box note"><span class="icon">🔐</span><div><strong>Webhook signatures:</strong> If a <code>secret</code> is set, each delivery includes an <code>X-Signature</code> header with HMAC-SHA256 of the JSON payload. Verify it to ensure the webhook came from SoundHub.</div></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -644,13 +672,12 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section id="openapi">
   <h3>Interactive API Explorer</h3>
-  <p>For a full interactive reference with "Try it out" buttons:</p>
   <div class="endpoint-card" style="text-align:center;padding:28px;">
     <p style="margin-bottom:14px;font-size:15px;color:#374151;">Explore all endpoints interactively:</p>
     <a href="/redoc" style="display:inline-block;padding:9px 22px;background:var(--accent);color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13.5px;">Open ReDoc →</a>
     <a href="/docs/raw" style="display:inline-block;padding:9px 22px;background:#374151;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13.5px;margin-left:8px;">Open Swagger UI →</a>
   </div>
-  <p style="margin-top:12px;"><code>GET /openapi.json</code> returns the full OpenAPI 3.1 schema for code generation.</p>
+  <p style="margin-top:12px;"><code>GET /openapi.json</code> returns the full OpenAPI 3.1 schema.</p>
 </section>
 
 </div>
