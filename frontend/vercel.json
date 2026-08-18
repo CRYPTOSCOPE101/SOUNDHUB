@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://soundhub-backend.onrender.com/api/$1" },
     { "source": "/((?!api/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|mjs|woff2?|ttf|eot|pdf|mp4|webm|map|txt)).*)", "destination": "/index.html" }
   ]
 }
