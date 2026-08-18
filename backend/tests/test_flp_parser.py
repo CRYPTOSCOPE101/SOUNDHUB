@@ -15,7 +15,7 @@ from app.services.daw.flp_parser import (  # noqa: E402
     _vst_plugin_name,
     parse_flp,
 )
-from app.services.daw.fixtures import _flp_ev, _flp_note, _flp_text, make_flp  # noqa: E402
+from app.services.daw.fixtures import _flp_ev, _flp_text, make_flp  # noqa: E402
 
 
 def _chunk(chunk_id: bytes, body: bytes) -> bytes:

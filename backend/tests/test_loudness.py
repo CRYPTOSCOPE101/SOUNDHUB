@@ -1,7 +1,5 @@
 import math
 import struct
-import wave
-from io import BytesIO
 from pathlib import Path
 import sys
 
