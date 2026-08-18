@@ -10,7 +10,9 @@ services:
     rootDir: backend
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # Seed is idempotent (skips existing data), so the deployed site always
+    # has the demo user (demo/demo123) + Neon Dreams project on first boot.
+    startCommand: sh -c "python -m scripts.seed_demo && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/health
     envVars:
       - key: SOUNDHUB_FRONTEND_URL
