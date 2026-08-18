@@ -13,6 +13,9 @@ frontend/dist/
 .DS_Store
 *.tsbuildinfo
 
+# VST3 (JUCE) build artifacts
+vst3/build/
+
 # personal conversation log — keep local
 CONVERSATION_LOG.md
 

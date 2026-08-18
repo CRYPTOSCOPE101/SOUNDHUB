@@ -36,7 +36,11 @@ const BRIDGE = [
   { cmd: "snd push Track_v12.als", desc: "Fast push — project + parsed DAW metadata as one versioned commit." },
   { cmd: "snd push Track_v12.als --audio master.wav --stems stems/", desc: "Full review push — opens a public review session with gapless A/B and structured stems." },
   { cmd: "snd push Track_v12.als --project artist-track --branch review/v12 --round 3", desc: "Target a project/branch/round — branch is auto-created on first push." },
-  { cmd: "snd serve", desc: "Local JSON bridge on :8765 for the Max for Live push button and automation." },
+  { cmd: "snd status", desc: "Login state, agent cache, whether the local SoundHub Agent is running." },
+  { cmd: "snd review --session neon --open", desc: "List your review sessions, or print/open one session's share link." },
+  { cmd: "snd assets search --q \"dark bass\" --bpm-min 126", desc: "Search the marketplace catalog from the terminal." },
+  { cmd: "snd assets install 2 --dir ~/SoundHub", desc: "Download an asset into the Agent cache (or your folder) — license + sha256 shown." },
+  { cmd: "snd agent", desc: "Run the localhost SoundHub Agent on :8765 — the VST3 companion panels (Cubase / FL Studio) and the M4L fallback talk to it." },
   { cmd: "snd login --user demo --password demo123", desc: "Save the API URL + token once; needed before any push." },
 ];
 
@@ -52,14 +56,15 @@ const LIMITS = [
   "Smart contracts are not professionally audited yet — testnet only.",
   "DAW files are reverse-engineered formats; parser coverage is best-effort (.flp reads header/tempo/channels for now).",
   "Gapless A/B needs at least two versions — the first --audio push opens the session.",
-  "The M4L device needs `snd serve` running locally (Live blocks shell; the sidecar is planned).",
+  "The M4L device needs the SoundHub Agent (`snd agent`) running locally on Max < 8.5 (Live blocks shell; the native sidecar covers 8.5+).",
 ];
 
 const DOCUMENTS = [
   { name: "Whitepaper (PDF)", desc: "18-page technical deep dive — architecture, formulas, tokenomics, governance.", href: "/Whitepaper.pdf", external: true },
   { name: "Litepaper", desc: "The product in one page: problem, solution, layers, roadmap.", href: "https://github.com/soundXlab/SoundHub/blob/main/LITEPAPER.md", external: true },
   { name: "README", desc: "Quick start, API overview, DAW engine, releases.", href: "https://github.com/soundXlab/SoundHub/blob/main/README.md", external: true },
-  { name: "Architecture", desc: "How the Max for Live layer, backend and settlement fit together.", href: "https://github.com/soundXlab/SoundHub/blob/main/ARCHITECTURE.md", external: true },
+  { name: "Architecture", desc: "How the Max for Live layer, the VST3 + Agent path, backend and settlement fit together.", href: "https://github.com/soundXlab/SoundHub/blob/main/ARCHITECTURE.md", external: true },
+  { name: "VST3 + Agent design", desc: "Cubase & FL Studio — VST3 companion, SoundHub Agent, CLI and the honest smart-diff boundary.", href: "https://github.com/soundXlab/SoundHub/blob/main/docs/daw-integration-vst3.md", external: true },
   { name: "Changelog", desc: "Release notes — what changed, how to test, known limits, release checklist.", href: "https://github.com/soundXlab/SoundHub/blob/main/CHANGELOG.md", external: true },
   { name: "Max for Live device", desc: "Install, bridge contract, push button states, troubleshooting.", href: "https://github.com/soundXlab/SoundHub/blob/main/m4l/README.md", external: true },
 ];
@@ -108,8 +113,9 @@ export default function DocsPage() {
         <p className="docs-lead">
           `snd` is a small CLI that turns a DAW project into a versioned commit —
           and with a master render, into a public review session with gapless A/B.
-          The same pipeline powers the Max for Live push button through the
-          localhost bridge (`snd serve`).
+          The same pipeline powers the panels through the localhost
+          <strong> SoundHub Agent</strong> (`snd agent`): the VST3 companion for
+          Cubase / FL Studio, the Max for Live push button, and automation.
         </p>
         <div className="docs-cmd-list">
           {BRIDGE.map((c) => (

@@ -250,7 +250,7 @@ Quick end-to-end check (without opening Live):
 cd backend
 ./snd login --user demo --password demo123      # 1. auth
 ./snd serve &                                    # 2. bridge on :8765
-curl -s http://127.0.0.1:8765/health             # 3. {"ok": true, "service": "snd-bridge"}
+curl -s http://127.0.0.1:8765/health             # 3. {"ok": true, "service": "snd-agent"}
 curl -s -X POST http://127.0.0.1:8765/push \
   -H 'Content-Type: application/json' \
   -d '{"target": "/path/to/Track.als", "project": "smoke", "branch": "main"}'

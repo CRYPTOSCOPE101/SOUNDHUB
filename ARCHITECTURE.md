@@ -1,13 +1,47 @@
-# SoundHub inside Ableton Live — integration architecture
+# SoundHub inside your DAW — integration architecture
 
-> **Positioning:** *SoundHub inside Ableton = the fastest way to buy finished
-> sound assets while you're actually making music.* The marketplace stops
-> being a website you visit and becomes a panel that lives in the producer's
-> workflow. Purchase becomes a 1–2 click action at the moment of intent.
+> **Positioning:** *SoundHub inside the DAW = the fastest way to buy finished
+> sound assets and push versions while you're actually making music.* The
+> marketplace and the review loop stop being websites you visit and become a
+> panel that lives in the producer's workflow.
 
-This document describes the architecture for embedding SoundHub into
-Ableton Live (and, later, FL Studio / Cubase / REAPER). The first working
-piece is the **Max for Live prototype** in `m4l/`.
+This document describes the architecture for embedding SoundHub into DAWs:
+
+- **Ableton Live** — deep integration via **Max for Live** (Live API: tempo,
+  key, tracks, devices, browser). First working piece: `m4l/`.
+- **Cubase / FL Studio / any VST3 host** — **VST3 companion panel + local
+  SoundHub Agent + `snd` CLI** (see
+  [Cubase & FL Studio — VST3 companion + Agent + CLI](docs/daw-integration-vst3.md)).
+  The shared JUCE client lives in `vst3/`; the Agent is `snd agent`.
+- **REAPER** — ReaScript panel (`reaper/`) over the same `snd` pipeline.
+
+## Cubase & FL Studio — VST3 companion + Agent (summary)
+
+VST3 does not expose `.cpr` / `.flp` project internals the way the Live API
+does, so for Cubase/FL the plugin is a **companion panel**, not a deep
+integration. One JUCE VST3 (`vst3/`) works in Cubase, FL Studio and every
+other VST3 host. It talks to the **SoundHub Agent** (`snd agent`, a
+localhost service on `127.0.0.1:8765`) which holds the token, runs the
+`snd push` pipeline, proxies the catalog, caches downloaded assets and
+opens review URLs in the browser.
+
+```
+Cubase / FL Studio (SoundHub.vst3)          SoundHub Agent (snd agent)
+──────────────────────────────              ──────────────────────────
+status  ──► GET /status                     user · cache stats
+push    ──► POST /push                      full snd push pipeline (atomic)
+comments──► GET /comments?token=…           open review comments (markdown)
+reviews ──► GET /reviews                    sessions + review_url
+catalog ──► GET /assets?q=&bpm_min=…        catalog search
+install ──► POST /assets/{id}/install       download → ~/.soundhub/cache
+open    ──► POST /open                      launch the review in the browser
+```
+
+Smart diff for Cubase/FL is built from the **exported manifest** (`snd push`
+writes `SOUNDHUB-MANIFEST.json`: tempo, tracks, plugins + settings, renders,
+stems, notes) — never from promising to parse the closed project format
+inside the host. Details and the capability table:
+[`docs/daw-integration-vst3.md`](docs/daw-integration-vst3.md).
 
 ## Why Max for Live (not a VST)
 
@@ -121,7 +155,7 @@ The user sees **Buy & Load** — not `approve`, not gas, not RPC. Details:
 | 5 | Token gating: issue tokens only after on-chain purchase check (buyer == wallet, escrowed > 0) | ⏳ next |
 | 6 | One-click insert into a device/Simpler via `live.object` | ⏳ |
 | 7 | WalletConnect signing inside M4L / relayer | ⏳ |
-| 8 | FL Studio / Cubase / REAPER equivalents | 🚧 prototypes: `feat/flstudio-integration` (Python MIDI scripting + file bridge), `feat/cubase-integration` (MIDI Remote + web panel); REAPER (ReaScript) ⏳ |
+| 8 | FL Studio / Cubase / REAPER equivalents | 🚧 VST3 companion (`vst3/`, JUCE) + SoundHub Agent (`snd agent`) for Cubase/FL; REAPER (ReaScript) ⏳ |
 
 ## Constraints
 

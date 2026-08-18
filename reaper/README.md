@@ -22,13 +22,13 @@ existing `snd` CLI / bridge.
    mode); bind keys or add to a toolbar:
    - `soundhub_panel.lua` — **push** current project
    - `soundhub_panel.lua comments` — **load open comments**
-3. Install the CLI + start the local bridge once (the push path uses the
-   same `snd push` pipeline the M4L sidecar uses):
+3. Install the CLI + start the local **SoundHub Agent** once (the push path
+   uses the same `snd push` pipeline the M4L sidecar uses):
 
    ```bash
    cd backend
    ./snd login --user demo --password demo123     # once
-   ./snd serve                                    # localhost:8765 (bridge for comments)
+   ./snd agent                                    # localhost:8765 (alias: `snd serve`)
    ```
 
 ## Configure

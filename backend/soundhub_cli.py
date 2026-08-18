@@ -154,7 +154,11 @@ def _clock(ts: float) -> str:
 def cmd_login(args, http=None) -> int:
     url = f"{api_base(args)}/api/auth/login"
     resp = http_json("POST", url, json_body={"username": args.user, "password": args.password}, http=http)
-    save_config({"api": api_base(args), "token": resp["access_token"]})
+    save_config({
+        "api": api_base(args),
+        "token": resp["access_token"],
+        "user": resp.get("user", {}).get("username", args.user),
+    })
     print(f"✓ logged in as {resp['user']['username']} — token saved to {CONFIG_PATH}")
     return 0
 

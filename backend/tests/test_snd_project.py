@@ -869,7 +869,7 @@ def test_snd_serve_bridge_health_and_push(tmp_path, monkeypatch):
     try:
         # health
         with urllib.request.urlopen(f"{base}/health", timeout=5) as r:
-            assert json.loads(r.read()) == {"ok": True, "service": "snd-bridge"}
+            assert json.loads(r.read()) == {"ok": True, "service": "snd-agent"}
 
         # push — exactly the JSON the M4L device posts
         code, res = _post(f"{base}/push", json.dumps({

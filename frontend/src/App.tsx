@@ -49,7 +49,7 @@ const CUBASE = {
   ],
   formats: [".cpr", ".cpr.backup", ".cprx"],
   next:
-    "A native Cubase panel (same pattern as the Max for Live device) is the next step — for now the CLI bridge covers push, open requests and the locator helper.",
+    "A native VST3 companion panel (JUCE, shared with FL Studio) is the next step: it talks to the local SoundHub Agent (`snd agent`) for push, review, comments and asset install — right inside Cubase.",
 };
 
 const FL_STUDIO = {
@@ -80,7 +80,7 @@ const FL_STUDIO = {
   ],
   formats: [".flp"],
   next:
-    "Deep event parsing (per-channel plugins, patterns) is the next step — today we read the header, tempo and channel structure from the binary.",
+    "A native VST3 companion panel (JUCE, shared with Cubase) is the next step: catalog, push, review and comments through the local SoundHub Agent (`snd agent`) — right inside FL Studio. Deep event parsing is additive, not a dependency.",
 };
 
 

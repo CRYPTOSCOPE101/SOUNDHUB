@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""snd — push a complete DAW project to SoundHub.
+"""snd — the SoundHub command shell + localhost Agent.
 
 `snd push <project-dir>` scans the folder for DAW project files (.als/.rpp/
 .flp/.cpr), parses them locally (tracks, instruments, plugins AND their
@@ -12,11 +12,30 @@ extracted DAW metadata). With `--audio <master.wav> --stems <dir>` the push
 also opens a review version (gapless A/B + stems) and returns the review URL.
 
     snd login --user producer --password '…'
+    snd status                                  # login state + agent cache
     snd push ~/Projects/Neon --project "Neon Warehouse" --message "v12 bounce"
-    snd push ~/Projects/Neon --include-media   # also upload audio/media files
-    snd push ./Track_v12.als --audio ./master.wav --stems ./stems \
-        --project "artist-track" --branch review/v12 --round 3 \
-        --message "Round 3 candidate" --open --json
+    snd review --session neon --open            # list sessions / open a review
+    snd assets search --q "dark bass" --bpm-min 126
+    snd assets install 2 --dir ~/SoundHub/      # download asset to the cache
+    snd agent                                   # localhost Agent (127.0.0.1:8765)
+
+`snd agent` (alias: `snd serve`) runs the **SoundHub Agent**: a localhost
+JSON service on 127.0.0.1 that holds the token, talks to the API, runs the
+same push pipeline, downloads/caches assets and opens review URLs in the
+browser — the single integration point for the JUCE VST3 companion panels
+(Cubase, FL Studio and other VST3 DAWs), the Max for Live device and the
+REAPER ReaScript panel. Endpoints:
+
+    GET  /health                          → {"ok": true, "service": "snd-agent"}
+    GET  /status                          → user, api, cache stats
+    POST /push                            → snd push pipeline (JSON contract)
+    GET  /comments?token=…&format=…       → open review comments (markdown/csv)
+    GET  /reviews                         → the user's review sessions + links
+    GET  /assets?q=&genre=&bpm_min=…      → marketplace catalog search
+    GET  /assets/{id}/token               → short-lived download token
+    GET  /assets/{id}/download64?token=   → text-safe (base64) asset payload
+    POST /assets/{id}/install {"dir": …}  → download asset into the cache
+    POST /open {"url": …}                 → open a review URL in the browser
 
 Preflight before upload: file existence, size, extension, .als readability,
 and — in review mode — at least one listenable audio file. The upload itself
@@ -35,17 +54,22 @@ SOUNDHUB_TOKEN, --api/--token).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
+import urllib.parse
+import urllib.request
 import uuid
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from soundhub_cli import (
+    CONFIG_PATH,
     CliError,
     api_base,
     cmd_login,
+    find_session,
     http_json,
     load_config,
     resolve_token,
@@ -64,6 +88,70 @@ SKIP_NAMES = {".ds_store", "thumbs.db", ".git", ".svn", "__pycache__"}
 ALLOWED_AUDIO = {"wav", "mp3", "flac", "ogg", "aif", "aiff", "m4a"}
 ALLOWED_STEM_AUDIO = {"wav", "mp3", "flac", "aif", "aiff", "m4a", "ogg"}
 
+AGENT_HOST = "127.0.0.1"
+AGENT_PORT = 8765
+
+
+def _agent_cache_dir() -> str:
+    """Where the Agent stores downloaded assets (~/.soundhub/cache)."""
+    return os.path.join(os.path.expanduser("~"), ".soundhub", "cache")
+
+
+def _cached_asset_count() -> int:
+    cache = _agent_cache_dir()
+    try:
+        return len([f for f in os.listdir(cache) if os.path.isfile(os.path.join(cache, f))])
+    except OSError:
+        return 0
+
+
+def _frontend_url() -> str:
+    return os.environ.get("SOUNDHUB_FRONTEND_URL", "http://localhost:5173").rstrip("/")
+
+
+def _raw_get(url: str, *, token: str, http=None) -> bytes:
+    """Fetch raw bytes (asset download). `http` is injectable for tests."""
+    if http is not None:
+        status, body = http("GET", url, token=token)
+        if status >= 400:
+            raise CliError(f"HTTP {status}: {body.decode(errors='replace')[:300]}")
+        return body
+    headers = {"Accept": "*/*"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return resp.read()
+
+
+def agent_install_asset(api: str, token: str, listing_id: int, dest_dir: str | None = None, http=None) -> dict:
+    """Download an asset through the Agent's cache (VST3 panel / CLI path).
+
+    Issues a short-lived download token, fetches the payload, stores it under
+    ~/.soundhub/cache (or `dest_dir`) as `<listing_id>-<filename>` and returns
+    the local path + license info. The plugin panel asks the Agent to install
+    and then loads the file from disk itself — the Agent never holds DAW state.
+    """
+    info = http_json("GET", f"{api}/api/assets/{listing_id}/token", token=token, http=http)
+    dl_token = info.get("token") or ""
+    if not dl_token:
+        raise CliError("Asset token endpoint returned no token")
+    data = _raw_get(f"{api}/api/assets/{listing_id}/download?token={dl_token}", token=token, http=http)
+    filename = info.get("filename") or f"asset-{listing_id}.bin"
+    dest = os.path.abspath(dest_dir) if dest_dir else _agent_cache_dir()
+    os.makedirs(dest, exist_ok=True)
+    path = os.path.join(dest, f"{listing_id}-{filename}")
+    with open(path, "wb") as f:
+        f.write(data)
+    return {
+        "ok": True,
+        "listing_id": listing_id,
+        "filename": filename,
+        "cached_path": path,
+        "license": info.get("license", ""),
+        "size": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
+    }
 
 def find_project_files(root: str, include_media: bool) -> list[str]:
     out: list[str] = []
@@ -341,110 +429,216 @@ def cmd_push(args, http=None) -> int:
     return 0
 
 
-def start_bridge(*, api: str, token: str, host: str = "127.0.0.1", port: int = 8765,
-                 http=None) -> ThreadingHTTPServer:
-    """Create (but don't serve) the localhost push bridge.
+def start_bridge(*, api: str, token: str, host: str = AGENT_HOST, port: int = AGENT_PORT,
+                 http=None, user: str = "", frontend: str = "") -> ThreadingHTTPServer:
+    """Create (but don't serve) the localhost SoundHub Agent.
 
     Separate from `cmd_serve` so tests can start it with port=0 (OS-assigned)
     and read `server.server_address[1]` instead of racing for a fixed port.
+    The Agent holds the token and proxies to the backend, so the VST3
+    companion panels / M4L device / ReaScript never see the API URL or the
+    token — they only ever talk to 127.0.0.1.
     """
-    import json as _json
+    frontend = frontend or _frontend_url()
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a):  # keep the console quiet
             pass
 
         def _send(self, code: int, payload: dict) -> None:
-            data = _json.dumps(payload, ensure_ascii=False).encode()
+            data = json.dumps(payload, ensure_ascii=False).encode()
             self.send_response(code)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
 
+        def _bad(self, msg: str, code: int = 400) -> None:
+            self._send(code, {"ok": False, "error": msg})
+
+        # ---- GET routes ----
+
+        def _proxy_catalog(self, qs: dict) -> None:
+            allowed = ("q", "genre", "bpm_min", "bpm_max", "key", "license", "format", "plugin", "limit")
+            params = {k: v[0] for k, v in qs.items() if k in allowed and v}
+            query = urllib.parse.urlencode(params)
+            try:
+                items = http_json("GET", f"{api}/api/assets?{query}", token=token, http=http)
+            except CliError as exc:
+                self._bad(str(exc), 502)
+                return
+            self._send(200, {"ok": True, "count": len(items), "items": items})
+
+        def _asset_route(self, parts: list[str], qs: dict) -> None:
+            # parts like ["", "assets", "<id>", "token"]
+            try:
+                listing_id = int(parts[2])
+            except (IndexError, ValueError):
+                self._bad("asset id must be an integer")
+                return
+            kind = parts[3] if len(parts) > 3 else ""
+            try:
+                if kind == "token":
+                    info = dict(http_json("GET", f"{api}/api/assets/{listing_id}/token", token=token, http=http))
+                    info["ok"] = True
+                    self._send(200, info)
+                elif kind == "download64":
+                    dl = (qs.get("token") or [""])[0]
+                    if not dl:
+                        self._bad("missing ?token=… (issue one via /assets/{id}/token)")
+                        return
+                    info = dict(http_json("GET", f"{api}/api/assets/{listing_id}/download64?token={dl}", token=token, http=http))
+                    info["ok"] = True
+                    self._send(200, info)
+                else:
+                    self._bad("unknown asset action — use /assets/{id}/token or /assets/{id}/download64", 404)
+            except CliError as exc:
+                self._bad(str(exc), 502)
+
+        def _reviews(self) -> None:
+            try:
+                rows = http_json("GET", f"{api}/api/sessions", token=token, http=http)
+            except CliError as exc:
+                self._bad(str(exc), 502)
+                return
+            for r in rows:
+                tok = r.get("share_token") or ""
+                r["review_url"] = f"{frontend}/r/{tok}" if tok else ""
+            self._send(200, {"ok": True, "count": len(rows), "items": rows})
+
+        def _comments(self, qs: dict) -> None:
+            # GET /comments?token=<share_token>&format=markdown|csv — DAW-side
+            # panels (VST3, REAPER ReaScript, M4L fallback) pull open review
+            # comments through the same local Agent.
+            tok = (qs.get("token") or [""])[0]
+            if not tok:
+                self._bad("missing share token (?token=…)")
+                return
+            fmt = (qs.get("format") or ["markdown"])[0]
+            if fmt not in ("markdown", "csv"):
+                self._bad("format must be markdown or csv")
+                return
+            try:
+                url = f"{api}/api/sessions/public/{tok}/requests/export?format={fmt}"
+                if http is not None:
+                    # test double: returns (status, body_bytes)
+                    status, body = http("GET", url, token=None)
+                    if status >= 400:
+                        raise CliError(f"HTTP {status}: {body.decode(errors='replace')[:300]}")
+                    text = body.decode(errors="replace")
+                else:
+                    with urllib.request.urlopen(url, timeout=30) as resp:
+                        text = resp.read().decode(errors="replace")
+            except CliError as exc:
+                self._bad(str(exc), 404)
+                return
+            except OSError as exc:
+                self._bad(str(exc), 404)
+                return
+            data = text.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
         def do_GET(self):
-            path = self.path.rstrip("/")
+            from urllib.parse import parse_qs, urlparse
+
+            path = self.path.split("?", 1)[0].rstrip("/")
+            qs = parse_qs(urlparse(self.path).query)
             if path == "/health":
-                self._send(200, {"ok": True, "service": "snd-bridge"})
-            elif path.startswith("/comments"):
-                # GET /comments?token=<share_token>&format=markdown|csv — the
-                # DAW-side panel (REAPER ReaScript, M4L fallback) pulls open
-                # review comments through the same local bridge.
-                from urllib.parse import parse_qs, urlparse
-
-                q = parse_qs(urlparse(self.path).query)
-                token = (q.get("token") or [""])[0]
-                if not token:
-                    self._send(400, {"ok": False, "error": "missing share token (?token=…)"})
-                    return
-                fmt = (q.get("format") or ["markdown"])[0]
-                if fmt not in ("markdown", "csv"):
-                    self._send(400, {"ok": False, "error": "format must be markdown or csv"})
-                    return
-                try:
-                    import urllib.request
-
-                    url = f"{api}/api/sessions/public/{token}/requests/export?format={fmt}"
-                    if http is not None:
-                        # test double: returns (status, body_bytes)
-                        status, body = http("GET", url, token=None)
-                        if status >= 400:
-                            raise CliError(f"HTTP {status}: {body.decode(errors='replace')[:300]}")
-                        text = body.decode(errors="replace")
-                    else:
-                        with urllib.request.urlopen(url, timeout=30) as resp:
-                            text = resp.read().decode(errors="replace")
-                except CliError as exc:
-                    self._send(404, {"ok": False, "error": str(exc)})
-                    return
-                except OSError as exc:
-                    self._send(404, {"ok": False, "error": str(exc)})
-                    return
-                data = text.encode()
-                self.send_response(200)
-                self.send_header("Content-Type", "text/plain; charset=utf-8")
-                self.send_header("Content-Length", str(len(data)))
-                self.end_headers()
-                self.wfile.write(data)
+                self._send(200, {"ok": True, "service": "snd-agent"})
+            elif path == "/status":
+                self._send(
+                    200,
+                    {
+                        "ok": True,
+                        "service": "snd-agent",
+                        "api": api,
+                        "user": user or "",
+                        "cache_dir": _agent_cache_dir(),
+                        "cached_assets": _cached_asset_count(),
+                    },
+                )
+            elif path == "/assets":
+                self._proxy_catalog(qs)
+            elif path.startswith("/assets/"):
+                self._asset_route(path.split("/"), qs)
+            elif path == "/reviews":
+                self._reviews()
+            elif path == "/comments":
+                self._comments(qs)
             else:
                 self._send(404, {"ok": False, "error": "not found"})
 
         def do_POST(self):
-            if not self.path.rstrip("/").endswith("/push"):
-                self._send(404, {"ok": False, "error": "not found"})
-                return
+            path = self.path.split("?", 1)[0].rstrip("/")
             try:
                 length = int(self.headers.get("Content-Length") or 0)
-                opts = _json.loads(self.rfile.read(length) or b"{}")
+                raw = self.rfile.read(length) if length else b""
+                opts = json.loads(raw or b"{}")
             except ValueError as exc:
                 self._send(400, {"ok": False, "error": f"bad JSON body: {exc}"})
+                return
+
+            if path == "/open":
+                url = (opts.get("url") or "").strip()
+                if not url.startswith(("http://", "https://")):
+                    self._bad("url must be http(s)")
+                    return
+                webbrowser.open(url)
+                self._send(200, {"ok": True, "opened": url})
+                return
+
+            if path.startswith("/assets/") and path.endswith("/install"):
+                parts = path.split("/")
+                try:
+                    listing_id = int(parts[2])
+                except (IndexError, ValueError):
+                    self._bad("asset id must be an integer")
+                    return
+                try:
+                    result = agent_install_asset(api, token, listing_id, opts.get("dir"), http=http)
+                    self._send(200, result)
+                except CliError as exc:
+                    self._bad(str(exc))
+                except OSError as exc:
+                    self._bad(str(exc))
+                return
+
+            if not path.endswith("/push"):
+                self._send(404, {"ok": False, "error": "not found"})
                 return
             try:
                 result = run_push(opts, api=api, token=token, http=http)
                 self._send(200, result)
             except CliError as exc:
-                self._send(400, {"ok": False, "error": str(exc)})
+                self._bad(str(exc))
             except OSError as exc:
-                self._send(400, {"ok": False, "error": str(exc)})
+                self._bad(str(exc))
 
     return ThreadingHTTPServer((host, port), Handler)
 
 
 def cmd_serve(args, http=None) -> int:
-    """Run a localhost JSON bridge the Max for Live device calls for pushes.
+    """Run the localhost SoundHub Agent.
 
-    M4L can't run `shell` (blocked inside Live) and its `httprequest` mangles
-    binary multipart, so the device POSTs a small JSON payload here and this
-    tiny stdlib server runs the same `snd push` pipeline (preflight → atomic
-    upload → review) and returns the stable contract.
+    The VST3 companion panels (Cubase / FL Studio / other VST3 DAWs), the Max
+    for Live device and the REAPER ReaScript talk to this local service — it
+    holds the token, runs the `snd push` pipeline (preflight → atomic upload →
+    review), proxies the catalog, caches assets and opens review URLs in the
+    browser. Only ever listens on 127.0.0.1.
     """
     cfg = load_config()
     token = resolve_token(args, cfg)
     api = api_base(args)
+    frontend = getattr(args, "frontend", None) or _frontend_url()
 
-    srv = start_bridge(api=api, token=token, host=args.host, port=args.port, http=http)
+    srv = start_bridge(api=api, token=token, host=args.host, port=args.port,
+                       http=http, user=cfg.get("user", ""), frontend=frontend)
     port = srv.server_address[1]
-    print(f"✓ snd bridge listening on http://{args.host}:{port} — point the M4L device at it (bridge message)", flush=True)
+    print(f"✓ SoundHub Agent on http://{args.host}:{port} — point the VST3 panel / M4L device at it", flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
@@ -454,8 +648,97 @@ def cmd_serve(args, http=None) -> int:
     return 0
 
 
+def cmd_status(args, http=None) -> int:
+    """`snd status` — login state, agent cache, whether the Agent is running."""
+    cfg = load_config()
+    api = api_base(args)
+    token = cfg.get("token", "")
+    print(f"SoundHub · api: {api}")
+    print(f"  user:      {cfg.get('user') or '(not logged in — run `snd login`)'}")
+    print(f"  token:     {'saved → ' + CONFIG_PATH if token else 'missing — run `snd login`'}")
+    print(f"  cache:     {_agent_cache_dir()} ({_cached_asset_count()} asset(s))")
+    running = False
+    try:
+        with urllib.request.urlopen(f"http://{AGENT_HOST}:{AGENT_PORT}/health", timeout=2) as r:
+            running = r.status == 200
+    except OSError:
+        pass
+    print(
+        f"  agent:     {'running on http://' + AGENT_HOST + ':' + str(AGENT_PORT)}"
+        if running
+        else f"  agent:     not running — `snd agent` starts it (the VST3 panel needs it)"
+    )
+    return 0
+
+
+def cmd_review(args, http=None) -> int:
+    """`snd review` — list the user's review sessions, or open one by name."""
+    cfg = load_config()
+    token = resolve_token(args, cfg)
+    api = api_base(args)
+    if args.session:
+        session = find_session(http, api, token, args.session)
+        url = _frontend_url() + "/r/" + (session.get("share_token") or "") if session.get("share_token") else ""
+        print(f"{session.get('name')} · {session.get('status')} · {session.get('version_count', 0)} version(s)")
+        if url:
+            print(f"  review: {url}")
+            if args.open:
+                webbrowser.open(url)
+        else:
+            print("  (no share link on this session)")
+        return 0
+    rows = http_json("GET", f"{api}/api/sessions", token=token, http=http)
+    if not rows:
+        print("No review sessions yet — `snd push --audio master.wav` opens one.")
+        return 0
+    print(f"{'ID':>4}  {'NAME':<28} {'STATUS':<13} {'VERSIONS':>8}  REVIEW LINK")
+    for s in rows:
+        tok = s.get("share_token") or ""
+        url = f"{_frontend_url()}/r/{tok}" if tok else "—"
+        print(f"{s.get('id', 0):>4}  {(s.get('name') or '')[:28]:<28} {(s.get('status') or ''):<13} {s.get('version_count', 0):>8}  {url}")
+    return 0
+
+
+def cmd_assets_search(args, http=None) -> int:
+    """`snd assets search` — search the marketplace catalog."""
+    cfg = load_config()
+    token = resolve_token(args, cfg)
+    api = api_base(args)
+    params = {
+        "q": args.q, "genre": args.genre, "bpm_min": args.bpm_min, "bpm_max": args.bpm_max,
+        "key": args.key, "license": args.license, "format": args.format, "plugin": args.plugin,
+        "limit": args.limit,
+    }
+    qs = urllib.parse.urlencode({k: v for k, v in params.items() if v not in (None, "")})
+    rows = http_json("GET", f"{api}/api/assets?{qs}", token=token, http=http)
+    if not rows:
+        print("No matching assets — try fewer filters.")
+        return 0
+    print(f"{'ID':>3}  {'NAME':<34} {'FMT':<6} {'BPM':<10} {'KEY':<10} {'LICENSE':<10} {'SND':>6}")
+    for a in rows:
+        bpm = a.get("bpm")
+        bpm_s = f"{bpm[0]}–{bpm[1]}" if bpm else "—"
+        print(
+            f"{a.get('listing_id', 0):>3}  {(a.get('name') or '')[:34]:<34} {(a.get('format') or '—'):<6} "
+            f"{bpm_s:<10} {(a.get('key') or '—'):<10} {(a.get('license') or '—'):<10} {a.get('price_snd', '—'):>6}"
+        )
+    print("\ninstall: `snd assets install <ID> --dir /path/to/library`")
+    return 0
+
+
+def cmd_assets_install(args, http=None) -> int:
+    """`snd assets install` — download an asset into the agent cache (or --dir)."""
+    cfg = load_config()
+    token = resolve_token(args, cfg)
+    api = api_base(args)
+    result = agent_install_asset(api, token, args.listing_id, args.dir, http=http)
+    print(f"✓ {result['filename']} ({result['size']} bytes) → {result['cached_path']}")
+    print(f"  license: {result['license'] or '—'} · sha256: {result['sha256']}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="snd", description="Push complete DAW projects to SoundHub.")
+    p = argparse.ArgumentParser(prog="snd", description="SoundHub command shell + localhost Agent.")
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--api", help="API base url (default ~/.soundhub.json or SOUNDHUB_API_URL)")
     common.add_argument("--token", help="auth token (or SOUNDHUB_TOKEN, or saved by `login`)")
@@ -483,9 +766,37 @@ def build_parser() -> argparse.ArgumentParser:
     push.add_argument("--open", action="store_true", help="open the review URL in the browser after a successful push")
     push.add_argument("--json", action="store_true", help="machine-readable JSON output (stable contract for automation)")
 
-    serve = sub.add_parser("serve", parents=[common], help="localhost JSON bridge for the Max for Live push button")
-    serve.add_argument("--host", default="127.0.0.1", help="bind address (default 127.0.0.1)")
-    serve.add_argument("--port", type=int, default=8765, help="port (default 8765)")
+    serve = sub.add_parser("serve", parents=[common], help="run the localhost SoundHub Agent (VST3 panels / M4L / ReaScript)")
+    serve.add_argument("--host", default=AGENT_HOST, help=f"bind address (default {AGENT_HOST})")
+    serve.add_argument("--port", type=int, default=AGENT_PORT, help=f"port (default {AGENT_PORT})")
+    serve.add_argument("--frontend", default=None, help="frontend base url for review links (default SOUNDHUB_FRONTEND_URL or http://localhost:5173)")
+
+    agent = sub.add_parser("agent", parents=[common], help="run the localhost SoundHub Agent (alias of `serve`)")
+    agent.add_argument("--host", default=AGENT_HOST, help=f"bind address (default {AGENT_HOST})")
+    agent.add_argument("--port", type=int, default=AGENT_PORT, help=f"port (default {AGENT_PORT})")
+    agent.add_argument("--frontend", default=None, help="frontend base url for review links (default SOUNDHUB_FRONTEND_URL or http://localhost:5173)")
+
+    status = sub.add_parser("status", parents=[common], help="show login state, agent cache and whether the Agent is running")
+
+    review = sub.add_parser("review", parents=[common], help="list review sessions, or print/open one session's share link")
+    review.add_argument("--session", help="session name or id (omit to list all)")
+    review.add_argument("--open", action="store_true", help="open the review URL in the browser")
+
+    assets = sub.add_parser("assets", parents=[common], help="marketplace catalog: search + install")
+    asub = assets.add_subparsers(dest="assets_command", required=True)
+    search = asub.add_parser("search", parents=[common], help="search the asset catalog")
+    search.add_argument("--q", help="free-text search")
+    search.add_argument("--genre", help="genre, e.g. techno, house")
+    search.add_argument("--bpm-min", type=float)
+    search.add_argument("--bpm-max", type=float)
+    search.add_argument("--key", help="musical key, e.g. \"A minor\"")
+    search.add_argument("--license", help="Personal | Commercial | Sync | Exclusive")
+    search.add_argument("--format", help="als | cpr | rpp | flp | wav | midi | adg")
+    search.add_argument("--plugin", help="plugin name, e.g. Serum")
+    search.add_argument("--limit", type=int, default=10)
+    install = asub.add_parser("install", parents=[common], help="download an asset to the agent cache (or --dir)")
+    install.add_argument("listing_id", type=int, help="catalog listing id from `snd assets search`")
+    install.add_argument("--dir", help="target directory (default ~/.soundhub/cache)")
     return p
 
 
@@ -496,8 +807,17 @@ def main(argv: list[str] | None = None, http=None) -> int:
             return cmd_login(args, http=http)
         if args.command == "push":
             return cmd_push(args, http=http)
-        if args.command == "serve":
+        if args.command in ("serve", "agent"):
             return cmd_serve(args, http=http)
+        if args.command == "status":
+            return cmd_status(args, http=http)
+        if args.command == "review":
+            return cmd_review(args, http=http)
+        if args.command == "assets":
+            if args.assets_command == "search":
+                return cmd_assets_search(args, http=http)
+            if args.assets_command == "install":
+                return cmd_assets_install(args, http=http)
     except CliError as exc:
         if getattr(args, "json", False):
             print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))

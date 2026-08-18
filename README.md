@@ -54,8 +54,11 @@ and roadmap.
 (`m4l/`) that embeds the marketplace (catalog, BPM-aware suggestions, buy &
 load), pushes the current set as a versioned commit (native sidecar), and
 pulls open review comments into the DAW. The same loop works in REAPER via a
-ReaScript panel (`reaper/`). See [`m4l/`](m4l/) and the [integration
-architecture](ARCHITECTURE.md).
+ReaScript panel (`reaper/`). **Cubase and FL Studio** get a shared **VST3
+companion panel** (`vst3/`, JUCE) that talks to the local **SoundHub Agent**
+(`snd agent`) — the same CLI + bridge pipeline, no deep project parsing
+promised (see [`docs/daw-integration-vst3.md`](docs/daw-integration-vst3.md)
+and the [integration architecture](ARCHITECTURE.md)).
 
 GitHub, but for DAW projects — Ableton Live (`.als`), Cubase (`.cpr`),
 REAPER (`.rpp`) and FL Studio (`.flp`). Version your tracks, see *what
@@ -150,7 +153,7 @@ Per-version notes — what changed, how to test, known limits — live in
 | GET | `/api/projects/{id}/files/{path}` | download a file |
 | GET | `/api/projects/{id}/diff?path=…&from=…&to=…` | smart diff |
 
-## `snd push` — push a complete DAW project (branch: `snd-project-push`)
+## `snd` — the SoundHub command shell + localhost Agent (branch: `snd-project-push`)
 
 `backend/snd` is a small CLI that pushes a DAW project to SoundHub as a
 versioned commit — fast mode (project + DAW metadata) or full review mode
@@ -159,6 +162,10 @@ are parsed **locally** (tracks, instruments, plugins AND their settings
 where the format stores them — REAPER `PARAM` lines, Ableton preset refs)
 and the parsed structure is stored as `SOUNDHUB-MANIFEST.json` inside the
 commit tree (also re-analyzed server-side by the tree/diff endpoints).
+
+Commands: `snd login` · `snd status` · `snd push` · `snd review` ·
+`snd assets search` / `snd assets install` · `snd agent` (localhost Agent,
+see below).
 
 ```bash
 cd backend
@@ -215,11 +222,15 @@ the Python parsers); the backend re-parses every pushed DAW file itself, so
 smart diff and tree analysis still work. Covered by
 `backend/tests/test_snd_sidecar.py` (live uvicorn + real `node`).
 
-## Bridge contract — `snd serve` (localhost:8765, fallback)
+## SoundHub Agent — `snd agent` (localhost:8765)
 
-On Max versions without `node.script` (before 8.5), the device falls back to
-a tiny localhost JSON bridge, a thin client over the same `snd push --json`
-pipeline: the device POSTs JSON and the bridge does the real work.
+`snd agent` (alias: `snd serve`) runs the **SoundHub Agent**: a localhost
+JSON service that holds the token, talks to the API, runs the `snd push`
+pipeline, downloads/caches assets and opens review URLs in the browser. It
+is the single integration point for the **VST3 companion panels** (Cubase /
+FL Studio, `vst3/`), the Max for Live device (fallback on Max < 8.5, where
+`node.script` is unavailable) and the REAPER ReaScript — panels never see
+the API URL or the token.
 
 ```bash
 cd backend
@@ -263,8 +274,23 @@ auto-creates when missing; `branch` defaults to `main`.
 | `400` | `{"ok": false, "error": "Unsupported project file type…"}` | not a `.als`/`.cpr`/`.rpp`/`.flp` (or directory) |
 | `400` | `{"ok": false, "error": "HTTP 401: …"}` | pipeline failed server-side (auth, missing project, …) — any server status ≥ 400 is surfaced as `HTTP <code>: <body>` |
 
-All preflight failures return `400` and never create a version — the bridge
-runs the same preflight as the CLI. `GET /health` → `{"ok": true, "service": "snd-bridge"}`.
+All preflight failures return `400` and never create a version — the Agent
+runs the same preflight as the CLI. `GET /health` → `{"ok": true, "service": "snd-agent"}`.
+
+### More Agent endpoints (VST3 panel / automation)
+
+| Endpoint | What it does |
+|---|---|
+| `GET /status` | api, logged-in user, agent cache stats |
+| `GET /reviews` | the user's review sessions + `review_url` each |
+| `GET /assets?q=&genre=&bpm_min=&bpm_max=&key=&license=&format=&limit=` | marketplace catalog search |
+| `GET /assets/{id}/token` | short-lived download token |
+| `GET /assets/{id}/download64?token=…` | text-safe (base64) asset payload for C++/Max |
+| `POST /assets/{id}/install` `{"dir": …}` | download the asset into `~/.soundhub/cache` (or `dir`) → `cached_path`, `license`, `sha256` |
+| `POST /open` `{"url": …}` | open a review URL in the browser (http(s) only) |
+
+CLI equivalents: `snd review` (list sessions / open one), `snd assets search`,
+`snd assets install <id> [--dir …]`, `snd status`.
 
 ### Idempotency
 
@@ -279,7 +305,7 @@ commit — same input, same result.
 ```bash
 # 1. health
 curl -s http://127.0.0.1:8765/health
-# {"ok": true, "service": "snd-bridge"}
+# {"ok": true, "service": "snd-agent"}
 
 # 2. fast push (project + DAW metadata)
 curl -s -X POST http://127.0.0.1:8765/push \
@@ -351,7 +377,7 @@ These are exactly the cases the CI bridge smoke covers
 - [ ] Token gating on purchase, one-click device insert, key/tracks/devices context from Live API
 - [x] Verification badges (wallet-linked), seller reputation (real platform data), license enforcement
 - [ ] Merges (DAG), audio preview, real-time collab
-- [x] FL Studio & Cubase integration prototypes (`feat/flstudio-integration`, `feat/cubase-integration`)
+- [x] FL Studio & Cubase integration: shared VST3 companion (`vst3/`, JUCE) + local SoundHub Agent (`snd agent`) — storefront, push, review, comments, asset install; smart diff from the exported manifest
 - [ ] WalletConnect signing in M4L / relayer; REAPER push via bridge (ReaScript panel ships in `reaper/` — push via `snd` CLI, comments via public export)
 - [ ] S3/Azure blob backend for production scale
 

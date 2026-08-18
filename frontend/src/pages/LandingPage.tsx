@@ -132,8 +132,8 @@ const MARKET_BENEFITS = [
 
 const INTEGRATIONS = [
   { name: "Ableton Live", status: "available", href: null, detail: "`soundhub` CLI bridge — push bounces, export open requests, locator helper · Max for Live panel: catalog + push current export" },
-  { name: "FL Studio", status: "available", href: "/integrations/fl-studio", detail: ".flp parsed (FL 11–21) · `snd push` commits project + master + stems → review" },
-  { name: "Cubase", status: "available", href: "/integrations/cubase", detail: ".cpr parsed (tracks, VST3 plugins, samples) · `snd push` commits project + master + stems → review" },
+  { name: "FL Studio", status: "available", href: "/integrations/fl-studio", detail: ".flp parsed (FL 11–21) · `snd push` commits project + master + stems → review · VST3 companion panel via the SoundHub Agent — next" },
+  { name: "Cubase", status: "available", href: "/integrations/cubase", detail: ".cpr parsed (tracks, VST3 plugins, samples) · `snd push` commits project + master + stems → review · VST3 companion panel via the SoundHub Agent — next" },
   { name: "REAPER", status: "planned", href: null, detail: "Planned — no timeline yet" },
 ];
 
@@ -280,7 +280,7 @@ const ROADMAP = [
   },
   {
     phase: "Next",
-    items: ["Max for Live: review comments in the DAW", "REAPER integration", "Marketplace: sell finished sounds"],
+    items: ["Max for Live: review comments in the DAW", "Cubase & FL Studio: VST3 companion panel (JUCE) + SoundHub Agent", "REAPER integration", "Marketplace: sell finished sounds"],
     state: "next",
   },
   { phase: "Later", items: ["Mainnet + security audit", "USDC checkout", "DAO governance"], state: "later" },
