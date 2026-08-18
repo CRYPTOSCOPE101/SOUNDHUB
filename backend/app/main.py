@@ -27,6 +27,7 @@ app = FastAPI(
     description="Version control and collaboration for music production projects "
     "(Ableton Live, Cubase, REAPER, FL Studio).",
     version="0.1.0",
+    docs_url=None,  # custom /docs below (larger fonts for readability)
 )
 
 app.add_middleware(
@@ -224,6 +225,49 @@ def _startup() -> None:
             db.commit()
     except Exception:
         pass  # reminders are best-effort at startup
+
+
+# Swagger UI with enlarged typography — the default one renders tiny on
+# desktop. Base styles still come from the CDN; this injects font overrides.
+_SWAGGER_FONT_CSS = """
+<style>
+  .swagger-ui { font-size: 16px; }
+  .swagger-ui .info .title { font-size: 2.8em; }
+  .swagger-ui .info .description, .swagger-ui .info .base-url { font-size: 1.4em; }
+  .swagger-ui .info li, .swagger-ui .info p, .swagger-ui .info table { font-size: 1.25em; }
+  .swagger-ui .opblock-tag { font-size: 1.9em; }
+  .swagger-ui .opblock-summary-path a { font-size: 1.4em; }
+  .swagger-ui .opblock-summary-description { font-size: 1.25em; }
+  .swagger-ui .opblock .opblock-summary { font-size: 1.15em; }
+  .swagger-ui .opblock-description-wrapper p { font-size: 1.25em; }
+  .swagger-ui .parameter__name, .swagger-ui .parameter__type { font-size: 1.2em; }
+  .swagger-ui .parameters-col_description { font-size: 1.2em; }
+  .swagger-ui .model-title { font-size: 1.5em; }
+  .swagger-ui .model { font-size: 1.15em; }
+  .swagger-ui .btn { font-size: 1.2em; }
+  .swagger-ui .response-col_status, .swagger-ui .response-col_description { font-size: 1.15em; }
+  .swagger-ui label, .swagger-ui .servers-title { font-size: 1.2em; }
+  .swagger-ui table { font-size: 1.15em; }
+  .swagger-ui input[type=text], .swagger-ui textarea { font-size: 1.2em; }
+  .swagger-ui .markdown p, .swagger-ui .renderedMarkdown p { font-size: 1.2em; }
+</style>
+"""
+
+
+@app.get("/docs", include_in_schema=False)
+def swagger_ui():
+    from fastapi.openapi.docs import get_swagger_ui_html
+    from fastapi.responses import HTMLResponse
+
+    html = get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} — Swagger UI",
+        oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+        swagger_ui_parameters={"displayRequestDuration": True},
+    )
+    body = html.body.decode() if isinstance(html.body, bytes) else html.body
+    body = body.replace("</head>", _SWAGGER_FONT_CSS + "</head>", 1)
+    return HTMLResponse(body)
 
 
 @app.get("/api/health")
