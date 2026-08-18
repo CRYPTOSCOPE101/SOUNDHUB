@@ -1,7 +1,8 @@
 """Groups (folders) router."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
+from ..access import require_owner
 from ..database import get_db
 from ..schemas import SessionGroupCreate, SessionGroupLinkCreate, SessionGroupLinkOut, SessionGroupOut, SessionGroupUpdate
 from ..security import get_current_user
@@ -24,18 +25,14 @@ def create_group(payload: SessionGroupCreate, user=Depends(get_current_user), db
 
 @router.patch("/{group_id}", response_model=SessionGroupOut)
 def update_group(group_id: int, payload: SessionGroupUpdate, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    group = groups_svc.get_group(db, group_id)
-    if group is None or group.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
+    group = require_owner(groups_svc.get_group(db, group_id), user, "Group")
     updated = groups_svc.update_group(db, group, payload.model_dump(exclude_unset=True))
     return SessionGroupOut.model_validate(updated, from_attributes=True)
 
 
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_group(group_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    group = groups_svc.get_group(db, group_id)
-    if group is None or group.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
+    group = require_owner(groups_svc.get_group(db, group_id), user, "Group")
     groups_svc.delete_group(db, group)
 
 

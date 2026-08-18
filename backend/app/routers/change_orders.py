@@ -1,10 +1,11 @@
 """Change orders router — late change requests after approval."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..access import not_found, session_or_404
 from ..database import get_db
-from ..models import ChangeOrder, ReviewSession, User, utcnow
+from ..models import ChangeOrder, User, utcnow
 from ..schemas import ChangeOrderCreate, ChangeOrderOut, ChangeOrderQuote
 from ..security import get_current_user
 from ..services import ledger
@@ -12,16 +13,9 @@ from ..services import ledger
 router = APIRouter(prefix="/api/sessions/{session_id}/change-orders", tags=["change orders"])
 
 
-def _get_session(db: Session, session_id: int, user: User) -> ReviewSession:
-    session = db.get(ReviewSession, session_id)
-    if session is None or session.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
-    return session
-
-
 @router.get("", response_model=list[ChangeOrderOut])
 def list_change_orders(session_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _get_session(db, session_id, user)
+    session_or_404(db, session_id, user)
     orders = db.scalars(
         select(ChangeOrder).where(ChangeOrder.session_id == session_id).order_by(ChangeOrder.created_at.desc())
     ).all()
@@ -30,7 +24,7 @@ def list_change_orders(session_id: int, user: User = Depends(get_current_user), 
 
 @router.post("", response_model=ChangeOrderOut, status_code=status.HTTP_201_CREATED)
 def create_change_order(session_id: int, payload: ChangeOrderCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    session = _get_session(db, session_id, user)
+    session_or_404(db, session_id, user)
     order = ChangeOrder(
         session_id=session_id,
         created_by=user.username,
@@ -46,10 +40,10 @@ def create_change_order(session_id: int, payload: ChangeOrderCreate, user: User 
 
 @router.patch("/{order_id}/quote", response_model=ChangeOrderOut)
 def quote_change_order(session_id: int, order_id: int, payload: ChangeOrderQuote, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _get_session(db, session_id, user)
+    session_or_404(db, session_id, user)
     order = db.get(ChangeOrder, order_id)
     if order is None or order.session_id != session_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Change order not found")
+        raise not_found("Change order")
     order.decision = payload.decision
     order.price_cents = payload.price_cents
     order.deadline_at = payload.deadline_at
@@ -62,17 +56,15 @@ def quote_change_order(session_id: int, order_id: int, payload: ChangeOrderQuote
 
 @router.patch("/{order_id}/accept", response_model=ChangeOrderOut)
 def accept_change_order(session_id: int, order_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _get_session(db, session_id, user)
+    session = session_or_404(db, session_id, user)
     order = db.get(ChangeOrder, order_id)
     if order is None or order.session_id != session_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Change order not found")
+        raise not_found("Change order")
     order.status = "accepted"
     order.accepted_at = utcnow()
     # Grant the round
     if not order.round_granted:
-        session = db.get(ReviewSession, session_id)
-        if session:
-            session.change_rounds_granted += 1
+        session.change_rounds_granted += 1
         order.round_granted = True
     db.commit()
     return ChangeOrderOut.model_validate(order, from_attributes=True)
@@ -80,10 +72,10 @@ def accept_change_order(session_id: int, order_id: int, user: User = Depends(get
 
 @router.patch("/{order_id}/decline", response_model=ChangeOrderOut)
 def decline_change_order(session_id: int, order_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _get_session(db, session_id, user)
+    session_or_404(db, session_id, user)
     order = db.get(ChangeOrder, order_id)
     if order is None or order.session_id != session_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Change order not found")
+        raise not_found("Change order")
     order.status = "declined"
     order.declined_at = utcnow()
     db.commit()

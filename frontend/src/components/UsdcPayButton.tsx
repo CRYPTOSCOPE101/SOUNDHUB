@@ -3,6 +3,7 @@ import { Contract } from "ethers";
 import { api } from "../api";
 import type { UsdcCheckoutOut } from "../types";
 import { useWallet } from "../web3/useWallet";
+import { errorMessage } from "../errors";
 
 // USDC ERC-20 interface — only the methods we need
 const USDC_ABI = [
@@ -39,7 +40,7 @@ export default function UsdcPayButton({ target }: { target: UsdcPayTarget }) {
           ? await api.publicUsdcCheckout(target.deliveryToken, target.kind)
           : await api.usdcCheckout(target.packageId!, target.kind);
       } catch (e) {
-        throw new Error(e instanceof Error ? e.message : "USDC checkout unavailable for this delivery");
+        throw new Error(errorMessage(e, "USDC checkout unavailable for this delivery"));
       }
 
       // 2. connect wallet + switch to Base
@@ -75,7 +76,7 @@ export default function UsdcPayButton({ target }: { target: UsdcPayTarget }) {
       setConfirmed(true);
       window.setTimeout(() => window.location.reload(), 1200);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "USDC payment failed");
+      setErr(errorMessage(e, "USDC payment failed"));
     } finally {
       setBusy(false);
     }

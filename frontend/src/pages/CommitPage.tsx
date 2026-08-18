@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { DAW_COLORS, humanSize, shortDate, type CommitDetail } from "../types";
+import { errorMessage } from "../errors";
 
 export default function CommitPage() {
   const { id, commitId } = useParams();
@@ -14,7 +15,7 @@ export default function CommitPage() {
     api
       .getCommit(pid, cid)
       .then(setCommit)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed"));
+      .catch((err) => setError(errorMessage(err, "Failed")));
   }, [pid, cid]);
 
   if (error) return <div className="error">{error}</div>;

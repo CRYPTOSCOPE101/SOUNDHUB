@@ -1,7 +1,8 @@
 """Tags router."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
+from ..access import require_owner
 from ..database import get_db
 from ..schemas import SessionTagCreate, SessionTagLinkCreate, SessionTagLinkOut, SessionTagOut, SessionTagUpdate
 from ..security import get_current_user
@@ -24,18 +25,14 @@ def create_tag(payload: SessionTagCreate, user=Depends(get_current_user), db: Se
 
 @router.patch("/{tag_id}", response_model=SessionTagOut)
 def update_tag(tag_id: int, payload: SessionTagUpdate, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    tag = tags_svc.get_tag(db, tag_id)
-    if tag is None or tag.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found")
+    tag = require_owner(tags_svc.get_tag(db, tag_id), user, "Tag")
     updated = tags_svc.update_tag(db, tag, payload.name, payload.color)
     return SessionTagOut.model_validate(updated, from_attributes=True)
 
 
 @router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tag(tag_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    tag = tags_svc.get_tag(db, tag_id)
-    if tag is None or tag.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found")
+    tag = require_owner(tags_svc.get_tag(db, tag_id), user, "Tag")
     tags_svc.delete_tag(db, tag)
 
 

@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import { getDeployment } from "../web3/contracts";
 import { setTargetChainId, useWallet } from "../web3/useWallet";
+import { errorMessage } from "../errors";
 
 export default function LoginPage() {
   const { login, register } = useAuth();
@@ -28,7 +29,7 @@ export default function LoginPage() {
       else await register(username, password);
       nav("/projects");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(errorMessage(err, "Something went wrong"));
     } finally {
       setBusy(false);
     }
@@ -54,7 +55,7 @@ export default function LoginPage() {
       await api.walletLogin(address, message, signature);
       nav("/projects");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Wallet sign-in failed");
+      setError(errorMessage(err, "Wallet sign-in failed"));
     } finally {
       setWalletBusy(false);
     }

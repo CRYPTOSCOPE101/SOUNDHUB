@@ -7,6 +7,7 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..access import not_found, session_or_404
 from ..database import get_db
 from ..models import DeliveryEvent, Deliverable, ReleasePackage, ReviewSession, ReviewVersion, User, utcnow
 from ..schemas import DeliverableOut, ReleasePackageCreate, ReleasePackageOut
@@ -16,11 +17,18 @@ from ..services import ledger, storage
 router = APIRouter(prefix="/api/release-packages", tags=["release packages"])
 
 
+def _package_by_token(db: Session, delivery_token: str) -> ReleasePackage:
+    package = db.scalar(
+        select(ReleasePackage).where(ReleasePackage.delivery_token == delivery_token)
+    )
+    if package is None:
+        raise not_found("Delivery")
+    return package
+
+
 @router.get("", response_model=list[ReleasePackageOut])
 def list_packages(session_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    session = db.get(ReviewSession, session_id)
-    if session is None or session.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    session_or_404(db, session_id, user)
     packages = db.scalars(
         select(ReleasePackage).where(ReleasePackage.session_id == session_id).order_by(ReleasePackage.created_at.desc())
     ).all()
@@ -29,12 +37,10 @@ def list_packages(session_id: int, user: User = Depends(get_current_user), db: S
 
 @router.post("", response_model=ReleasePackageOut, status_code=status.HTTP_201_CREATED)
 def create_package(session_id: int, payload: ReleasePackageCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    session = db.get(ReviewSession, session_id)
-    if session is None or session.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    session_or_404(db, session_id, user)
     version = db.get(ReviewVersion, payload.approved_version_id)
     if version is None or version.session_id != session_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Version not found")
+        raise not_found("Version")
     if version.status != "approved":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Version must be approved before packaging")
 
@@ -68,7 +74,7 @@ def create_package(session_id: int, payload: ReleasePackageCreate, user: User = 
 def lock_package(package_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     package = db.get(ReleasePackage, package_id)
     if package is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Package not found")
+        raise not_found("Package")
     session = db.get(ReviewSession, package.session_id)
     if session is None or session.owner_id != user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
@@ -102,11 +108,7 @@ def list_deliverables(package_id: int, user: User = Depends(get_current_user), d
 
 @router.get("/public/{delivery_token}")
 def public_delivery(delivery_token: str, db: Session = Depends(get_db)):
-    package = db.scalar(
-        select(ReleasePackage).where(ReleasePackage.delivery_token == delivery_token)
-    )
-    if package is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Delivery not found")
+    package = _package_by_token(db, delivery_token)
     deliverables = db.scalars(
         select(Deliverable).where(Deliverable.package_id == package.id)
     ).all()
@@ -118,14 +120,10 @@ def public_delivery(delivery_token: str, db: Session = Depends(get_db)):
 
 @router.get("/public/{delivery_token}/download/{deliverable_id}")
 def public_download(delivery_token: str, deliverable_id: int, db: Session = Depends(get_db)):
-    package = db.scalar(
-        select(ReleasePackage).where(ReleasePackage.delivery_token == delivery_token)
-    )
-    if package is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Delivery not found")
+    package = _package_by_token(db, delivery_token)
     deliverable = db.get(Deliverable, deliverable_id)
     if deliverable is None or deliverable.package_id != package.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Deliverable not found")
+        raise not_found("Deliverable")
     data = storage.read_blob(deliverable.blob_sha)
     db.add(DeliveryEvent(package_id=package.id, event="delivery.downloaded", detail=deliverable.filename))
     db.commit()

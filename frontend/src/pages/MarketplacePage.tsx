@@ -12,6 +12,7 @@ import {
   type Deployment,
 } from "../web3/contracts";
 import { setTargetChainId, useWallet } from "../web3/useWallet";
+import { errorMessage } from "../errors";
 
 interface Listing {
   id: bigint;
@@ -190,7 +191,7 @@ export default function MarketplacePage() {
         latest !== null && Number(last) + Number(cooldown) <= Number(latest.timestamp)
       );
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to load marketplace");
+      setErr(errorMessage(e, "Failed to load marketplace"));
     }
   }, [wallet.provider, wallet.address]);
 
@@ -224,7 +225,7 @@ export default function MarketplacePage() {
         })
         .then(setCatalog)
         .catch((e) =>
-          setCatalogErr(e instanceof Error ? e.message : "Failed to load catalog")
+          setCatalogErr(errorMessage(e, "Failed to load catalog"))
         );
     }, 200);
     return () => window.clearTimeout(t);
@@ -292,7 +293,7 @@ export default function MarketplacePage() {
       setMsg("100 SND claimed! Buy something. 🎧");
       await refresh();
     } catch (e2) {
-      setErr(e2 instanceof Error ? e2.message : "Claim failed");
+      setErr(errorMessage(e2, "Claim failed"));
     } finally {
       setBusy(false);
     }
@@ -321,11 +322,11 @@ export default function MarketplacePage() {
       } catch (e3) {
         setReceipt(null);
         setReceiptErr(
-          e3 instanceof Error ? e3.message : "License receipt unavailable"
+          errorMessage(e3, "License receipt unavailable")
         );
       }
     } catch (e2) {
-      setErr(e2 instanceof Error ? e2.message : "Buy failed");
+      setErr(errorMessage(e2, "Buy failed"));
     } finally {
       setBusy(false);
     }
@@ -344,7 +345,7 @@ export default function MarketplacePage() {
       setMsg(`Receipt confirmed — seller paid ✓`);
       await refresh();
     } catch (e2) {
-      setErr(e2 instanceof Error ? e2.message : "Confirm failed");
+      setErr(errorMessage(e2, "Confirm failed"));
     } finally {
       setBusy(false);
     }
@@ -369,7 +370,7 @@ export default function MarketplacePage() {
       setLPrice("");
       await refresh();
     } catch (e2) {
-      setErr(e2 instanceof Error ? e2.message : "Listing failed");
+      setErr(errorMessage(e2, "Listing failed"));
     } finally {
       setBusy(false);
     }

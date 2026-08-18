@@ -1,10 +1,11 @@
 """Team roles router."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..access import not_found, session_or_404
 from ..database import get_db
-from ..models import ReviewSession, SessionMember, User
+from ..models import SessionMember, User
 from ..schemas import RoleOut, RoleUpdate
 from ..security import get_current_user
 from ..services import roles as roles_svc
@@ -14,9 +15,7 @@ router = APIRouter(prefix="/api/sessions/{session_id}/roles", tags=["roles"])
 
 @router.get("", response_model=list[RoleOut])
 def list_roles(session_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    session = db.get(ReviewSession, session_id)
-    if session is None or session.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    session_or_404(db, session_id, user)
     members = db.scalars(
         select(SessionMember).where(SessionMember.session_id == session_id)
     ).all()
@@ -25,9 +24,7 @@ def list_roles(session_id: int, user: User = Depends(get_current_user), db: Sess
 
 @router.post("", response_model=RoleOut, status_code=status.HTTP_201_CREATED)
 def add_member(session_id: int, payload: RoleUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    session = db.get(ReviewSession, session_id)
-    if session is None or session.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    session_or_404(db, session_id, user)
     existing = db.scalar(
         select(SessionMember).where(
             SessionMember.session_id == session_id,
@@ -52,12 +49,10 @@ def add_member(session_id: int, payload: RoleUpdate, user: User = Depends(get_cu
 
 @router.delete("/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_member(session_id: int, member_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    session = db.get(ReviewSession, session_id)
-    if session is None or session.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    session_or_404(db, session_id, user)
     member = db.get(SessionMember, member_id)
     if member is None or member.session_id != session_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
+        raise not_found("Member")
     db.delete(member)
     db.commit()
 

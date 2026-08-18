@@ -1,8 +1,9 @@
 """Webhooks router."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..access import owned_or_404
 from ..database import get_db
 from ..models import Webhook, WebhookDelivery
 from ..schemas import WebhookCreate, WebhookDeliveryOut, WebhookOut, WebhookUpdate
@@ -36,9 +37,7 @@ def create_webhook(payload: WebhookCreate, user=Depends(get_current_user), db: S
 
 @router.patch("/{webhook_id}", response_model=WebhookOut)
 def update_webhook(webhook_id: int, payload: WebhookUpdate, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    hook = db.get(Webhook, webhook_id)
-    if hook is None or hook.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Webhook not found")
+    hook = owned_or_404(db, Webhook, webhook_id, user, "Webhook")
     if payload.url is not None:
         hook.url = payload.url
     if payload.secret is not None:
@@ -53,18 +52,14 @@ def update_webhook(webhook_id: int, payload: WebhookUpdate, user=Depends(get_cur
 
 @router.delete("/{webhook_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_webhook(webhook_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    hook = db.get(Webhook, webhook_id)
-    if hook is None or hook.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Webhook not found")
+    hook = owned_or_404(db, Webhook, webhook_id, user, "Webhook")
     db.delete(hook)
     db.commit()
 
 
 @router.get("/{webhook_id}/deliveries", response_model=list[WebhookDeliveryOut])
 def list_deliveries(webhook_id: int, limit: int = 50, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    hook = db.get(Webhook, webhook_id)
-    if hook is None or hook.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Webhook not found")
+    owned_or_404(db, Webhook, webhook_id, user, "Webhook")
     deliveries = db.scalars(
         select(WebhookDelivery)
         .where(WebhookDelivery.webhook_id == webhook_id)

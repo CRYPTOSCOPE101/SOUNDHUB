@@ -7,6 +7,7 @@ import {
   isDeployed,
 } from "../web3/contracts";
 import { useWallet } from "../web3/useWallet";
+import { errorMessage } from "../errors";
 
 const STATE_NAMES = [
   "Pending",
@@ -59,7 +60,7 @@ export default function DAOPage() {
       list.sort((a, b) => (a.id > b.id ? -1 : 1));
       setProposals(list);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to read DAO state");
+      setErr(errorMessage(e, "Failed to read DAO state"));
     }
   }, [wallet.provider, wallet.address]);
 
@@ -77,7 +78,7 @@ export default function DAOPage() {
       await (await gov.castVote(id, support)).wait();
       await refresh();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Vote failed");
+      setErr(errorMessage(e, "Vote failed"));
     } finally {
       setBusy(false);
     }

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..access import project_or_404
 from ..database import get_db
 from ..models import Branch, Commit, FileSnapshot, Project, User, utcnow
 from ..schemas import BranchCreate, BranchOut, CommitCreate, CommitOut, ProjectCreate, ProjectOut, ProjectUpdate
@@ -46,17 +47,13 @@ def create_project(payload: ProjectCreate, user: User = Depends(get_current_user
 
 @router.get("/{project_id}", response_model=ProjectOut)
 def get_project(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    project = db.get(Project, project_id)
-    if project is None or project.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+    project = project_or_404(db, project_id, user)
     return ProjectOut.model_validate(project, from_attributes=True)
 
 
 @router.patch("/{project_id}", response_model=ProjectOut)
 def update_project(project_id: int, payload: ProjectUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    project = db.get(Project, project_id)
-    if project is None or project.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+    project = project_or_404(db, project_id, user)
     if payload.name is not None:
         project.name = payload.name.strip()
         project.slug = _slugify(payload.name)
@@ -69,18 +66,14 @@ def update_project(project_id: int, payload: ProjectUpdate, user: User = Depends
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_project(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    project = db.get(Project, project_id)
-    if project is None or project.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+    project = project_or_404(db, project_id, user)
     db.delete(project)
     db.commit()
 
 
 @router.get("/{project_id}/branches", response_model=list[BranchOut])
 def list_branches(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    project = db.get(Project, project_id)
-    if project is None or project.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+    project_or_404(db, project_id, user)
     branches = db.scalars(
         select(Branch).where(Branch.project_id == project_id)
     ).all()
@@ -97,9 +90,7 @@ def list_branches(project_id: int, user: User = Depends(get_current_user), db: S
 
 @router.post("/{project_id}/branches", response_model=BranchOut, status_code=status.HTTP_201_CREATED)
 def create_branch(project_id: int, payload: BranchCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    project = db.get(Project, project_id)
-    if project is None or project.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+    project_or_404(db, project_id, user)
     existing = db.scalar(
         select(Branch).where(Branch.project_id == project_id, Branch.name == payload.name)
     )
@@ -114,9 +105,7 @@ def create_branch(project_id: int, payload: BranchCreate, user: User = Depends(g
 
 @router.post("/{project_id}/commits", response_model=CommitOut, status_code=status.HTTP_201_CREATED)
 def create_commit(project_id: int, payload: CommitCreate, files: list[dict] = [], user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    project = db.get(Project, project_id)
-    if project is None or project.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+    project = project_or_404(db, project_id, user)
 
     branch = db.scalar(
         select(Branch).where(Branch.project_id == project_id, Branch.name == payload.branch)

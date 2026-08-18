@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { shortDate, type Branch, type Project } from "../types";
+import { errorMessage } from "../errors";
 
 export default function BranchesPage() {
   const { id } = useParams();
@@ -19,7 +20,7 @@ export default function BranchesPage() {
       setProject(p);
       setBranches(b);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed");
+      setError(errorMessage(err, "Failed"));
     }
   }, [pid]);
 
@@ -37,7 +38,7 @@ export default function BranchesPage() {
       await load();
       setNotice(`Branch "${name.trim()}" created ✓`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Create failed");
+      setError(errorMessage(err, "Create failed"));
     }
   };
 
@@ -47,7 +48,7 @@ export default function BranchesPage() {
       await api.deleteBranch(pid, name_);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
+      setError(errorMessage(err, "Delete failed"));
     }
   };
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, getToken } from "../api";
+import { api } from "../api";
 import { fmtClock, WaveformCanvas, CommentComposer, ApprovalPanel, VersionDiffPanel } from "../components/ReviewShared";
 import ABCompare from "../components/ABCompare";
 import ReferenceCompare from "../components/ReferenceCompare";
@@ -34,6 +34,9 @@ import {
   type VersionComparison,
   type VersionDiff,
 } from "../types";
+import { errorMessage } from "../errors";
+import { useAudioPlayhead } from "../audio/useAudioPlayhead";
+import { fetchAudioBlob } from "../audio/sources";
 
 /* ---------- helpers ---------- */
 
@@ -147,7 +150,7 @@ function DecisionLog({ sessionId }: { sessionId: number }) {
     try {
       setEvents((await api.getLedger(sessionId)).events);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to load decision log");
+      setErr(errorMessage(e, "Failed to load decision log"));
     }
   }, [sessionId]);
 
@@ -248,7 +251,7 @@ function ReleasePackagePanel({
       setForceReason("");
       setPreflight(null);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to load packages");
+      setErr(errorMessage(e, "Failed to load packages"));
     }
   }, [sessionId, version.id]);
 
@@ -272,7 +275,7 @@ function ReleasePackagePanel({
       await load();
       setInfo(`Package created from “${tpl?.name ?? selectedTemplate}” — approved master added ✓`);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to create package");
+      setErr(errorMessage(e, "Failed to create package"));
     } finally {
       setBusy(false);
     }
@@ -284,7 +287,7 @@ function ReleasePackagePanel({
     try {
       setPreflight(await api.runPreflight(pkg.id));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Preflight failed");
+      setErr(errorMessage(e, "Preflight failed"));
     }
   };
 
@@ -295,7 +298,7 @@ function ReleasePackagePanel({
       await api.addDeliverableFromVersion(pkg.id, type, version.id);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed");
+      setErr(errorMessage(e, "Failed"));
     }
   };
 
@@ -306,7 +309,7 @@ function ReleasePackagePanel({
       await api.uploadDeliverable(pkg.id, type, file);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed");
+      setErr(errorMessage(e, "Failed"));
     }
   };
 
@@ -324,7 +327,7 @@ function ReleasePackagePanel({
       await load();
       setInfo("RELEASE PACKAGE LOCKED ✓ — manifest hashed, delivery link opened");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Lock failed");
+      setErr(errorMessage(e, "Lock failed"));
     } finally {
       setBusy(false);
     }
@@ -351,7 +354,7 @@ function ReleasePackagePanel({
       await load();
       setInfo("Handoff manifest saved ✓");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to save handoff");
+      setErr(errorMessage(e, "Failed to save handoff"));
     }
   };
 
@@ -583,7 +586,7 @@ function ReleasePackagePanel({
                         const c = await api.createCheckout(pkg.id);
                         window.location.href = c.checkout_url;
                       } catch (e) {
-                        setErr(e instanceof Error ? e.message : "Checkout failed");
+                        setErr(errorMessage(e, "Checkout failed"));
                       }
                     }}
                     title="Open Stripe Checkout (card / Apple Pay / Google Pay)"
@@ -671,16 +674,6 @@ function ReleasePackagePanel({
   );
 }
 
-async function fetchAudioBlob(url: string): Promise<string> {
-  const headers: Record<string, string> = {};
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(url, { headers });
-  if (!res.ok) throw new Error(`Audio request failed (${res.status})`);
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
-}
-
 /* ---------- client brief + service presets ---------- */
 
 const SERVICE_PRESETS = [
@@ -723,7 +716,7 @@ function ClientBriefPanel({
       await onApplyPreset(p.included, p.extraCents);
       setInfo(`Preset “${p.label}” applied — included rounds (${p.included}) and extra-round price ($${(p.extraCents / 100).toFixed(2)}) updated too.`);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Preset failed");
+      setErr(errorMessage(e, "Preset failed"));
     }
   };
 
@@ -744,7 +737,7 @@ function ClientBriefPanel({
       });
       setInfo("Client brief saved ✓ — the client sees these rules on the review link.");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Save failed");
+      setErr(errorMessage(e, "Save failed"));
     } finally {
       setBusy(false);
     }
@@ -895,7 +888,7 @@ function ReferencePanel({
       setNote("");
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to add reference");
+      setErr(errorMessage(e, "Failed to add reference"));
     } finally {
       setBusy(false);
     }
@@ -915,7 +908,7 @@ function ReferencePanel({
       setNote("");
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Upload failed");
+      setErr(errorMessage(e, "Upload failed"));
     } finally {
       setBusy(false);
     }
@@ -938,7 +931,7 @@ function ReferencePanel({
       });
       onCompare(ref, c);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Comparison failed");
+      setErr(errorMessage(e, "Comparison failed"));
     } finally {
       setCompareBusy(null);
     }
@@ -1095,7 +1088,7 @@ function StemPanel({ version }: { version: ReviewVersion }) {
       await api.uploadStem(version.id, name, `${name} stem`, 0, file);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Upload failed");
+      setErr(errorMessage(e, "Upload failed"));
     }
   };
 
@@ -1178,7 +1171,7 @@ function ChangeOrdersPanel({ sessionId }: { sessionId: number }) {
         return next;
       });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to load change orders");
+      setErr(errorMessage(e, "Failed to load change orders"));
     }
   }, [sessionId]);
 
@@ -1194,7 +1187,7 @@ function ChangeOrdersPanel({ sessionId }: { sessionId: number }) {
       await fn();
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Action failed");
+      setErr(errorMessage(e, "Action failed"));
     } finally {
       setBusy(false);
     }
@@ -1317,7 +1310,7 @@ function RemindersPanel({ sessionId }: { sessionId: number }) {
       setNotifs(r.notifications);
       setEmail(r.settings.client_email);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to load reminders");
+      setErr(errorMessage(e, "Failed to load reminders"));
     }
   }, [sessionId]);
 
@@ -1332,7 +1325,7 @@ function RemindersPanel({ sessionId }: { sessionId: number }) {
       await api.updateReminderSettings(sessionId, patch);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Save failed");
+      setErr(errorMessage(e, "Save failed"));
     } finally {
       setBusy(false);
     }
@@ -1345,7 +1338,7 @@ function RemindersPanel({ sessionId }: { sessionId: number }) {
       await api.evaluateReminders();
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Evaluate failed");
+      setErr(errorMessage(e, "Evaluate failed"));
     } finally {
       setBusy(false);
     }
@@ -1466,7 +1459,7 @@ function ExportRequestsButtons({ sessionId, name }: { sessionId: number; name: s
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Export failed");
+      setErr(errorMessage(e, "Export failed"));
     } finally {
       setBusy(false);
     }
@@ -1499,7 +1492,7 @@ function TeamPanel({ sessionId }: { sessionId: number }) {
       setPolicy(p);
       setMembers(m);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to load team");
+      setErr(errorMessage(e, "Failed to load team"));
     }
   }, [sessionId]);
 
@@ -1514,7 +1507,7 @@ function TeamPanel({ sessionId }: { sessionId: number }) {
       await fn();
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Action failed");
+      setErr(errorMessage(e, "Action failed"));
     } finally {
       setBusy(false);
     }
@@ -1646,7 +1639,6 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
   const [info, setInfo] = useState<string | null>(null);
   const [highlight, setHighlight] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const rafRef = useRef<number | null>(null);
   const keepTimeRef = useRef<number | null>(null);
 
   const current = versions.find((v) => v.id === currentId) ?? versions[0] ?? null;
@@ -1696,7 +1688,7 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
         setSrcVersion(version.id);
         keepTimeRef.current = keepTime;
       } catch (e) {
-        setErr(e instanceof Error ? e.message : "Failed to load audio");
+        setErr(errorMessage(e, "Failed to load audio"));
       }
     },
     [session.id]
@@ -1714,24 +1706,7 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
     setLoop(null);
   }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // playhead animation
-  useEffect(() => {
-    const tick = () => {
-      const a = audioRef.current;
-      if (a) {
-        setPosition(a.currentTime);
-        if (loop && a.currentTime >= loop.end) {
-          a.currentTime = loop.start;
-          a.play().catch(() => undefined);
-        }
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [loop]);
+  useAudioPlayhead(audioRef, loop, setPosition);
 
   useEffect(() => {
     return () => {
@@ -1769,7 +1744,7 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
     try {
       setDiff(await api.versionDiff(session.id, v.id));
     } catch (e) {
-      setDiffErr(e instanceof Error ? e.message : "Failed to load the project diff");
+      setDiffErr(errorMessage(e, "Failed to load the project diff"));
     } finally {
       setDiffBusy(false);
     }
@@ -1784,7 +1759,7 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
       setInfo("Version uploaded ✓");
       await refresh();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Upload failed");
+      setErr(errorMessage(e, "Upload failed"));
     } finally {
       setUploading(false);
     }
@@ -1799,7 +1774,7 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
       setInfo("Unresolved comments carried to the newest version ✓");
       await refresh();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Carry failed");
+      setErr(errorMessage(e, "Carry failed"));
     }
   };
 
@@ -1813,7 +1788,7 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
       setInfo("Feedback consolidated — round closed, next round opened ✓");
       await refresh();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Submit failed";
+      const msg = errorMessage(e, "Submit failed");
       setErr(msg);
       if (msg.toLowerCase().includes("round")) setPayPrompt("extra_round");
     }
@@ -1826,7 +1801,7 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
       const c = await api.createSessionCheckout(session.id, kind);
       window.location.href = c.checkout_url;
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Checkout failed");
+      setErr(errorMessage(e, "Checkout failed"));
     }
   };
 
@@ -1858,7 +1833,7 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
       setInfo("Payment & portfolio settings saved ✓");
       await refresh();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to save settings");
+      setErr(errorMessage(e, "Failed to save settings"));
     }
   };
 
@@ -1883,7 +1858,7 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
       });
       setComparison(comp);
     } catch (e) {
-      setComparisonErr(e instanceof Error ? e.message : "Failed to create comparison");
+      setComparisonErr(errorMessage(e, "Failed to create comparison"));
     }
   };
 
@@ -1922,7 +1897,7 @@ function SessionDetail({ session, onBack }: { session: ReviewSession; onBack: ()
       });
       setInfo("Share settings saved ✓");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to save share settings");
+      setErr(errorMessage(e, "Failed to save share settings"));
     }
   };
 
@@ -2614,7 +2589,7 @@ export default function ReviewSessionPage() {
     try {
       setSessions(await api.listSessions());
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to load sessions");
+      setErr(errorMessage(e, "Failed to load sessions"));
     }
   }, []);
 
@@ -2633,7 +2608,7 @@ export default function ReviewSessionPage() {
       await load();
       setOpenId(s.id);
     } catch (err) {
-      setErr(err instanceof Error ? err.message : "Failed to create session");
+      setErr(errorMessage(err, "Failed to create session"));
     } finally {
       setBusy(false);
     }

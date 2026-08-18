@@ -13,6 +13,7 @@ import {
   type ProjectFile,
   type Tree,
 } from "../types";
+import { errorMessage } from "../errors";
 
 type Tab = "code" | "commits";
 
@@ -45,7 +46,7 @@ export default function ProjectPage() {
       const current = b.some((x) => x.name === branch) ? branch : p.default_branch;
       setBranch(current);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load project");
+      setError(errorMessage(err, "Failed to load project"));
     }
   }, [pid, branch]);
 
@@ -57,7 +58,7 @@ export default function ProjectPage() {
         setTree(t);
         setCommits(c);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load branch");
+        setError(errorMessage(err, "Failed to load branch"));
       }
     },
     [pid]
@@ -101,7 +102,7 @@ export default function ProjectPage() {
       await load();
       setNotice("Commit created ✓");
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : "Upload failed");
+      setNotice(errorMessage(err, "Upload failed"));
     } finally {
       setUploading(false);
     }
