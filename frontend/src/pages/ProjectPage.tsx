@@ -158,6 +158,9 @@ export default function ProjectPage() {
               <span>⎇</span> Branches
               {branches.length > 0 && <span className="muted" style={{ fontSize: 11 }}>({branches.length})</span>}
             </Link>
+            <Link to={`/projects/${pid}/features`} className="repo-tab">
+              <span>🧩</span> Features
+            </Link>
             <span className="repo-tab" style={{ cursor: "default" }}>
               <span>🎛</span> Release
             </span>

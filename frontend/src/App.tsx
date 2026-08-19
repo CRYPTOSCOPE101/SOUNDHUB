@@ -19,6 +19,7 @@ import ProjectPage from "./pages/ProjectPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import DawIntegrationPage from "./pages/DawIntegrationPage";
 import DocsPage from "./pages/DocsPage";
+import ProjectFeaturesHub from "./pages/ProjectFeaturesHub";
 
 // Integration pages for individual DAWs — same layout, per-DAW accent color.
 const CUBASE = {
@@ -159,6 +160,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <CommitPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/projects/:id/features"
+            element={
+              <RequireAuth>
+                <ProjectFeaturesHub />
               </RequireAuth>
             }
           />
