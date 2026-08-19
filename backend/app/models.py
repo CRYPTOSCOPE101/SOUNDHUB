@@ -1381,3 +1381,434 @@ class IPAllowList(Base):
     description: Mapped[str] = mapped_column(String(200), default="")
     enabled: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Wiki — in-project documentation
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class WikiPage(Base):
+    __tablename__ = "wiki_pages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    slug: Mapped[str] = mapped_column(String(256))
+    title: Mapped[str] = mapped_column(String(300))
+    content: Mapped[str] = mapped_column(Text, default="")
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "slug", name="uq_wiki_slug"),)
+
+
+class WikiRevision(Base):
+    __tablename__ = "wiki_revisions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    page_id: Mapped[int] = mapped_column(ForeignKey("wiki_pages.id"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    content: Mapped[str] = mapped_column(Text)
+    message: Mapped[str] = mapped_column(String(200), default="")
+    version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Time Tracking — log hours on tasks
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TimeEntry(Base):
+    __tablename__ = "time_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("music_tasks.id"), nullable=True)
+    hours: Mapped[float] = mapped_column(Integer, default=0)  # stored as minutes
+    description: Mapped[str] = mapped_column(Text, default="")
+    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Epics — group tasks into large features
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Epic(Base):
+    __tablename__ = "epics"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    color: Mapped[str] = mapped_column(String(7), default="#6366f1")
+    start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="open")  # open | in_progress | done | closed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EpicTaskLink(Base):
+    __tablename__ = "epic_task_links"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    epic_id: Mapped[int] = mapped_column(ForeignKey("epics.id"), index=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("music_tasks.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("epic_id", "task_id", name="uq_epic_task"),)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Roadmaps — visual timeline
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class RoadmapItem(Base):
+    __tablename__ = "roadmap_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    category: Mapped[str] = mapped_column(String(64), default="feature")
+    start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    progress: Mapped[int] = mapped_column(Integer, default=0)  # 0-100
+    color: Mapped[str] = mapped_column(String(7), default="#3b82f6")
+    epic_id: Mapped[int | None] = mapped_column(ForeignKey("epics.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Calendar — deadline tracking
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class CalendarEvent(Base):
+    __tablename__ = "calendar_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    all_day: Mapped[bool] = mapped_column(default=False)
+    recurrence: Mapped[str] = mapped_column(String(32), default="")  # none | daily | weekly | monthly
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Merge Trains — queue merges
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class MergeTrain(Base):
+    __tablename__ = "merge_trains"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    pr_id: Mapped[int] = mapped_column(ForeignKey("pull_requests.id"))
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(32), default="queued")  # queued | merging | merged | failed
+    merge_commit_id: Mapped[int | None] = mapped_column(ForeignKey("commits.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Requirements — project requirements management
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Requirement(Base):
+    __tablename__ = "requirements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    priority: Mapped[str] = mapped_column(String(16), default="medium")
+    status: Mapped[str] = mapped_column(String(32), default="proposed")  # proposed | accepted | implemented | verified
+    linked_task_id: Mapped[int | None] = mapped_column(ForeignKey("music_tasks.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Design Management — store and review designs
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Design(Base):
+    __tablename__ = "designs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    filename: Mapped[str] = mapped_column(String(256))
+    blob_sha: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    note: Mapped[str] = mapped_column(Text, default="")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class DesignComment(Base):
+    __tablename__ = "design_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    design_id: Mapped[int] = mapped_column(ForeignKey("designs.id"), index=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    position_x: Mapped[float] = mapped_column(Integer, default=0)
+    position_y: Mapped[float] = mapped_column(Integer, default=0)
+    resolved: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Service Desk — email support
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class ServiceDeskTicket(Base):
+    __tablename__ = "service_desk_tickets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    identifier: Mapped[str] = mapped_column(String(32), unique=True)  # SD-001
+    subject: Mapped[str] = mapped_column(String(300))
+    body: Mapped[str] = mapped_column(Text)
+    from_email: Mapped[str] = mapped_column(String(256))
+    status: Mapped[str] = mapped_column(String(32), default="new")  # new | in_progress | closed
+    assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SAST/DAST — security scanning
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class SecurityScan(Base):
+    __tablename__ = "security_scans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    commit_id: Mapped[int | None] = mapped_column(ForeignKey("commits.id"), nullable=True)
+    scan_type: Mapped[str] = mapped_column(String(32))  # sast | dast | dependency | secret
+    status: Mapped[str] = mapped_column(String(32), default="pending")  # pending | running | success | failure
+    findings_count: Mapped[int] = mapped_column(Integer, default=0)
+    critical_count: Mapped[int] = mapped_column(Integer, default=0)
+    high_count: Mapped[int] = mapped_column(Integer, default=0)
+    medium_count: Mapped[int] = mapped_column(Integer, default=0)
+    low_count: Mapped[int] = mapped_column(Integer, default=0)
+    report_url: Mapped[str] = mapped_column(String(500), default="")
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SecurityFinding(Base):
+    __tablename__ = "security_findings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scan_id: Mapped[int] = mapped_column(ForeignKey("security_scans.id"), index=True)
+    severity: Mapped[str] = mapped_column(String(16))
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    file_path: Mapped[str] = mapped_column(String(512), default="")
+    line: Mapped[int | None] = mapped_column(nullable=True)
+    cwe: Mapped[str] = mapped_column(String(16), default="")
+    status: Mapped[str] = mapped_column(String(32), default="open")  # open | dismissed | fixed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Container Registry — Docker images
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class ContainerImage(Base):
+    __tablename__ = "container_images"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    tag: Mapped[str] = mapped_column(String(64))
+    digest: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Feature Flags
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class FeatureFlag(Base):
+    __tablename__ = "feature_flags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    enabled: Mapped[bool] = mapped_column(default=False)
+    conditions: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_feature_flag"),)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Error Tracking
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Error(Base):
+    __tablename__ = "errors"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    fingerprint: Mapped[str] = mapped_column(String(64), index=True)
+    message: Mapped[str] = mapped_column(String(500))
+    stacktrace: Mapped[str] = mapped_column(Text, default="")
+    severity: Mapped[str] = mapped_column(String(16), default="error")
+    status: Mapped[str] = mapped_column(String(32), default="open")  # open | resolved | ignored
+    occurrence_count: Mapped[int] = mapped_column(Integer, default=1)
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Incident Management
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Incident(Base):
+    __tablename__ = "incidents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    severity: Mapped[str] = mapped_column(String(16), default="minor")  # critical | major | minor
+    status: Mapped[str] = mapped_column(String(32), default="open")  # open | acknowledged | investigating | resolved
+    assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    error_id: Mapped[int | None] = mapped_column(ForeignKey("errors.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# On-call Schedules
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class OnCallSchedule(Base):
+    __tablename__ = "oncall_schedules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    rotation_interval: Mapped[str] = mapped_column(String(32), default="weekly")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class OnCallRotation(Base):
+    __tablename__ = "oncall_rotations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    schedule_id: Mapped[int] = mapped_column(ForeignKey("oncall_schedules.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Status Page
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class StatusPageComponent(Base):
+    __tablename__ = "status_page_components"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(32), default="operational")  # operational | degraded | outage | maintenance
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class StatusPageIncident(Base):
+    __tablename__ = "status_page_incidents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(32), default="investigating")  # investigating | identified | monitoring | resolved
+    impact: Mapped[str] = mapped_column(String(16), default="minor")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# OKRs — Objectives and Key Results
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Objective(Base):
+    __tablename__ = "objectives"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    period: Mapped[str] = mapped_column(String(32), default="Q1 2026")
+    status: Mapped[str] = mapped_column(String(32), default="active")
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class KeyResult(Base):
+    __tablename__ = "key_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    objective_id: Mapped[int] = mapped_column(ForeignKey("objectives.id"), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    target_value: Mapped[float] = mapped_column(Integer, default=100)
+    current_value: Mapped[float] = mapped_column(Integer, default=0)
+    unit: Mapped[str] = mapped_column(String(32), default="")  # %, count, etc
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Audit Events
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    action: Mapped[str] = mapped_column(String(48))
+    target_type: Mapped[str] = mapped_column(String(32))
+    target_id: Mapped[int | None] = mapped_column(nullable=True)
+    details: Mapped[dict] = mapped_column(JSON, default=dict)
+    ip_address: Mapped[str] = mapped_column(String(45), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

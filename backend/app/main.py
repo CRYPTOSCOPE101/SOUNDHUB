@@ -46,6 +46,8 @@ from .routers import (
     two_factor,
     webhooks,
     workflows_security,
+    wiki_time_epics,
+    gitlab_features,
 )
 
 app = FastAPI(
@@ -99,6 +101,8 @@ app.include_router(notifications_social.router)
 app.include_router(secrets_envs.router)
 app.include_router(packages_gist_sponsors.router)
 app.include_router(workflows_security.router)
+app.include_router(wiki_time_epics.router)
+app.include_router(gitlab_features.router)
 
 
 @app.on_event("startup")
