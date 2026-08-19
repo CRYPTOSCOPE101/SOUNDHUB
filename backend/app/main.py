@@ -53,6 +53,7 @@ from .routers import (
     test_plans,
     deployments_artifacts,
     agile_delivery,
+    search_engine as search_engine_router,
 )
 
 app = FastAPI(
@@ -113,11 +114,20 @@ app.include_router(pipelines_ci.router)
 app.include_router(test_plans.router)
 app.include_router(deployments_artifacts.router)
 app.include_router(agile_delivery.router)
+app.include_router(search_engine_router.router)
 
 
 @app.on_event("startup")
 def _startup() -> None:
     init_db()
+    # Initialize FTS5 search index and reindex all entities
+    from .services.search_engine import init_search_index, reindex_all
+    init_search_index()
+    try:
+        result = reindex_all()
+        print(f"🔍 Search index: {result['indexed']} entities indexed")
+    except Exception as e:
+        print(f"⚠️  Search reindex skipped: {e}")
 
 
 @app.get("/api/health")
