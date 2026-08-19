@@ -116,6 +116,13 @@ app.include_router(deployments_artifacts.router)
 app.include_router(agile_delivery.router)
 app.include_router(search_engine_router.router)
 
+# GraphQL endpoint
+from strawberry.fastapi import GraphQLRouter
+from .graphql.schema import schema as graphql_schema
+
+graphql_app = GraphQLRouter(graphql_schema)
+app.include_router(graphql_app, prefix="/graphql")
+
 
 @app.on_event("startup")
 def _startup() -> None:
