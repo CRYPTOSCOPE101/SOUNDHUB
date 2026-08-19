@@ -1812,3 +1812,408 @@ class AuditEvent(Base):
     details: Mapped[dict] = mapped_column(JSON, default=dict)
     ip_address: Mapped[str] = mapped_column(String(45), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Phase 10: Code Search, Variable Groups, Secure Files, Approval Gates,
+#           Snippet Comments, Retrospectives Board
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class CodeSearchIndex(Base):
+    __tablename__ = "code_search_index"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    commit_id: Mapped[int] = mapped_column(ForeignKey("commits.id"), index=True)
+    file_path: Mapped[str] = mapped_column(String(1024))
+    content: Mapped[str] = mapped_column(Text)
+    language: Mapped[str] = mapped_column(String(32), default="")
+    indexed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "file_path", "commit_id", name="uq_code_search_file"),)
+
+
+class VariableGroup(Base):
+    __tablename__ = "variable_groups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    variables: Mapped[dict] = mapped_column(JSON, default=dict)  # {"name": {"value": "...", "secret": false}}
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_variable_group"),)
+
+
+class SecureFile(Base):
+    __tablename__ = "secure_files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(256))
+    description: Mapped[str] = mapped_column(Text, default="")
+    blob_sha: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    content_type: Mapped[str] = mapped_column(String(64), default="application/octet-stream")
+    uploaded_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Phase 11: Test Plans, Test Execution, Load Testing
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestPlan(Base):
+    __tablename__ = "test_plans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    state: Mapped[str] = mapped_column(String(32), default="active")  # active | inactive
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    suites: Mapped[list["TestSuite"]] = relationship(back_populates="plan", cascade="all, delete-orphan")
+
+
+class TestSuite(Base):
+    __tablename__ = "test_suites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("test_plans.id"), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("test_suites.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    plan: Mapped["TestPlan"] = relationship(back_populates="suites")
+    cases: Mapped[list["TestCase"]] = relationship(back_populates="suite", cascade="all, delete-orphan")
+
+
+class TestCase(Base):
+    __tablename__ = "test_cases"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    suite_id: Mapped[int] = mapped_column(ForeignKey("test_suites.id"), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    steps: Mapped[str] = mapped_column(Text, default="")  # JSON array of steps
+    priority: Mapped[str] = mapped_column(String(16), default="medium")
+    state: Mapped[str] = mapped_column(String(32), default="ready")  # ready | design | closed
+    assigned_to: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    suite: Mapped["TestSuite"] = relationship(back_populates="cases")
+    results: Mapped[list["TestResult"]] = relationship(back_populates="test_case", cascade="all, delete-orphan")
+
+
+class TestResult(Base):
+    __tablename__ = "test_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    test_case_id: Mapped[int] = mapped_column(ForeignKey("test_cases.id"), index=True)
+    run_id: Mapped[int | None] = mapped_column(ForeignKey("test_runs.id"), nullable=True, index=True)
+    outcome: Mapped[str] = mapped_column(String(32), default="none")  # passed | failed | blocked | skipped | none
+    comment: Mapped[str] = mapped_column(Text, default="")
+    executed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    test_case: Mapped["TestCase"] = relationship(back_populates="results")
+
+
+class TestRun(Base):
+    __tablename__ = "test_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("test_plans.id"), nullable=True)
+    name: Mapped[str] = mapped_column(String(200))
+    state: Mapped[str] = mapped_column(String(32), default="in_progress")  # in_progress | completed | aborted
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    passed: Mapped[int] = mapped_column(Integer, default=0)
+    failed: Mapped[int] = mapped_column(Integer, default=0)
+    skipped: Mapped[int] = mapped_column(Integer, default=0)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class LoadTest(Base):
+    __tablename__ = "load_tests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    target_url: Mapped[str] = mapped_column(String(500))
+    concurrent_users: Mapped[int] = mapped_column(Integer, default=10)
+    duration_s: Mapped[int] = mapped_column(Integer, default=60)
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    results_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Phase 12: Artifacts Registry (enhanced), Pipeline Artifacts, Task Groups
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class ArtifactFeed(Base):
+    __tablename__ = "artifact_feeds"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    feed_type: Mapped[str] = mapped_column(String(32))  # npm | pip | nuget | maven | universal | sample_pack
+    description: Mapped[str] = mapped_column(Text, default="")
+    visibility: Mapped[str] = mapped_column(String(32), default="private")  # private | public
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    packages: Mapped[list["ArtifactPackage"]] = relationship(back_populates="feed", cascade="all, delete-orphan")
+
+
+class ArtifactPackage(Base):
+    __tablename__ = "artifact_packages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    feed_id: Mapped[int] = mapped_column(ForeignKey("artifact_feeds.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    version: Mapped[str] = mapped_column(String(64))
+    description: Mapped[str] = mapped_column(Text, default="")
+    blob_sha: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    file_count: Mapped[int] = mapped_column(Integer, default=0)
+    download_count: Mapped[int] = mapped_column(Integer, default=0)
+    published_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    feed: Mapped["ArtifactFeed"] = relationship(back_populates="packages")
+
+
+class PipelineArtifact(Base):
+    __tablename__ = "pipeline_artifacts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    workflow_run_id: Mapped[int] = mapped_column(ForeignKey("workflow_runs.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    blob_sha: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    retention_days: Mapped[int] = mapped_column(Integer, default=30)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class TaskGroup(Base):
+    __tablename__ = "task_groups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    tasks_json: Mapped[dict] = mapped_column(JSON, default=dict)  # [{"task": "...", "inputs": {}}]
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Phase 13: Advanced Branch Permissions, Deployment Tracking, Env Approvals
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class BranchPermission(Base):
+    __tablename__ = "branch_permissions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    branch_pattern: Mapped[str] = mapped_column(String(256))
+    permission_type: Mapped[str] = mapped_column(String(32))  # push | merge | force_push | delete
+    grant_type: Mapped[str] = mapped_column(String(32))  # allow | deny
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Deployment(Base):
+    __tablename__ = "deployments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    environment_id: Mapped[int] = mapped_column(ForeignKey("environments.id"), index=True)
+    commit_id: Mapped[int | None] = mapped_column(ForeignKey("commits.id"), nullable=True)
+    workflow_run_id: Mapped[int | None] = mapped_column(ForeignKey("workflow_runs.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="pending")  # pending | in_progress | success | failure | cancelled
+    deployed_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    deployed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EnvironmentApproval(Base):
+    __tablename__ = "environment_approvals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    environment_id: Mapped[int] = mapped_column(ForeignKey("environments.id"), index=True)
+    deployment_id: Mapped[int] = mapped_column(ForeignKey("deployments.id"), index=True)
+    approver_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    status: Mapped[str] = mapped_column(String(32), default="pending")  # pending | approved | rejected
+    comment: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Phase 14: Code Insights (enhanced), Smart Mirroring, Connect/Extensions
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class CodeInsightReport(Base):
+    __tablename__ = "code_insight_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    commit_id: Mapped[int] = mapped_column(ForeignKey("commits.id"), index=True)
+    report_type: Mapped[str] = mapped_column(String(48))  # coverage | lint | complexity | security | custom
+    reporter: Mapped[str] = mapped_column(String(128))  # name of the tool
+    result_data: Mapped[dict] = mapped_column(JSON, default=dict)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    passed: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class MirrorConfig(Base):
+    __tablename__ = "mirror_configs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    mirror_url: Mapped[str] = mapped_column(String(512))
+    sync_interval_min: Mapped[int] = mapped_column(Integer, default=30)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="active")  # active | paused | error
+    error_message: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Extension(Base):
+    __tablename__ = "extensions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    version: Mapped[str] = mapped_column(String(32), default="1.0.0")
+    author: Mapped[str] = mapped_column(String(128))
+    category: Mapped[str] = mapped_column(String(64), default="utility")  # utility | ci | security | analytics | workflow
+    manifest_url: Mapped[str] = mapped_column(String(512), default="")
+    install_count: Mapped[int] = mapped_column(Integer, default=0)
+    rating: Mapped[float] = mapped_column(default=0.0)
+    is_official: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ExtensionInstall(Base):
+    __tablename__ = "extension_installs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    extension_id: Mapped[int] = mapped_column(ForeignKey("extensions.id"), index=True)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    installed_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "extension_id", name="uq_project_extension"),)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Phase 15: Boards (Agile/Scrum), Retrospectives, Release Approvals
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Sprint(Base):
+    __tablename__ = "sprints"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    goal: Mapped[str] = mapped_column(Text, default="")
+    state: Mapped[str] = mapped_column(String(32), default="planned")  # planned | active | completed
+    start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    velocity: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class StoryPoint(Base):
+    __tablename__ = "story_points"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("music_tasks.id"), index=True)
+    sprint_id: Mapped[int | None] = mapped_column(ForeignKey("sprints.id"), nullable=True, index=True)
+    points: Mapped[int] = mapped_column(Integer, default=0)
+    original_points: Mapped[int] = mapped_column(Integer, default=0)
+    assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Retrospective(Base):
+    __tablename__ = "retrospectives"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    sprint_id: Mapped[int | None] = mapped_column(ForeignKey("sprints.id"), nullable=True)
+    name: Mapped[str] = mapped_column(String(200))
+    state: Mapped[str] = mapped_column(String(32), default="collecting")  # collecting | discussing | voting | closed
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    items: Mapped[list["RetroItem"]] = relationship(back_populates="retrospective", cascade="all, delete-orphan")
+
+
+class RetroItem(Base):
+    __tablename__ = "retro_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    retrospective_id: Mapped[int] = mapped_column(ForeignKey("retrospectives.id"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    category: Mapped[str] = mapped_column(String(32))  # went_well | to_improve | action_item
+    content: Mapped[str] = mapped_column(Text)
+    votes: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    retrospective: Mapped["Retrospective"] = relationship(back_populates="items")
+
+
+class ReleaseApproval(Base):
+    __tablename__ = "release_approvals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    tag_id: Mapped[int | None] = mapped_column(ForeignKey("git_tags.id"), nullable=True)
+    environment_id: Mapped[int | None] = mapped_column(ForeignKey("environments.id"), nullable=True)
+    approver_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    status: Mapped[str] = mapped_column(String(32), default="pending")  # pending | approved | rejected
+    comment: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ApprovalGate(Base):
+    __tablename__ = "approval_gates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    gate_type: Mapped[str] = mapped_column(String(32))  # branch | release | deploy
+    required_approvers: Mapped[int] = mapped_column(Integer, default=1)
+    target_pattern: Mapped[str] = mapped_column(String(256), default="main")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

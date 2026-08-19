@@ -48,6 +48,11 @@ from .routers import (
     workflows_security,
     wiki_time_epics,
     gitlab_features,
+    code_search_and_insights,
+    pipelines_ci,
+    test_plans,
+    deployments_artifacts,
+    agile_delivery,
 )
 
 app = FastAPI(
@@ -103,6 +108,11 @@ app.include_router(packages_gist_sponsors.router)
 app.include_router(workflows_security.router)
 app.include_router(wiki_time_epics.router)
 app.include_router(gitlab_features.router)
+app.include_router(code_search_and_insights.router)
+app.include_router(pipelines_ci.router)
+app.include_router(test_plans.router)
+app.include_router(deployments_artifacts.router)
+app.include_router(agile_delivery.router)
 
 
 @app.on_event("startup")
