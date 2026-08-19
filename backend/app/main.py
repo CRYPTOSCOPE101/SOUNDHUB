@@ -1,32 +1,51 @@
 """SoundHub API — GitHub for music production projects."""
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
 from .config import CORS_ORIGINS
 from .database import get_db, init_db
 from .routers import (
     activity,
+    ai_mix,
     analytics,
     assets,
+    audio_checks,
     auth,
     change_orders,
+    codeowners_milestones,
     comparisons,
+    dashboard,
+    discussions,
     diffs,
     files,
     groups,
+    integrations,
+    kanban,
+    metadata,
+    notifications_social,
+    packages_gist_sponsors,
     pins,
     portfolio,
     projects,
+    pull_requests,
     references,
     release_packages,
     reminders,
     roles,
     search,
+    secrets_envs,
     sessions,
     tags,
+    tags_releases,
+    tasks,
     templates,
+    two_factor,
     webhooks,
+    workflows_security,
 )
 
 app = FastAPI(
@@ -64,6 +83,22 @@ app.include_router(tags.router)
 app.include_router(groups.router)
 app.include_router(pins.router)
 app.include_router(webhooks.router)
+app.include_router(metadata.router)
+app.include_router(pull_requests.router)
+app.include_router(tasks.router)
+app.include_router(tags_releases.router)
+app.include_router(audio_checks.router)
+app.include_router(discussions.router)
+app.include_router(kanban.router)
+app.include_router(ai_mix.router)
+app.include_router(dashboard.router)
+app.include_router(integrations.router)
+app.include_router(two_factor.router)
+app.include_router(codeowners_milestones.router)
+app.include_router(notifications_social.router)
+app.include_router(secrets_envs.router)
+app.include_router(packages_gist_sponsors.router)
+app.include_router(workflows_security.router)
 
 
 @app.on_event("startup")
@@ -74,3 +109,12 @@ def _startup() -> None:
 @app.get("/api/health")
 def health():
     return {"status": "ok", "service": "soundhub-api"}
+
+
+_STATIC = Path(__file__).parent / "static"
+
+
+@app.get("/", response_class=HTMLResponse)
+def docs_home():
+    """Serve the API documentation landing page."""
+    return (_STATIC / "docs.html").read_text(encoding="utf-8")

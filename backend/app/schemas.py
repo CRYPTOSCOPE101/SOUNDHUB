@@ -718,3 +718,272 @@ class ReferenceComparisonOut(ORMModel):
     ref_gain_db: float
     level_match: str
     created_at: datetime
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Pull Requests
+# ═══════════════════════════════════════════════════════════════════════════
+
+class PullRequestCreate(BaseModel):
+    source_branch: str = Field(min_length=1, max_length=64)
+    target_branch: str = Field(default="main", max_length=64)
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=5000)
+    labels: list[str] = []
+
+class PullRequestUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    status: str | None = None
+
+class PullRequestOut(BaseModel):
+    id: int
+    project_id: int
+    author: UserOut
+    source_branch: str
+    target_branch: str
+    title: str
+    description: str
+    status: str
+    review_count: int = 0
+    approval_count: int = 0
+    comment_count: int = 0
+    labels: list[str] = []
+    merge_commit_id: int | None = None
+    created_at: datetime
+    updated_at: datetime
+
+class PullRequestReviewCreate(BaseModel):
+    decision: str = Field(pattern=r"^(comment|approve|request_changes)$")
+    body: str = Field(default="", max_length=5000)
+
+class PullRequestReviewOut(BaseModel):
+    id: int
+    reviewer: UserOut | None = None
+    reviewer_name: str
+    decision: str
+    body: str
+    created_at: datetime
+
+class PullRequestCommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=5000)
+    path: str | None = None
+    time_s: float | None = None
+    parent_id: int | None = None
+
+class PullRequestCommentOut(BaseModel):
+    id: int
+    author: UserOut | None = None
+    author_name: str
+    body: str
+    path: str | None = None
+    time_s: float | None = None
+    resolved: bool
+    parent_id: int | None = None
+    created_at: datetime
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Music Tasks
+# ═══════════════════════════════════════════════════════════════════════════
+
+class MusicTaskCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    body: str = Field(default="", max_length=10000)
+    type: str = Field(default="task", pattern=r"^(task|bug|feature|question)$")
+    priority: str = Field(default="medium", pattern=r"^(low|medium|high|critical)$")
+    assignee_id: int | None = None
+    milestone: str = Field(default="", max_length=128)
+    due_date: datetime | None = None
+    labels: list[str] = []
+
+class MusicTaskUpdate(BaseModel):
+    title: str | None = None
+    body: str | None = None
+    type: str | None = None
+    priority: str | None = None
+    status: str | None = None
+    assignee_id: int | None = None
+    milestone: str | None = None
+    due_date: datetime | None = None
+
+class MusicTaskOut(BaseModel):
+    id: int
+    project_id: int
+    author: UserOut
+    title: str
+    body: str
+    type: str
+    priority: str
+    status: str
+    assignee: UserOut | None = None
+    milestone: str
+    due_date: datetime | None = None
+    labels: list[str] = []
+    comment_count: int = 0
+    linked_pr_id: int | None = None
+    created_at: datetime
+    updated_at: datetime
+
+class TaskCommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=5000)
+
+class TaskCommentOut(BaseModel):
+    id: int
+    author: UserOut | None = None
+    author_name: str
+    body: str
+    created_at: datetime
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tags & Releases
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TagCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    commit_id: int
+    message: str = Field(default="", max_length=2000)
+    is_release: bool = False
+
+class TagOut(BaseModel):
+    id: int
+    project_id: int
+    name: str
+    message: str
+    commit_id: int
+    is_release: bool
+    created_by: UserOut
+    created_at: datetime
+
+class ReleaseNoteCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    body: str = Field(default="", max_length=10000)
+    highlights: str = Field(default="", max_length=2000)
+
+class ReleaseNoteOut(BaseModel):
+    id: int
+    tag: TagOut
+    title: str
+    body: str
+    highlights: str
+    created_at: datetime
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Audio CI Checks
+# ═══════════════════════════════════════════════════════════════════════════
+
+class AudioCheckCreate(BaseModel):
+    check_type: str = Field(pattern=r"^(lufs|true_peak|format|sample_rate|channels)$")
+    value: str = Field(max_length=128)
+    expected: str = Field(default="", max_length=128)
+
+class AudioCheckOut(BaseModel):
+    id: int
+    commit_id: int
+    check_type: str
+    status: str
+    value: str
+    expected: str
+    message: str
+    created_at: datetime
+
+class AudioCheckResultOut(BaseModel):
+    commit_id: int
+    checks: list[AudioCheckOut]
+    passed: int
+    failed: int
+    warned: int
+    total: int
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Discussions
+# ═══════════════════════════════════════════════════════════════════════════
+
+class DiscussionCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    body: str = Field(min_length=1, max_length=10000)
+    category: str = Field(default="general", max_length=64)
+
+class DiscussionUpdate(BaseModel):
+    title: str | None = None
+    body: str | None = None
+    category: str | None = None
+    pinned: bool | None = None
+    locked: bool | None = None
+
+class DiscussionOut(BaseModel):
+    id: int
+    project_id: int
+    author: UserOut
+    title: str
+    body: str
+    category: str
+    pinned: bool
+    locked: bool
+    comment_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+class DiscussionCommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=5000)
+
+class DiscussionCommentOut(BaseModel):
+    id: int
+    author: UserOut | None = None
+    author_name: str
+    body: str
+    is_answer: bool
+    created_at: datetime
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Kanban Boards
+# ═══════════════════════════════════════════════════════════════════════════
+
+class KanbanBoardCreate(BaseModel):
+    name: str = Field(default="Release Board", max_length=128)
+    columns: list[str] = ["Backlog", "In Progress", "Review", "Approved", "Mastered", "Released"]
+
+class KanbanBoardOut(BaseModel):
+    id: int
+    project_id: int
+    name: str
+    columns: list["KanbanColumnOut"] = []
+    created_at: datetime
+
+class KanbanColumnOut(BaseModel):
+    id: int
+    name: str
+    position: int
+    color: str
+    cards: list["KanbanCardOut"] = []
+
+class KanbanCardCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    description: str = Field(default="", max_length=2000)
+    version_id: int | None = None
+    task_id: int | None = None
+    assignee_id: int | None = None
+
+class KanbanCardUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    column_id: int | None = None
+    position: int | None = None
+    assignee_id: int | None = None
+
+class KanbanCardOut(BaseModel):
+    id: int
+    title: str
+    description: str
+    version_id: int | None = None
+    task_id: int | None = None
+    position: int
+    assignee: UserOut | None = None
+    created_at: datetime
+
+KanbanBoardOut.model_rebuild()
+KanbanColumnOut.model_rebuild()

@@ -720,3 +720,664 @@ class WebhookDelivery(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     webhook: Mapped["Webhook"] = relationship()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Pull Requests — GitHub-style merge requests for music projects
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class PullRequest(Base):
+    __tablename__ = "pull_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    source_branch: Mapped[str] = mapped_column(String(64))
+    target_branch: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(32), default="open")  # open | draft | merged | closed
+    merge_commit_id: Mapped[int | None] = mapped_column(ForeignKey("commits.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    author: Mapped["User"] = relationship()
+    reviews: Mapped[list["PullRequestReview"]] = relationship(back_populates="pull_request", cascade="all, delete-orphan")
+    comments: Mapped[list["PullRequestComment"]] = relationship(back_populates="pull_request", cascade="all, delete-orphan")
+    labels: Mapped[list["PullRequestLabel"]] = relationship(back_populates="pull_request", cascade="all, delete-orphan")
+
+
+class PullRequestReview(Base):
+    __tablename__ = "pull_request_reviews"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    pull_request_id: Mapped[int] = mapped_column(ForeignKey("pull_requests.id"), index=True)
+    reviewer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewer_name: Mapped[str] = mapped_column(String(128), default="")
+    decision: Mapped[str] = mapped_column(String(32), default="comment")  # comment | approve | request_changes
+    body: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    pull_request: Mapped["PullRequest"] = relationship(back_populates="reviews")
+    reviewer: Mapped["User | None"] = relationship()
+
+
+class PullRequestComment(Base):
+    __tablename__ = "pull_request_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    pull_request_id: Mapped[int] = mapped_column(ForeignKey("pull_requests.id"), index=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    author_name: Mapped[str] = mapped_column(String(128), default="")
+    body: Mapped[str] = mapped_column(Text)
+    path: Mapped[str | None] = mapped_column(String(512), nullable=True)  # file path (optional)
+    time_s: Mapped[float | None] = mapped_column(nullable=True)  # timestamp in audio (optional)
+    resolved: Mapped[bool] = mapped_column(default=False)
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("pull_request_comments.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    pull_request: Mapped["PullRequest"] = relationship(back_populates="comments")
+    author: Mapped["User | None"] = relationship()
+
+
+class PullRequestLabel(Base):
+    __tablename__ = "pull_request_labels"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    pull_request_id: Mapped[int] = mapped_column(ForeignKey("pull_requests.id"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    color: Mapped[str] = mapped_column(String(7), default="#3b82f6")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("pull_request_id", "name", name="uq_pr_label"),)
+    pull_request: Mapped["PullRequest"] = relationship(back_populates="labels")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Music Tasks — GitHub Issues for music production
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class MusicTask(Base):
+    __tablename__ = "music_tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    title: Mapped[str] = mapped_column(String(300))
+    body: Mapped[str] = mapped_column(Text, default="")
+    type: Mapped[str] = mapped_column(String(32), default="task")  # task | bug | feature | question
+    priority: Mapped[str] = mapped_column(String(16), default="medium")  # low | medium | high | critical
+    status: Mapped[str] = mapped_column(String(32), default="open")  # open | in_progress | done | closed
+    assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    milestone: Mapped[str] = mapped_column(String(128), default="")
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    linked_pr_id: Mapped[int | None] = mapped_column(ForeignKey("pull_requests.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    author: Mapped["User"] = relationship(foreign_keys=[author_id])
+    assignee: Mapped["User | None"] = relationship(foreign_keys=[assignee_id])
+    comments: Mapped[list["TaskComment"]] = relationship(back_populates="task", cascade="all, delete-orphan")
+    labels: Mapped[list["TaskLabel"]] = relationship(back_populates="task", cascade="all, delete-orphan")
+
+
+class TaskComment(Base):
+    __tablename__ = "task_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("music_tasks.id"), index=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    author_name: Mapped[str] = mapped_column(String(128), default="")
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    task: Mapped["MusicTask"] = relationship(back_populates="comments")
+    author: Mapped["User | None"] = relationship()
+
+
+class TaskLabel(Base):
+    __tablename__ = "task_labels"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("music_tasks.id"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    color: Mapped[str] = mapped_column(String(7), default="#3b82f6")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("task_id", "name", name="uq_task_label"),)
+    task: Mapped["MusicTask"] = relationship(back_populates="labels")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tags & Releases — Git-style versioning
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class GitTag(Base):
+    __tablename__ = "git_tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    commit_id: Mapped[int] = mapped_column(ForeignKey("commits.id"))
+    name: Mapped[str] = mapped_column(String(128))
+    message: Mapped[str] = mapped_column(Text, default="")
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    is_release: Mapped[bool] = mapped_column(default=False)  # true = release tag
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_project_tag"),)
+    commit: Mapped["Commit"] = relationship()
+    creator: Mapped["User"] = relationship()
+
+
+class ReleaseNote(Base):
+    __tablename__ = "release_notes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tag_id: Mapped[int] = mapped_column(ForeignKey("git_tags.id"), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text, default="")
+    highlights: Mapped[str] = mapped_column(Text, default="")  # newline-separated
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    tag: Mapped["GitTag"] = relationship()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Audio CI Checks — automated quality checks
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class AudioCheck(Base):
+    __tablename__ = "audio_checks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    commit_id: Mapped[int] = mapped_column(ForeignKey("commits.id"), index=True)
+    check_type: Mapped[str] = mapped_column(String(48))  # lufs | true_peak | format | sample_rate | channels
+    status: Mapped[str] = mapped_column(String(32), default="pending")  # pending | pass | fail | warn
+    value: Mapped[str] = mapped_column(String(128), default="")  # actual value
+    expected: Mapped[str] = mapped_column(String(128), default="")  # expected range
+    message: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    commit: Mapped["Commit"] = relationship()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Discussions — forum for projects
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Discussion(Base):
+    __tablename__ = "discussions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    title: Mapped[str] = mapped_column(String(300))
+    body: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(64), default="general")
+    pinned: Mapped[bool] = mapped_column(default=False)
+    locked: Mapped[bool] = mapped_column(default=False)
+    answer_id: Mapped[int | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    author: Mapped["User"] = relationship()
+    comments: Mapped[list["DiscussionComment"]] = relationship(back_populates="discussion", cascade="all, delete-orphan")
+
+
+class DiscussionComment(Base):
+    __tablename__ = "discussion_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    discussion_id: Mapped[int] = mapped_column(ForeignKey("discussions.id"), index=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    author_name: Mapped[str] = mapped_column(String(128), default="")
+    body: Mapped[str] = mapped_column(Text)
+    is_answer: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    discussion: Mapped["Discussion"] = relationship(back_populates="comments")
+    author: Mapped["User | None"] = relationship()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Kanban Boards — project management
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class KanbanBoard(Base):
+    __tablename__ = "kanban_boards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128), default="Release Board")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    columns: Mapped[list["KanbanColumn"]] = relationship(back_populates="board", cascade="all, delete-orphan")
+
+
+class KanbanColumn(Base):
+    __tablename__ = "kanban_columns"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    board_id: Mapped[int] = mapped_column(ForeignKey("kanban_boards.id"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    color: Mapped[str] = mapped_column(String(7), default="#3b82f6")
+
+    board: Mapped["KanbanBoard"] = relationship(back_populates="columns")
+    cards: Mapped[list["KanbanCard"]] = relationship(back_populates="column", cascade="all, delete-orphan")
+
+
+class KanbanCard(Base):
+    __tablename__ = "kanban_cards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    column_id: Mapped[int] = mapped_column(ForeignKey("kanban_columns.id"), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    version_id: Mapped[int | None] = mapped_column(ForeignKey("review_versions.id"), nullable=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("music_tasks.id"), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    column: Mapped["KanbanColumn"] = relationship(back_populates="cards")
+    assignee: Mapped["User | None"] = relationship()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CODEOWNERS — automatic reviewers for branches/paths
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class CodeOwner(Base):
+    __tablename__ = "code_owners"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    pattern: Mapped[str] = mapped_column(String(256))  # file path pattern like "*.als" or "stems/"
+    owner_username: Mapped[str] = mapped_column(String(64))
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "pattern", name="uq_codeowner_pattern"),)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Milestones — release planning
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Milestone(Base):
+    __tablename__ = "milestones"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    title: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="open")  # open | closed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Notifications — in-app notifications
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class UserNotification(Base):
+    __tablename__ = "user_notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    type: Mapped[str] = mapped_column(String(48))  # pr.review | task.assigned | comment | etc
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text, default="")
+    url: Mapped[str] = mapped_column(String(500), default="")
+    read: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Watch/Star/Fork — social features
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class ProjectStar(Base):
+    __tablename__ = "project_stars"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "user_id", name="uq_project_star"),)
+
+
+class ProjectWatch(Base):
+    __tablename__ = "project_watches"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    level: Mapped[str] = mapped_column(String(32), default="all")  # all | participating | ignore
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "user_id", name="uq_project_watch"),)
+
+
+class ProjectFork(Base):
+    __tablename__ = "project_forks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    forked_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Secrets — secure key storage for CI/CD
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class ProjectSecret(Base):
+    __tablename__ = "project_secrets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    encrypted_value: Mapped[str] = mapped_column(Text)  # encrypted!
+    environment: Mapped[str] = mapped_column(String(64), default="all")
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "name", "environment", name="uq_project_secret"),)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Environments — staging/production
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Environment(Base):
+    __tablename__ = "environments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(64))  # production | staging | dev
+    branch_pattern: Mapped[str] = mapped_column(String(128), default="main")
+    protection_rules: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_project_environment"),)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Git LFS — large file storage
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class LFSPointer(Base):
+    __tablename__ = "lfs_pointers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    oid: Mapped[str] = mapped_column(String(64))  # SHA-256 of file
+    size: Mapped[int] = mapped_column(Integer)
+    path: Mapped[str] = mapped_column(String(1024))
+    blob_sha: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Custom Roles — granular permissions
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class CustomRole(Base):
+    __tablename__ = "custom_roles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    permissions: Mapped[dict] = mapped_column(JSON, default=dict)  # {"push": true, "admin": false, ...}
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_custom_role"),)
+
+
+class ProjectMemberRole(Base):
+    __tablename__ = "project_member_roles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    role_id: Mapped[int] = mapped_column(ForeignKey("custom_roles.id"))
+    granted_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("project_id", "user_id", name="uq_project_member_role"),)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Push Rules — commit validation
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class PushRule(Base):
+    __tablename__ = "push_rules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    require_signed_commits: Mapped[bool] = mapped_column(default=False)
+    deny_force_push: Mapped[bool] = mapped_column(default=True)
+    deny_delete_branch: Mapped[bool] = mapped_column(default=True)
+    commit_message_pattern: Mapped[str] = mapped_column(String(256), default="")
+    branch_name_pattern: Mapped[str] = mapped_column(String(256), default="")
+    max_file_size_mb: Mapped[int] = mapped_column(Integer, default=100)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Packages — sample/plugin registry
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Package(Base):
+    __tablename__ = "packages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True, index=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    package_type: Mapped[str] = mapped_column(String(32))  # sample_pack | preset | plugin | stem
+    version: Mapped[str] = mapped_column(String(32), default="1.0.0")
+    license: Mapped[str] = mapped_column(String(64), default="royalty-free")
+    price_cents: Mapped[int] = mapped_column(Integer, default=0)
+    download_count: Mapped[int] = mapped_column(Integer, default=0)
+    blob_sha: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    file_count: Mapped[int] = mapped_column(Integer, default=0)
+    tags: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Gist — code/patch snippets
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Gist(Base):
+    __tablename__ = "gists"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    public: Mapped[bool] = mapped_column(default=True)
+    fork_of_id: Mapped[int | None] = mapped_column(nullable=True)
+    star_count: Mapped[int] = mapped_column(Integer, default=0)
+    fork_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    files: Mapped[list["GistFile"]] = relationship(back_populates="gist", cascade="all, delete-orphan")
+
+
+class GistFile(Base):
+    __tablename__ = "gist_files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    gist_id: Mapped[int] = mapped_column(ForeignKey("gists.id"), index=True)
+    filename: Mapped[str] = mapped_column(String(256))
+    content: Mapped[str] = mapped_column(Text)
+    language: Mapped[str] = mapped_column(String(32), default="")
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    gist: Mapped["Gist"] = relationship(back_populates="files")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Sponsors — funding
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Sponsorship(Base):
+    __tablename__ = "sponsorships"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    sponsor_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    tier: Mapped[str] = mapped_column(String(32), default="buy_me_a_coffee")
+    amount_cents: Mapped[int] = mapped_column(Integer, default=0)
+    message: Mapped[str] = mapped_column(Text, default="")
+    active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Teams — organization teams
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Team(Base):
+    __tablename__ = "teams"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(64))
+    description: Mapped[str] = mapped_column(Text, default="")
+    privacy: Mapped[str] = mapped_column(String(32), default="visible")  # visible | secret
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    members: Mapped[list["TeamMember"]] = relationship(back_populates="team", cascade="all, delete-orphan")
+
+
+class TeamMember(Base):
+    __tablename__ = "team_members"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    role: Mapped[str] = mapped_column(String(32), default="member")  # member | maintainer | admin
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("team_id", "user_id", name="uq_team_member"),)
+    team: Mapped["Team"] = relationship(back_populates="members")
+
+
+class TeamProjectAccess(Base):
+    __tablename__ = "team_project_access"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), index=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
+    permission: Mapped[str] = mapped_column(String(32), default="read")  # read | write | admin
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("team_id", "project_id", name="uq_team_project"),)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Actions/Workflows — CI/CD pipelines
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class Workflow(Base):
+    __tablename__ = "workflows"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    filename: Mapped[str] = mapped_column(String(128))
+    yaml_content: Mapped[str] = mapped_column(Text)
+    enabled: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    runs: Mapped[list["WorkflowRun"]] = relationship(back_populates="workflow", cascade="all, delete-orphan")
+
+
+class WorkflowRun(Base):
+    __tablename__ = "workflow_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    workflow_id: Mapped[int] = mapped_column(ForeignKey("workflows.id"), index=True)
+    status: Mapped[str] = mapped_column(String(32), default="pending")  # pending | running | success | failure | cancelled
+    trigger: Mapped[str] = mapped_column(String(32), default="push")
+    commit_id: Mapped[int | None] = mapped_column(ForeignKey("commits.id"), nullable=True)
+    logs: Mapped[str] = mapped_column(Text, default="")
+    duration_ms: Mapped[int | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    workflow: Mapped["Workflow"] = relationship(back_populates="runs")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Dependabot — security alerts
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class SecurityAlert(Base):
+    __tablename__ = "security_alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    severity: Mapped[str] = mapped_column(String(16))  # low | medium | high | critical
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    package_name: Mapped[str] = mapped_column(String(128), default="")
+    vulnerable_version: Mapped[str] = mapped_column(String(32), default="")
+    patched_version: Mapped[str] = mapped_column(String(32), default="")
+    status: Mapped[str] = mapped_column(String(32), default="open")  # open | dismissed | fixed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# IP Allow List
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class IPAllowList(Base):
+    __tablename__ = "ip_allow_list"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    ip_range: Mapped[str] = mapped_column(String(64))  # CIDR notation
+    description: Mapped[str] = mapped_column(String(200), default="")
+    enabled: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
