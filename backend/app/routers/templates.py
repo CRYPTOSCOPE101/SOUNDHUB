@@ -1,7 +1,8 @@
 """Session templates router."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
+from ..access import not_found, require_owner
 from ..database import get_db
 from ..schemas import SessionTemplateCreate, SessionTemplateOut, SessionTemplateUpdate
 from ..security import get_current_user
@@ -26,22 +27,18 @@ def create_template(payload: SessionTemplateCreate, user=Depends(get_current_use
 def get_template(template_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
     template = templates_svc.get_template(db, template_id)
     if template is None or (template.owner_id != user.id and not template.is_public):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found")
+        raise not_found("Template")
     return SessionTemplateOut.model_validate(template, from_attributes=True)
 
 
 @router.patch("/{template_id}", response_model=SessionTemplateOut)
 def update_template(template_id: int, payload: SessionTemplateUpdate, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    template = templates_svc.get_template(db, template_id)
-    if template is None or template.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found")
+    template = require_owner(templates_svc.get_template(db, template_id), user, "Template")
     updated = templates_svc.update_template(db, template, payload.model_dump(exclude_unset=True))
     return SessionTemplateOut.model_validate(updated, from_attributes=True)
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_template(template_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    template = templates_svc.get_template(db, template_id)
-    if template is None or template.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found")
+    template = require_owner(templates_svc.get_template(db, template_id), user, "Template")
     templates_svc.delete_template(db, template)

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { Project } from "../types";
+import { errorMessage } from "../errors";
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -15,7 +16,7 @@ export default function ProjectsPage() {
     try {
       setProjects(await api.listProjects());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load projects");
+      setError(errorMessage(err, "Failed to load projects"));
     } finally {
       setLoading(false);
     }
@@ -36,7 +37,7 @@ export default function ProjectsPage() {
       await load();
       window.location.href = `/projects/${p.id}`;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create");
+      setError(errorMessage(err, "Failed to create"));
     }
   };
 

@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { fmtTime, type Portfolio, type PortfolioTrack } from "../types";
+import { errorMessage } from "../errors";
 
 export default function PortfolioPage() {
   const { username } = useParams<{ username: string }>();
@@ -27,7 +28,7 @@ export default function PortfolioPage() {
     try {
       setPortfolio(await api.portfolioGet(username));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Portfolio not found");
+      setErr(errorMessage(e, "Portfolio not found"));
     } finally {
       setLoaded(true);
     }
@@ -53,7 +54,7 @@ export default function PortfolioPage() {
       setEditing(false);
       void load();
     } catch (e) {
-      setEditMsg(e instanceof Error ? e.message : "Save failed");
+      setEditMsg(errorMessage(e, "Save failed"));
     }
   };
 

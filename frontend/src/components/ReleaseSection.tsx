@@ -10,6 +10,7 @@ import {
   type Deployment,
 } from "../web3/contracts";
 import { setTargetChainId, useWallet } from "../web3/useWallet";
+import { errorMessage } from "../errors";
 
 interface Props {
   projectId: number;
@@ -105,7 +106,7 @@ export default function ReleaseSection({
       setMsg(`Release minted! Token #${tokenId}`);
       onBound();
     } catch (e2) {
-      setErr(e2 instanceof Error ? e2.message : "Mint failed");
+      setErr(errorMessage(e2, "Mint failed"));
     } finally {
       setBusy(false);
     }
@@ -133,7 +134,7 @@ export default function ReleaseSection({
         setMsg(`Funded release with ${amount} SND`);
       }
     } catch (e2) {
-      setErr(e2 instanceof Error ? e2.message : "Tip failed");
+      setErr(errorMessage(e2, "Tip failed"));
     } finally {
       setBusy(false);
     }
@@ -151,7 +152,7 @@ export default function ReleaseSection({
       await (await release.claim(releaseTokenId)).wait();
       setMsg("Claimed your share ✓");
     } catch (e2) {
-      setErr(e2 instanceof Error ? e2.message : "Claim failed");
+      setErr(errorMessage(e2, "Claim failed"));
     } finally {
       setBusy(false);
     }

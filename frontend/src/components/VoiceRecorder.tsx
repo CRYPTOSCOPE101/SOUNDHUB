@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { errorMessage } from "../errors";
 
 interface Props {
   onRecorded: (blob: Blob, durationS: number) => void;
@@ -62,7 +63,7 @@ export default function VoiceRecorder({ onRecorded, onCancel, label }: Props) {
       setSeconds(0);
       timerRef.current = window.setInterval(() => setSeconds((s) => s + 1), 1000);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Microphone unavailable");
+      setErr(errorMessage(e, "Microphone unavailable"));
     }
   };
 

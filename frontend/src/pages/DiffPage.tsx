@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import type { Diff } from "../types";
+import { errorMessage } from "../errors";
 
 export default function DiffPage() {
   const { id } = useParams();
@@ -20,7 +21,7 @@ export default function DiffPage() {
     api
       .getDiff(pid, path, { from, to })
       .then(setDiff)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed"));
+      .catch((err) => setError(errorMessage(err, "Failed")));
   }, [pid, path, from, to]);
 
   return (

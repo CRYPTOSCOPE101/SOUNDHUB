@@ -8,6 +8,7 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..access import not_found, session_or_404
 from ..config import MAX_UPLOAD_SIZE
 from ..database import get_db
 from ..models import (
@@ -50,16 +51,13 @@ ALLOWED_AUDIO = {"wav", "mp3", "flac", "ogg", "aif", "aiff", "m4a"}
 
 
 def get_session_or_404(db: Session, user: User, session_id: int) -> ReviewSession:
-    session = db.get(ReviewSession, session_id)
-    if session is None or session.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
-    return session
+    return session_or_404(db, session_id, user)
 
 
 def get_version_or_404(db: Session, session_id: int, version_id: int) -> ReviewVersion:
     version = db.get(ReviewVersion, version_id)
     if version is None or version.session_id != session_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Version not found")
+        raise not_found("Version")
     return version
 
 
@@ -235,7 +233,7 @@ def _log_access(db: Session, session: ReviewSession, actor: str, action: str, de
 def get_public_session(db: Session, share_token: str) -> ReviewSession:
     session = db.scalar(select(ReviewSession).where(ReviewSession.share_token == share_token))
     if session is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Review link not found")
+        raise not_found("Review link")
     return session
 
 
@@ -505,7 +503,7 @@ def update_comment(session_id: int, version_id: int, comment_id: int, resolved: 
     version = get_version_or_404(db, session_id, version_id)
     comment = db.get(ReviewComment, comment_id)
     if comment is None or comment.version_id != version.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Comment not found")
+        raise not_found("Comment")
     if resolved is not None:
         comment.resolved = resolved
     if body is not None:

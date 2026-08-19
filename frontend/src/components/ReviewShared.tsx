@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import { shortDate, APPROVAL_SCOPES, type ReviewApproval, type ReviewComment, type ReviewVersion, type VersionDiff } from "../types";
+import { shortDate, fmtTime, APPROVAL_SCOPES, type ReviewApproval, type ReviewComment, type ReviewVersion, type VersionDiff } from "../types";
+import { errorMessage } from "../errors";
 
-export const fmtClock = (s: number) => {
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${String(sec).padStart(2, "0")}`;
-};
+/** Kept as an alias: review UI code refers to the playhead clock. */
+export const fmtClock = fmtTime;
 
 /* ---------- interactive waveform canvas ---------- */
 
@@ -172,7 +170,7 @@ export function CommentComposer({
       setBody("");
       onCancel?.();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to post");
+      setErr(errorMessage(e, "Failed to post"));
     } finally {
       setBusy(false);
     }
@@ -253,7 +251,7 @@ export function ApprovalPanel({
       setNote("");
       await onDone();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to submit approval");
+      setErr(errorMessage(e, "Failed to submit approval"));
     } finally {
       setBusy(false);
     }

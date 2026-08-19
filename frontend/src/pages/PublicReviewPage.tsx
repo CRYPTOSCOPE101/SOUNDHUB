@@ -17,6 +17,8 @@ import {
   type VersionComparison,
   type VersionDiff,
 } from "../types";
+import { errorMessage } from "../errors";
+import { useAudioPlayhead } from "../audio/useAudioPlayhead";
 
 const FEEDBACK_TEMPLATES = [
   { id: "too_loud", label: "🔊 Something is too loud / quiet", text: "Something is too loud / quiet" },
@@ -67,7 +69,6 @@ export default function PublicReviewPage() {
   const [password, setPassword] = useState("");
   const [actor] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
-  const rafRef = useRef<number | null>(null);
   const [approvals, setApprovals] = useState(session?.approvals ?? []);
   const [submitNote, setSubmitNote] = useState("");
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
@@ -107,7 +108,7 @@ export default function PublicReviewPage() {
     try {
       setDiff(await api.publicVersionDiff(token, v.id));
     } catch (e) {
-      setDiffErr(e instanceof Error ? e.message : "Failed to load the project diff");
+      setDiffErr(errorMessage(e, "Failed to load the project diff"));
     } finally {
       setDiffBusy(false);
     }
@@ -122,7 +123,7 @@ export default function PublicReviewPage() {
       setSession((s) => (s ? { ...s, reminders_client_opt_out: true } : s));
       setOptMsg("Non-critical reminders are off — payment & delivery emails still go through.");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to update reminders");
+      setErr(errorMessage(e, "Failed to update reminders"));
     }
   };
 
@@ -146,7 +147,7 @@ export default function PublicReviewPage() {
             .catch(() => setChangeOrders([]));
         }
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Review link not found";
+        const msg = errorMessage(e, "Review link not found");
         if (msg.toLowerCase().includes("password")) {
           setNeedPassword(true);
         } else {
@@ -185,30 +186,13 @@ export default function PublicReviewPage() {
       });
       setRefCompare({ ref, comp });
     } catch (e) {
-      setRefErr(e instanceof Error ? e.message : "Comparison failed");
+      setRefErr(errorMessage(e, "Comparison failed"));
     } finally {
       setRefBusy(null);
     }
   };
 
-  // playhead sync
-  useEffect(() => {
-    const tick = () => {
-      const a = audioRef.current;
-      if (a) {
-        setPosition(a.currentTime);
-        if (loop && a.currentTime >= loop.end) {
-          a.currentTime = loop.start;
-          a.play().catch(() => undefined);
-        }
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [loop]);
+  useAudioPlayhead(audioRef, loop, setPosition);
 
   const togglePlay = () => {
     const a = audioRef.current;
@@ -259,7 +243,7 @@ export default function PublicReviewPage() {
       setPendingComment(null);
       setFbMsg("✓ Note added to your draft notes.");
     } catch (e) {
-      setFbMsg(e instanceof Error ? e.message : "Failed to add the note");
+      setFbMsg(errorMessage(e, "Failed to add the note"));
     }
   };
 
@@ -281,7 +265,7 @@ export default function PublicReviewPage() {
       });
       setPublicComp(comp);
     } catch (e) {
-      setCompareErr(e instanceof Error ? e.message : "Compare failed");
+      setCompareErr(errorMessage(e, "Compare failed"));
     } finally {
       setCompareBusy(false);
     }
@@ -311,7 +295,7 @@ export default function PublicReviewPage() {
       setSubmitMsg("Feedback submitted — the engineer now has one consolidated list ✓");
       await onApprovalDone();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to submit";
+      const msg = errorMessage(e, "Failed to submit");
       setSubmitMsg(msg);
       if (msg.toLowerCase().includes("round")) setNeedPay(true);
     }
@@ -325,7 +309,7 @@ export default function PublicReviewPage() {
       const c = await api.publicSessionCheckout(token, "extra_round");
       window.location.href = c.checkout_url;
     } catch (e) {
-      setSubmitMsg(e instanceof Error ? e.message : "Checkout failed");
+      setSubmitMsg(errorMessage(e, "Checkout failed"));
     } finally {
       setPaying(false);
     }
@@ -896,7 +880,7 @@ export default function PublicReviewPage() {
                                   setChangeMsg("✓ Quote accepted — the engineer will reopen the round after payment.");
                                   setChangeOrders(await api.publicChangeOrders(token!));
                                 } catch (e2) {
-                                  setChangeMsg(e2 instanceof Error ? e2.message : "Accept failed");
+                                  setChangeMsg(errorMessage(e2, "Accept failed"));
                                 } finally {
                                   setCoBusy(false);
                                 }
@@ -927,7 +911,7 @@ export default function PublicReviewPage() {
                                   const c = await api.publicChangeOrderCheckout(token!, co.id);
                                   window.location.href = c.checkout_url;
                                 } catch (e2) {
-                                  setChangeMsg(e2 instanceof Error ? e2.message : "Checkout failed");
+                                  setChangeMsg(errorMessage(e2, "Checkout failed"));
                                   setCoBusy(false);
                                 }
                               })()
@@ -984,7 +968,7 @@ export default function PublicReviewPage() {
                             setChangeMsg(`✓ Change request sent — the engineer will quote it shortly (Round ${co.target_round}).`);
                             setChangeOrders(await api.publicChangeOrders(token!));
                           } catch (e2) {
-                            setChangeMsg(e2 instanceof Error ? e2.message : "Request failed");
+                            setChangeMsg(errorMessage(e2, "Request failed"));
                           } finally {
                             setCoBusy(false);
                           }

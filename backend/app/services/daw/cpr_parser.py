@@ -7,6 +7,7 @@ generically: track elements by tag name, plugins by tag containing
 import xml.etree.ElementTree as ET
 
 from .base import DAWInfo, ParseError, TrackInfo
+from .xmlutil import local_name
 
 _TRACK_TAGS = {
     "MidiTrack": "midi",
@@ -21,17 +22,6 @@ _TRACK_TAGS = {
 }
 
 
-def _local(tag: str) -> str:
-    return tag.rsplit("}", 1)[-1]
-
-
-def _find_first(root: ET.Element, local_tag: str) -> ET.Element | None:
-    for el in root.iter():
-        if _local(el.tag) == local_tag:
-            return el
-    return None
-
-
 def parse_cpr(data: bytes) -> DAWInfo:
     try:
         root = ET.fromstring(data)
@@ -43,7 +33,7 @@ def parse_cpr(data: bytes) -> DAWInfo:
 
     # Tempo — look for <TempoTrack><Tempo Value="..."/></TempoTrack> style nodes
     for el in root.iter():
-        tag = _local(el.tag)
+        tag = local_name(el.tag)
         if tag in ("Tempo", "TempoTrack", "ProjectTempo"):
             value = el.attrib.get("Value")
             if value is None:
@@ -57,14 +47,14 @@ def parse_cpr(data: bytes) -> DAWInfo:
 
     # Tracks
     for el in root.iter():
-        tag = _local(el.tag)
+        tag = local_name(el.tag)
         if tag in _TRACK_TAGS:
             name = el.attrib.get("Name") or el.attrib.get("TrackName") or ""
             info.tracks.append(TrackInfo(name=name, kind=_TRACK_TAGS[tag]))
 
     # Plugins: Vst3Plugin / VstPlugin / Vst2Plugin elements carry Name
     for el in root.iter():
-        tag = _local(el.tag)
+        tag = local_name(el.tag)
         if "Plugin" in tag or tag in ("Vst3", "Vst2"):
             name = el.attrib.get("Name") or el.attrib.get("PluginName")
             if name:
@@ -72,7 +62,7 @@ def parse_cpr(data: bytes) -> DAWInfo:
 
     # Samples
     for el in root.iter():
-        if _local(el.tag) == "Sample":
+        if local_name(el.tag) == "Sample":
             path = el.attrib.get("Path") or el.attrib.get("Name")
             if path:
                 info.samples.append(path)

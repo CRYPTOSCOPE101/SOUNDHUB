@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { api } from "../api";
 import UsdcPayButton from "../components/UsdcPayButton";
 import { humanSize, shortDate, type DeliveryPage, type Deliverable } from "../types";
+import { errorMessage } from "../errors";
 
 export default function PublicDeliveryPage() {
   const { token } = useParams<{ token: string }>();
@@ -23,7 +24,7 @@ export default function PublicDeliveryPage() {
     try {
       setPage(await api.publicDeliveryPage(token));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Delivery link not found");
+      setErr(errorMessage(e, "Delivery link not found"));
     } finally {
       setLoaded(true);
     }
@@ -46,7 +47,7 @@ export default function PublicDeliveryPage() {
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Download failed";
+      const msg = errorMessage(e, "Download failed");
       setDlErr(msg);
       if (msg.toLowerCase().includes("payment")) {
         setDlErr("💳 Payment required — the engineer has set an outstanding balance on this delivery.");
@@ -66,7 +67,7 @@ export default function PublicDeliveryPage() {
       const checkout = await api.publicCheckout(token);
       window.location.href = checkout.checkout_url;
     } catch (e) {
-      setPayErr(e instanceof Error ? e.message : "Failed to start checkout");
+      setPayErr(errorMessage(e, "Failed to start checkout"));
     } finally {
       setPaying(false);
     }
@@ -107,7 +108,7 @@ export default function PublicDeliveryPage() {
       const checkout = await api.publicCheckout(token, "deposit");
       window.location.href = checkout.checkout_url;
     } catch (e) {
-      setPayErr(e instanceof Error ? e.message : "Failed to start checkout");
+      setPayErr(errorMessage(e, "Failed to start checkout"));
     } finally {
       setPaying(false);
     }

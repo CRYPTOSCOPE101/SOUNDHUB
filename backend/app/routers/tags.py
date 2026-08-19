@@ -1,28 +1,14 @@
 """Tags router."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
+from ..access import require_owner, session_or_404
 from ..database import get_db
-from ..models import ReviewSession
 from ..schemas import SessionTagCreate, SessionTagLinkCreate, SessionTagLinkOut, SessionTagOut, SessionTagUpdate
 from ..security import get_current_user
 from ..services import tags as tags_svc
 
 router = APIRouter(prefix="/api/tags", tags=["tags"])
-
-
-def _own_session(db: Session, session_id: int, user) -> ReviewSession:
-    session = db.get(ReviewSession, session_id)
-    if session is None or session.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
-    return session
-
-
-def _own_tag(db: Session, tag_id: int, user):
-    tag = tags_svc.get_tag(db, tag_id)
-    if tag is None or tag.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found")
-    return tag
 
 
 @router.get("", response_model=list[SessionTagOut])
@@ -39,30 +25,26 @@ def create_tag(payload: SessionTagCreate, user=Depends(get_current_user), db: Se
 
 @router.patch("/{tag_id}", response_model=SessionTagOut)
 def update_tag(tag_id: int, payload: SessionTagUpdate, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    tag = tags_svc.get_tag(db, tag_id)
-    if tag is None or tag.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found")
+    tag = require_owner(tags_svc.get_tag(db, tag_id), user, "Tag")
     updated = tags_svc.update_tag(db, tag, payload.name, payload.color)
     return SessionTagOut.model_validate(updated, from_attributes=True)
 
 
 @router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tag(tag_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    tag = tags_svc.get_tag(db, tag_id)
-    if tag is None or tag.owner_id != user.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tag not found")
+    tag = require_owner(tags_svc.get_tag(db, tag_id), user, "Tag")
     tags_svc.delete_tag(db, tag)
 
 
 @router.post("/session/{session_id}", response_model=SessionTagLinkOut, status_code=status.HTTP_201_CREATED)
 def link_tag(session_id: int, payload: SessionTagLinkCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    _own_session(db, session_id, user)
-    _own_tag(db, payload.tag_id, user)
+    session_or_404(db, session_id, user)
+    require_owner(tags_svc.get_tag(db, payload.tag_id), user, "Tag")
     link = tags_svc.link_tag(db, session_id, payload.tag_id)
     return SessionTagLinkOut.model_validate(link, from_attributes=True)
 
 
 @router.delete("/session/{session_id}/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def unlink_tag(session_id: int, tag_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    _own_session(db, session_id, user)
+    session_or_404(db, session_id, user)
     tags_svc.unlink_tag(db, session_id, tag_id)
