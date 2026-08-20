@@ -31,46 +31,18 @@ def get_daw_info(path: str, data: bytes) -> dict | None:
 
 def _parse_ableton(data: bytes) -> dict:
     """Parse Ableton Live Set (.als) — gzip-compressed XML."""
-    import xml.etree.ElementTree as ET
-
-    from .als_parser import gunzip_bounded, has_doctype
+    from .als_parser import parse_als
 
     try:
-        xml_data = gunzip_bounded(data)
-        if has_doctype(xml_data):
-            return {}
-        root = ET.fromstring(xml_data)
-        ns = {"a": "http://www.ableton.com/ns/3"}
-
-        bpm = None
-        time_sig = None
-        tracks = []
-        plugins = []
-
-        # Tempo
-        tempo_elem = root.find(".//a:Tempo", ns)
-        if tempo_elem is not None:
-            bpm = float(tempo_elem.get("Value", "120"))
-
-        # Time signature
-        time_sig_elem = root.find(".//a:TimeSignature", ns)
-        if time_sig_elem is not None:
-            num = time_sig_elem.get("TimeSignatureNumerator", "4")
-            den = time_sig_elem.get("TimeSignatureDenominator", "4")
-            time_sig = f"{num}/{den}"
-
-        # Tracks
-        for track in root.findall(".//a:Track", ns):
-            name = track.get("Name", "Unnamed")
-            tracks.append(name)
-
+        info = parse_als(data)
         return {
             "format": "ableton",
-            "bpm": bpm,
-            "time_signature": time_sig,
-            "track_count": len(tracks),
-            "tracks": tracks[:50],
-            "plugin_count": len(plugins),
+            "bpm": info.bpm,
+            "time_signature": info.time_signature,
+            "track_count": info.extra.get("track_count", len(info.tracks)),
+            "tracks": [t.name for t in info.tracks[:50]],
+            "plugin_count": len(info.plugins),
+            "plugins": info.plugins[:50],  # Limit to first 50 plugins
         }
     except Exception:
         return {"format": "ableton", "error": "parse_failed"}

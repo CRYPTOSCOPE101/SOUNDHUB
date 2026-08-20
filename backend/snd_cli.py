@@ -102,7 +102,7 @@ def build_manifest(project_name: str, files: list[str], root: str, include_media
             {
                 "path": rel,
                 "format": fmt,
-                "info": info.to_dict() if info else {"format_key": fmt, "unparsed": True},
+                "info": info if info else {"format_key": fmt, "unparsed": True},
             }
         )
     return {
