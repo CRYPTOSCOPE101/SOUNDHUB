@@ -68,3 +68,30 @@ jobs:
         run: npm ci
       - name: Typecheck and build
         run: npm run build
+
+  vst3:
+    name: VST3 plugin build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: vst3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libfreetype6-dev libx11-dev libxrandr-dev libxcursor-dev libxinerama-dev libwebkit2gtk-4.0-dev
+      - name: Configure (CMake)
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundhub-vst3-${{ matrix.os }}
+          path: vst3/build/**/*.vst3
+          retention-days: 30

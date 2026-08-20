@@ -15,6 +15,7 @@ from .routers import (
     assets,
     audio_checks,
     auth,
+    branch_protection,
     change_orders,
     codeowners_milestones,
     comparisons,
@@ -72,6 +73,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(projects.router)
+app.include_router(branch_protection.router)
 app.include_router(files.router)
 app.include_router(diffs.router)
 app.include_router(assets.router)
@@ -147,5 +149,5 @@ _STATIC = Path(__file__).parent / "static"
 
 @app.get("/", response_class=HTMLResponse)
 def docs_home():
-    """Serve the API documentation landing page."""
+    """Serve the polished API documentation landing page."""
     return (_STATIC / "docs.html").read_text(encoding="utf-8")

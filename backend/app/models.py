@@ -88,6 +88,10 @@ class Commit(Base):
         back_populates="commit", cascade="all, delete-orphan"
     )
 
+    @property
+    def file_count(self) -> int:
+        return len(self.files)
+
 
 class FileSnapshot(Base):
     __tablename__ = "file_snapshots"
@@ -684,6 +688,28 @@ class SessionGroupLink(Base):
 
     session: Mapped["ReviewSession"] = relationship()
     group: Mapped["SessionGroup"] = relationship()
+
+
+class BranchProtection(Base):
+    __tablename__ = "branch_protections"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    branch_name: Mapped[str] = mapped_column(String(64))
+    require_pull_request: Mapped[bool] = mapped_column(default=False)
+    required_reviewers: Mapped[int] = mapped_column(Integer, default=0)
+    require_status_checks: Mapped[bool] = mapped_column(default=False)
+    restrict_pushes: Mapped[bool] = mapped_column(default=False)
+    allow_force_push: Mapped[bool] = mapped_column(default=False)
+    allow_deletions: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    __table_args__ = (UniqueConstraint("project_id", "branch_name", name="uq_project_branch_protection"),)
+
+    project: Mapped["Project"] = relationship()
 
 
 class Webhook(Base):

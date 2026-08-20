@@ -95,6 +95,133 @@ class BranchOut(BaseModel):
     created_at: datetime
 
 
+# ---------- Push ----------
+class PushOut(BaseModel):
+    ok: bool = True
+    project_id: int
+    branch: str
+    commit_id: int | None = None
+    file_count: int = 0
+    uploaded: dict = {}  # {"als": true, "master": true, "stems": 12}
+    deduplicated: int = 0
+    review_url: str | None = None
+    version_id: int | None = None
+    message: str = ""
+
+
+# ---------- Project Tree / Files ----------
+class DawTrackOut(BaseModel):
+    name: str
+    kind: str
+    devices: list[str] = []
+
+
+class DawInfoOut(BaseModel):
+    format: str
+    format_key: str = ""
+    version: str
+    bpm: float | None = None
+    time_signature: str | None = None
+    tracks: list[DawTrackOut] = []
+    plugins: list[str] = []
+    samples: list[str] = []
+    extra: dict = {}
+
+
+class ProjectFileOut(BaseModel):
+    path: str
+    size: int
+    blob_sha: str
+    kind: str = ""
+    daw_format: str | None = None
+    daw_info: dict | DawInfoOut | None = None
+
+
+class TreeOut(BaseModel):
+    commit_id: int | None = None
+    commit_message: str = ""
+    files: list[ProjectFileOut] = []
+
+
+# ---------- Diff ----------
+class DiffChangeOut(BaseModel):
+    kind: str
+    label: str
+    old: str | None = None
+    new: str | None = None
+
+
+class DiffOut(BaseModel):
+    path: str
+    format: str | None = None
+    summary: list[DiffChangeOut] = []
+    raw: str = ""
+    binary: bool = False
+    truncated: bool = False
+
+
+# ---------- Merge ----------
+class MergeCreate(BaseModel):
+    source_branch: str = Field(min_length=1, max_length=64)
+    target_branch: str | None = Field(default=None, max_length=64)
+    strategy: str = Field(default="merge", pattern=r"^(merge|squash|fast_forward)$")
+    message: str | None = Field(default=None, max_length=2000)
+
+
+class MergeOut(BaseModel):
+    strategy: str
+    source_branch: str
+    target_branch: str
+    merge_commit_id: int | None = None
+    files_changed: int = 0
+
+
+# ---------- Compare ----------
+class CompareOut(BaseModel):
+    base_branch: str
+    head_branch: str
+    ahead: int = 0
+    behind: int = 0
+    total_commits: int = 0
+    files_changed: int = 0
+    added: list[str] = []
+    removed: list[str] = []
+    modified: list[str] = []
+
+
+# ---------- Branch Protection ----------
+class BranchProtectionCreate(BaseModel):
+    branch_name: str = Field(min_length=1, max_length=64)
+    require_pull_request: bool = False
+    required_reviewers: int = Field(default=0, ge=0, le=10)
+    require_status_checks: bool = False
+    restrict_pushes: bool = False
+    allow_force_push: bool = False
+    allow_deletions: bool = False
+
+
+class BranchProtectionUpdate(BaseModel):
+    require_pull_request: bool | None = None
+    required_reviewers: int | None = Field(default=None, ge=0, le=10)
+    require_status_checks: bool | None = None
+    restrict_pushes: bool | None = None
+    allow_force_push: bool | None = None
+    allow_deletions: bool | None = None
+
+
+class BranchProtectionOut(BaseModel):
+    id: int
+    project_id: int
+    branch_name: str
+    require_pull_request: bool
+    required_reviewers: int
+    require_status_checks: bool
+    restrict_pushes: bool
+    allow_force_push: bool
+    allow_deletions: bool
+    created_at: datetime
+
+
 # ---------- Commits ----------
 class CommitCreate(BaseModel):
     message: str = Field(default="", max_length=2000)
@@ -113,6 +240,7 @@ class CommitOut(ORMModel):
     created_at: datetime
     author: UserOut
     files: list[FileSnapshotOut] = []
+    file_count: int = 0
     parent_id: int | None = None
 
 

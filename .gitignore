@@ -21,3 +21,6 @@ CONVERSATION_LOG.md
 .puppeteer-cache/
 .local-libs/
 .vercel
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+graft/
