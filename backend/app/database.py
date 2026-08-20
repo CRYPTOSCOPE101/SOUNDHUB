@@ -34,6 +34,7 @@ def _migrate() -> None:
         return
     users_cols = {c["name"] for c in inspector.get_columns("users")}
     projects_cols = {c["name"] for c in inspector.get_columns("projects")}
+    packages_cols = {c["name"] for c in inspector.get_columns("packages")} if inspector.has_table("packages") else set()
     with engine.begin() as conn:
         if "wallet_address" not in users_cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN wallet_address VARCHAR(42)"))
@@ -55,6 +56,16 @@ def _migrate() -> None:
         ):
             if col not in projects_cols:
                 conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} {ddl}"))
+        for col, ddl in (
+            ("bpm", "INTEGER"),
+            ("genre", "VARCHAR(128) DEFAULT ''"),
+            ("devices", "VARCHAR(128) DEFAULT ''"),
+            ("format", "VARCHAR(16) DEFAULT 'wav'"),
+            ("key", "VARCHAR(32) DEFAULT ''"),
+            ("sha256", "VARCHAR(64)"),
+        ):
+            if col not in packages_cols:
+                conn.execute(text(f"ALTER TABLE packages ADD COLUMN {col} {ddl}"))
 
 
 def init_db() -> None:
