@@ -5,6 +5,7 @@ from pathlib import PurePosixPath
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,8 @@ from ..models import (
     ShareAccessEvent,
     User,
     utcnow,
+    FileSnapshot,
+    Commit,
 )
 from ..schemas import (
     CheckoutOut,
@@ -272,7 +275,176 @@ def public_version_diff(share_token: str, version_id: int, actor: str = "", pass
     version = get_version_or_404(db, session.id, version_id)
     _log_access(db, session, actor, "diffed", f"{version.label}")
     db.commit()
-    return {"version_label": version.label, "from_label": None, "has_daw": False}
+
+    # Get the previous version in the same session (by number)
+    prev_version = db.scalar(
+        select(ReviewVersion)
+        .where(
+            ReviewVersion.session_id == session.id,
+            ReviewVersion.number < version.number
+        )
+        .order_by(ReviewVersion.number.desc())
+        .limit(1)
+    )
+
+    # Get DAW info for both versions if they have commits
+    info_a = None
+    info_b = None
+
+    if prev_version and prev_version.commit_id:
+        from ..services.daw.registry import get_daw_info
+        from ..services.versioning import tree_files
+        commit_a = db.get(Commit, prev_version.commit_id)
+        if commit_a:
+            tree_a = tree_files(db, commit_a)
+            for snap in tree_a:
+                if snap.path.lower().endswith(('.als', '.cpr', '.rpp', '.flp', '.logic', '.ptx', '.band')):
+                    try:
+                        data = storage.read_blob(snap.blob_sha)
+                        info_a = get_daw_info(snap.path, data)
+                        break
+                    except Exception:
+                        pass
+
+    if version.commit_id:
+        from ..services.daw.registry import get_daw_info
+        from ..services.versioning import tree_files
+        commit_b = db.get(Commit, version.commit_id)
+        if commit_b:
+            tree_b = tree_files(db, commit_b)
+            for snap in tree_b:
+                if snap.path.lower().endswith(('.als', '.cpr', '.rpp', '.flp', '.logic', '.ptx', '.band')):
+                    try:
+                        data = storage.read_blob(snap.blob_sha)
+                        info_b = get_daw_info(snap.path, data)
+                        break
+                    except Exception:
+                        pass
+
+    # Generate summary diff
+    from ..services.daw.diff_engine import summary_diff
+    summary_raw = summary_diff(info_a, info_b)
+
+    # Convert to the expected list format
+    summary = []
+    # Handle the case of no previous version (first version)
+    if info_a is None and info_b is not None:
+        summary.append({"label": "File created"})
+    else:
+        if "bpm" in summary_raw:
+            bpm_diff = summary_raw["bpm"]
+            old_val = bpm_diff.get("before")
+            new_val = bpm_diff.get("after")
+            # If the value is a float and represents an integer, convert to int to remove decimal
+            if isinstance(old_val, float) and old_val.is_integer():
+                old_val = int(old_val)
+            if isinstance(new_val, float) and new_val.is_integer():
+                new_val = int(new_val)
+            summary.append({
+                "kind": "bpm",
+                "old": str(old_val),
+                "new": str(new_val)
+            })
+        if "time_signature" in summary_raw:
+            ts_diff = summary_raw["time_signature"]
+            summary.append({
+                "kind": "time_signature",
+                "old": str(ts_diff.get("before")),
+                "new": str(ts_diff.get("after"))
+            })
+        if "tracks" in summary_raw:
+            tracks_diff = summary_raw["tracks"]
+            for track in tracks_diff.get("added", []):
+                summary.append({
+                    "kind": "track_added",
+                    "new": track
+                })
+            for track in tracks_diff.get("removed", []):
+                summary.append({
+                    "kind": "track_removed",
+                    "old": track
+                })
+        if "plugins" in summary_raw:
+            plugins_diff = summary_raw["plugins"]
+            for plugin in plugins_diff.get("added", []):
+                summary.append({
+                    "kind": "plugin_added",
+                    "new": plugin
+                })
+            for plugin in plugins_diff.get("removed", []):
+                summary.append({
+                    "kind": "plugin_removed",
+                    "old": plugin
+                })
+
+    # Determine the path and format for the DAW file
+    path = None
+    fmt = None
+    has_daw = False
+
+    # Prefer info_b (current version) for path/format
+    if info_b:
+        path = info_b.get("path")
+        # Extract file extension from path
+        if path and "." in path:
+            fmt = path.rsplit(".", 1)[-1].lower()
+        else:
+            fmt = info_b.get("format")
+        has_daw = bool(path and fmt)
+    elif info_a:
+        path = info_a.get("path")
+        # Extract file extension from path
+        if path and "." in path:
+            fmt = path.rsplit(".", 1)[-1].lower()
+        else:
+            fmt = info_a.get("format")
+        has_daw = bool(path and fmt)
+
+    # Generate raw text diff if we have DAW files
+    raw = ""
+    truncated = False
+    if info_a and info_b:
+        from ..services.daw.diff_engine import unified_diff, normalize_content
+        try:
+            # Get the DAW file content for both versions
+            data_a = storage.read_blob(
+                db.scalar(
+                    select(FileSnapshot.blob_sha)
+                    .where(
+                        FileSnapshot.commit_id == prev_version.commit_id,
+                        FileSnapshot.path == path,
+                    )
+                )
+            ) if prev_version and prev_version.commit_id and path else b""
+            data_b = storage.read_blob(
+                db.scalar(
+                    select(FileSnapshot.blob_sha)
+                    .where(
+                        FileSnapshot.commit_id == version.commit_id,
+                        FileSnapshot.path == path,
+                    )
+                )
+            ) if version.commit_id and path else b""
+            text_a = normalize_content(path, data_a) if path else ""
+            text_b = normalize_content(path, data_b) if path else ""
+            raw, truncated = unified_diff(text_a, text_b)
+        except Exception:
+            raw = ""
+            truncated = False
+
+    # Get the "from" label
+    from_label = prev_version.label if prev_version else None
+
+    return VersionDiffOut(
+        version_label=version.label,
+        from_label=from_label,
+        path=path,
+        format=fmt,
+        has_daw=has_daw,
+        summary=summary,
+        raw=raw,
+        truncated=truncated,
+    )
 
 
 @router.post("/public/{share_token}/versions/{version_id}/comments", response_model=ReviewCommentOut, status_code=status.HTTP_201_CREATED)
@@ -462,6 +634,21 @@ def upload_version(session_id: int, message: str = Form(""), file: UploadFile = 
         c.fixed_in = version.id
 
     session.rounds_open = True
+
+    # Create a ReviewRound if one doesn't exist for the current round number
+    existing_round = db.scalar(
+        select(ReviewRound).where(
+            ReviewRound.session_id == session.id,
+            ReviewRound.number == session.round_number,
+        )
+    )
+    if existing_round is None:
+        db.add(ReviewRound(
+            session_id=session.id,
+            number=session.round_number,
+            status="open",
+        ))
+
     session.updated_at = utcnow()
     ledger.append(db, "version.created", session_id=session.id, actor=user.username, entity_type="version", entity_id=version.id, payload={"label": version.label, "round": version.round_number, "fixed_requests": len(open_reqs)})
     db.commit()
@@ -478,6 +665,188 @@ def download_audio(session_id: int, version_id: int, user: User = Depends(get_cu
         content=data,
         media_type=f"audio/{version.audio_format}",
         headers={"Content-Disposition": f'inline; filename="{version.filename}"'},
+    )
+
+
+@router.get("/{session_id}/versions/{version_id}/diff", response_model=VersionDiffOut)
+def version_diff(session_id: int, version_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    session = get_session_or_404(db, user, session_id)
+    version = get_version_or_404(db, session_id, version_id)
+    if version.commit_id is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "no linked daw project")
+
+    # Get the previous version in the same session (by number)
+    prev_version = db.scalar(
+        select(ReviewVersion)
+        .where(
+            ReviewVersion.session_id == session.id,
+            ReviewVersion.number < version.number
+        )
+        .order_by(ReviewVersion.number.desc())
+        .limit(1)
+    )
+
+    # Get DAW info for both versions if they have commits
+    info_a = None
+    info_b = None
+    path_a = None
+    path_b = None
+
+    if prev_version and prev_version.commit_id:
+        from ..services.daw.registry import get_daw_info
+        from ..services.versioning import tree_files
+        commit_a = db.get(Commit, prev_version.commit_id)
+        if commit_a:
+            tree_a = tree_files(db, commit_a)
+            for snap in tree_a:
+                if snap.path.lower().endswith(('.als', '.cpr', '.rpp', '.flp', '.logic', '.ptx', '.band')):
+                    try:
+                        data = storage.read_blob(snap.blob_sha)
+                        info_a = get_daw_info(snap.path, data)
+                        path_a = snap.path
+                        break
+                    except Exception:
+                        pass
+
+    if version.commit_id:
+        from ..services.daw.registry import get_daw_info
+        from ..services.versioning import tree_files
+        commit_b = db.get(Commit, version.commit_id)
+        if commit_b:
+            tree_b = tree_files(db, commit_b)
+            for snap in tree_b:
+                if snap.path.lower().endswith(('.als', '.cpr', '.rpp', '.flp', '.logic', '.ptx', '.band')):
+                    try:
+                        data = storage.read_blob(snap.blob_sha)
+                        info_b = get_daw_info(snap.path, data)
+                        path_b = snap.path
+                        break
+                    except Exception:
+                        pass
+
+    # Generate summary diff
+    from ..services.daw.diff_engine import summary_diff
+    summary_raw = summary_diff(info_a, info_b)
+
+    # Convert to the expected list format
+    summary = []
+    # Handle the case of no previous version (first version)
+    if info_a is None and info_b is not None:
+        summary.append({"label": "File created"})
+    else:
+        if "bpm" in summary_raw:
+            bpm_diff = summary_raw["bpm"]
+            old_val = bpm_diff.get("before")
+            new_val = bpm_diff.get("after")
+            # If the value is a float and represents an integer, convert to int to remove decimal
+            if isinstance(old_val, float) and old_val.is_integer():
+                old_val = int(old_val)
+            if isinstance(new_val, float) and new_val.is_integer():
+                new_val = int(new_val)
+            summary.append({
+                "kind": "bpm",
+                "old": str(old_val),
+                "new": str(new_val)
+            })
+        if "time_signature" in summary_raw:
+            ts_diff = summary_raw["time_signature"]
+            summary.append({
+                "kind": "time_signature",
+                "old": str(ts_diff.get("before")),
+                "new": str(ts_diff.get("after"))
+            })
+        if "tracks" in summary_raw:
+            tracks_diff = summary_raw["tracks"]
+            for track in tracks_diff.get("added", []):
+                summary.append({
+                    "kind": "track_added",
+                    "new": track
+                })
+            for track in tracks_diff.get("removed", []):
+                summary.append({
+                    "kind": "track_removed",
+                    "old": track
+                })
+        if "plugins" in summary_raw:
+            plugins_diff = summary_raw["plugins"]
+            for plugin in plugins_diff.get("added", []):
+                summary.append({
+                    "kind": "plugin_added",
+                    "new": plugin
+                })
+            for plugin in plugins_diff.get("removed", []):
+                summary.append({
+                    "kind": "plugin_removed",
+                    "old": plugin
+                })
+
+    # Determine the path and format for the DAW file
+    path = None
+    fmt = None
+    has_daw = False
+
+    # Prefer info_b (current version) for path/format
+    if info_b:
+        path = path_b
+        # Extract file extension from path
+        if path and "." in path:
+            fmt = path.rsplit(".", 1)[-1].lower()
+        else:
+            fmt = info_b.get("format")
+        has_daw = bool(path and fmt)
+    elif info_a:
+        path = path_a
+        # Extract file extension from path
+        if path and "." in path:
+            fmt = path.rsplit(".", 1)[-1].lower()
+        else:
+            fmt = info_a.get("format")
+        has_daw = bool(path and fmt)
+
+    # Generate raw text diff if we have DAW files
+    raw = ""
+    truncated = False
+    if info_a and info_b:
+        from ..services.daw.diff_engine import unified_diff, normalize_content
+        try:
+            # Get the DAW file content for both versions
+            data_a = storage.read_blob(
+                db.scalar(
+                    select(FileSnapshot.blob_sha)
+                    .where(
+                        FileSnapshot.commit_id == prev_version.commit_id,
+                        FileSnapshot.path == path,
+                    )
+                )
+            ) if prev_version and prev_version.commit_id and path else b""
+            data_b = storage.read_blob(
+                db.scalar(
+                    select(FileSnapshot.blob_sha)
+                    .where(
+                        FileSnapshot.commit_id == version.commit_id,
+                        FileSnapshot.path == path,
+                    )
+                )
+            ) if version.commit_id and path else b""
+            text_a = normalize_content(path, data_a) if path else ""
+            text_b = normalize_content(path, data_b) if path else ""
+            raw, truncated = unified_diff(text_a, text_b)
+        except Exception:
+            raw = ""
+            truncated = False
+
+    # Get the "from" label
+    from_label = prev_version.label if prev_version else None
+
+    return VersionDiffOut(
+        version_label=version.label,
+        from_label=from_label,
+        path=path,
+        format=fmt,
+        has_daw=has_daw,
+        summary=summary,
+        raw=raw,
+        truncated=truncated,
     )
 
 
@@ -566,6 +935,274 @@ def get_ledger(session_id: int, user: User = Depends(get_current_user), db: Sess
 def verify_ledger(session_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     get_session_or_404(db, user, session_id)
     return ledger.verify_history(db, session_id=session_id)
+
+
+# ---------- Stem endpoints (for version-based stem management) ----------
+
+@router.get("/versions/{version_id}/stems", response_model=list[dict])
+def list_version_stems(version_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """List all stems for a specific version."""
+    version = db.get(ReviewVersion, version_id)
+    if version is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Version not found")
+
+    # Verify ownership through the session
+    session = db.get(ReviewSession, version.session_id)
+    if session is None or session.owner_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Version not found")
+
+    stems = db.scalars(
+        select(StemAsset).where(StemAsset.version_id == version_id)
+    ).all()
+
+    return [
+        {
+            "id": stem.id,
+            "logical_name": stem.logical_name,
+            "display_name": stem.display_name,
+            "blob_sha": stem.blob_sha,
+            "size": stem.size,
+            "audio_format": stem.audio_format,
+            "start_offset_ms": stem.start_offset_ms,
+            "created_at": stem.created_at,
+        }
+        for stem in stems
+    ]
+
+
+@router.post("/versions/{version_id}/stems", response_model=dict, status_code=status.HTTP_201_CREATED)
+def upload_version_stem(
+    version_id: int,
+    logical_name: str = Form(...),
+    display_name: str = Form(...),
+    start_offset_ms: int = Form(0),
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Upload a stem to a specific version."""
+    version = db.get(ReviewVersion, version_id)
+    if version is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Version not found")
+
+    # Verify ownership through the session
+    session = db.get(ReviewSession, version.session_id)
+    if session is None or session.owner_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Version not found")
+
+    try:
+        data = storage.put_upload_file(file, MAX_UPLOAD_SIZE)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, str(exc))
+
+    sha = storage.put_blob(data)
+    stem = StemAsset(
+        version_id=version_id,
+        logical_name=logical_name,
+        display_name=display_name,
+        blob_sha=sha,
+        size=len(data),
+        audio_format=(file.filename or "stem.wav").rsplit(".", 1)[-1].lower(),
+        start_offset_ms=start_offset_ms,
+    )
+    db.add(stem)
+    db.commit()
+    db.refresh(stem)
+
+    return {
+        "id": stem.id,
+        "blob_sha": stem.blob_sha,
+    }
+
+
+@router.get("/versions/{version_id}/stems/{stem_id}/audio")
+def get_stem_audio(
+    version_id: int,
+    stem_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the audio blob for a specific stem."""
+    version = db.get(ReviewVersion, version_id)
+    if version is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Version not found")
+
+    # Verify ownership through the session
+    session = db.get(ReviewSession, version.session_id)
+    if session is None or session.owner_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Version not found")
+
+    stem = db.get(StemAsset, stem_id)
+    if stem is None or stem.version_id != version_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Stem not found")
+
+    data = storage.read_blob(stem.blob_sha)
+    return Response(
+        content=data,
+        media_type=f"audio/{stem.audio_format}",
+        headers={"Content-Disposition": f'inline; filename="{stem.display_name}"'},
+    )
+
+
+# ---------- Submit feedback (close round) ----------
+
+
+class SubmitFeedbackPayload(BaseModel):
+    note: str = Field(default="", max_length=2000)
+
+
+@router.post("/public/{share_token}/submit-feedback")
+def submit_feedback(
+    share_token: str,
+    actor: str = Query(""),
+    payload: SubmitFeedbackPayload = SubmitFeedbackPayload(),
+    password: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Guest submits feedback — closes the current review round.
+
+    Business rules:
+    - A round must already be open (created by upload_version or owner).
+    - No round is auto-created: the owner must start the round first.
+    - Calling submit-feedback on an already-closed round returns 409.
+    """
+    session = get_public_session(db, share_token)
+    _require_share_permission(session, "comment", actor, password)
+
+    if not session.rounds_open:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "No open review round. The session owner must upload a new version to open a round before feedback can be submitted.",
+        )
+
+    # Find the open round — it must already exist (created by upload_version)
+    current_round = db.scalar(
+        select(ReviewRound)
+        .where(
+            ReviewRound.session_id == session.id,
+            ReviewRound.status == "open",
+        )
+        .order_by(ReviewRound.number.desc())
+        .limit(1)
+    )
+    if current_round is None:
+        # Defensive: rounds_open is True but no open round exists — inconsistent state
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "No open review round found. The session state is inconsistent; the owner should upload a new version.",
+        )
+
+    current_round.status = "submitted"
+    current_round.submitted_at = utcnow()
+    current_round.note = payload.note
+
+    session.rounds_open = False
+    session.round_number += 1
+    session.updated_at = utcnow()
+    _log_access(db, session, actor, "submitted_feedback", payload.note)
+    ledger.append(db, "round.submitted", session_id=session.id, actor=actor, entity_type="round", entity_id=current_round.id, payload={"note": payload.note})
+    db.commit()
+    return {"ok": True, "round_number": session.round_number}
+
+
+# ---------- Export open requests ----------
+
+
+def _clock_fmt(seconds: float) -> str:
+    """Format seconds as MM:SS.mmm."""
+    m = int(seconds) // 60
+    s = seconds - m * 60
+    return f"{m}:{s:06.3f}"
+
+
+@router.get("/{session_id}/requests/export")
+def export_requests_owner(
+    session_id: int,
+    format: str = Query("markdown"),
+    include_drafts: bool = Query(False),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Owner exports open requests as markdown or CSV."""
+    session = get_session_or_404(db, user, session_id)
+    return _export_requests(db, session, format, include_drafts)
+
+
+@router.get("/public/{share_token}/requests/export")
+def export_requests_public(
+    share_token: str,
+    format: str = Query("markdown"),
+    include_drafts: bool = Query(False),
+    actor: str = Query(""),
+    password: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Public export via share token (for M4L device)."""
+    session = get_public_session(db, share_token)
+    _require_share_permission(session, "comment", actor, password)
+    _log_access(db, session, actor, "exported_requests")
+    db.commit()
+    return _export_requests(db, session, format, include_drafts)
+
+
+def _export_requests(db: Session, session: ReviewSession, fmt: str, include_drafts: bool) -> Response:
+    """Build markdown or CSV export of open review comments."""
+    # Collect comments across all versions in this session
+    versions = db.scalars(
+        select(ReviewVersion).where(ReviewVersion.session_id == session.id).order_by(ReviewVersion.number)
+    ).all()
+
+    # Determine which rounds have been submitted
+    submitted_rounds = {
+        r.number
+        for r in db.scalars(
+            select(ReviewRound).where(
+                ReviewRound.session_id == session.id,
+                ReviewRound.status.in_(["submitted", "closed"]),
+            )
+        ).all()
+    }
+
+    rows: list[dict] = []
+    for v in versions:
+        comments = db.scalars(
+            select(ReviewComment).where(ReviewComment.version_id == v.id)
+        ).all()
+        for c in comments:
+            # Skip resolved
+            if c.resolved:
+                continue
+            # A comment is a "draft" if its version's round was never submitted
+            # round_number on the version tells us which round it belongs to
+            is_draft = v.round_number not in submitted_rounds
+            if not include_drafts and is_draft:
+                continue
+            rows.append({
+                "version": v.label,
+                "time_s": c.time_s,
+                "clock": _clock_fmt(c.time_s),
+                "author": c.author_name or "",
+                "status": c.status,
+                "body": c.body,
+            })
+
+    if fmt == "csv":
+        import csv
+        import io
+
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=["version", "time_s", "clock", "author", "status", "body"])
+        writer.writeheader()
+        writer.writerows(rows)
+        return Response(content=buf.getvalue(), media_type="text/csv")
+
+    # Default: markdown
+    lines = [f"# Open requests — {session.name}\n"]
+    for r in rows:
+        lines.append(f"- [{r['clock']}] {r['author']} — {r['body']}")
+    if not rows:
+        lines.append("_No open requests._")
+    return Response(content="\n".join(lines) + "\n", media_type="text/markdown")
 
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
