@@ -66,6 +66,19 @@ def _migrate() -> None:
         ):
             if col not in packages_cols:
                 conn.execute(text(f"ALTER TABLE packages ADD COLUMN {col} {ddl}"))
+        # Deliverable table migrations
+        deliverable_cols = {c["name"] for c in inspector.get_columns("release_deliverables")} if inspector.has_table("release_deliverables") else set()
+        for col, ddl in (
+            ("license", "VARCHAR(64)"),
+            ("price_cents", "INTEGER DEFAULT 0"),
+            ("verified", "BOOLEAN DEFAULT FALSE"),
+            ("bpm", "INTEGER"),
+            ("key", "VARCHAR(32)"),
+            ("genre", "VARCHAR(128)"),
+            ("tags", "TEXT DEFAULT ''"),
+        ):
+            if col not in deliverable_cols:
+                conn.execute(text(f"ALTER TABLE release_deliverables ADD COLUMN {col} {ddl}"))
 
 
 def init_db() -> None:
