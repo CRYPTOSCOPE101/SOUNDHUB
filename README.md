@@ -32,11 +32,280 @@
 
 # 🎛 What is SoundHub?
 
-SoundHub is a tokenized marketplace where music producers buy and sell finished presets, loops, stems, and sound packs with on-chain ownership and licensing
+The user wants a detailed description of SoundHub, modeled after the detailed GitHub description I gave earlier, but adapted for music producers and sound designers instead of developers.
 
-**Don't generate. Buy. — the marketplace lives inside your DAW.** Presets,
-loops, stems and packs, paid for with SND — from the SoundHub panel in
-Ableton Live (Max for Live prototype in `m4l/`) or the web app.
+
+
+---
+
+## What is SoundHub?
+
+**SoundHub** is a cloud-based platform for hosting, versioning, and collaborating on music production projects, built on top of a Git-like version control system specifically designed for DAW files.
+
+---
+
+## Core Components
+
+### 1. Version Control Engine (Git for Music)
+- Distributed version control system tailored for DAW project files
+- Every producer stores a **full copy** of the project history locally
+- Operations (commit, branch, merge) work **instantly** without network
+- Content-addressed storage (SHA-256) deduplicates identical audio blobs — pushing the same mix twice costs almost nothing
+
+### 2. Project Hosting
+- Cloud storage for DAW projects (Ableton `.als`, FL Studio `.flp`, Logic `.logic`, Studio One `.song`, REAPER `.rpp`, Cubase `.cpr`)
+- Pull Requests — the review process: propose a change → discuss → review → merge into main branch
+- Tasks — issue tracking and task management for music projects
+- Workflows — automated CI/CD pipelines (quality checks, builds, deployments triggered on every push)
+- Kanban Boards — visual task management for releases
+- Wiki — documentation inside the project
+- Discussions — forum for conversations about the project
+
+### 3. Community
+- Fork — copy someone else's project to suggest changes
+- Star — "liked" / bookmark
+- Sponsor — fund producers and engineers
+- Portfolio — public showcase of review sessions and releases
+
+---
+
+## What Makes SoundHub Unique
+
+| Capability | Description |
+|------------|-------------|
+| **Pull Requests** | Review process: proposal → discussion → review → merge |
+| **Branch Protection** | Rules: can't merge without review, without passing quality checks |
+| **Audio CI/CD** | Automatic quality checks (LUFS, True Peak, sample rate) on every push |
+| **DAW-Aware Parsing** | Understands .als, .flp, .logic, .song, .rpp, .cpr — shows tracks, plugins, BPM, structure |
+| **Smart Diff** | Compares what actually changed: "BPM 128 → 132", "+ track Pad", "+ plugin Vital" |
+| **Waveform Review** | Timestamped comments directly on the audio timeline |
+| **Change Orders** | Formal change requests with pricing and approval workflow |
+| **Release Packages** | Assemble deliverables, run QC preflight, lock and deliver securely |
+| **Enterprise Security** | SAST/DAST scanning, encrypted secrets, audit log, IP allowlist, custom roles |
+| **Full Project Management** | Kanban, Tasks, Wiki, Epics, Roadmaps, Milestones, Calendar, Time Tracking |
+
+---
+
+## Architecture
+
+```
+SoundHub (Cloud)
+├── Projects (DAW project storage)
+├── Pull Requests (mix review + approval)
+├── Tasks (project management)
+├── Workflows (CI/CD pipelines)
+├── Kanban (release management)
+├── Packages (distribution registry)
+├── Portfolio (public showcase)
+└── API (REST + GraphQL + Webhooks)
+
+Local (CLI / Desktop)
+├── Commits (project snapshots)
+├── Branches (parallel versions)
+├── Merges (combine versions)
+├── Diffs (compare what changed)
+└── snd CLI (push from terminal or DAW)
+```
+
+---
+
+## Key Concepts
+
+| Concept | What it means in music |
+|---------|----------------------|
+| **Commit** | A snapshot of all project files at a specific moment (DAW project + stems + metadata) |
+| **Branch** | A parallel line of development (e.g., `feature/new-drums`, `fix/volume-123`) |
+| **Merge** | Combining branches (squash, fast-forward, recursive) — merging mix versions |
+| **Revert** | Rolling back to a previous mix version |
+| **Cherry-pick** | Taking a specific commit from one branch into another |
+| **Blame** | Who changed each track and when |
+| **Monorepo** | One repository for multiple releases or EPs |
+| **Pull Request** | A proposed change that gets reviewed before merging — like code review, but for mixes |
+| **Branch Protection** | Rules on the main branch: require PR, require CI checks pass, block force push |
+| **CI/CD** | Automated quality checks: LUFS, True Peak, sample rate, channels — run on every push |
+
+---
+
+## How It Works in Practice
+
+### A producer working alone
+
+1. Create a project on SoundHub
+2. Push your Ableton set: `snd push ./Track_v1.als --project "my-track"`
+3. SoundHub parses the DAW file, extracts track names, plugins, BPM
+4. Continue working, push v2, v3, v4...
+5. Every push creates a commit with full history
+6. Compare any two versions with smart diff
+
+### A mix engineer working with a client
+
+1. Engineer creates a Review Session, uploads mix v1
+2. Client receives a share link (no account needed)
+3. Client leaves timestamped comments: "at 1:32 vocals too loud"
+4. Engineer sees comments, fixes, uploads v2
+5. Client approves → release package → delivery
+
+### A label managing multiple artists
+
+1. All projects in one place
+2. Branch protection: main is protected, PR required
+3. Custom roles: A&R sees everything, artist sees only their project
+4. Audit log: who changed what and when
+5. Kanban: track status of every release
+6. Milestones: deadlines and plans
+
+---
+
+## Platform Scale
+
+| Metric | Count |
+|--------|------:|
+| Database Models | 122 |
+| API Endpoints | 364 |
+| API Routers | 48 |
+| Services | 20+ |
+| Supported DAWs | 6 |
+| Test Cases | 35 |
+
+---
+
+## Full Feature List
+
+### Version Control (10 features)
+- Git branches & merges (merge, squash, fast-forward)
+- Commits with parent chain (full history)
+- Content-addressed file snapshots (SHA-256 deduplication)
+- DAW-aware branch diff (compare tracks, plugins, BPM)
+- Pull Requests with reviews (approve/request_changes)
+- Branch Protection Rules (require PR, require CI, block force push)
+- CODEOWNERS (automatic reviewer assignment)
+- Merge Trains (merge queue to prevent conflicts)
+- Git Tags + Release Notes
+- Push Rules (commit validation)
+
+### Audio (8 features)
+- DAW parsing for 6 formats (.als, .flp, .logic, .song, .rpp, .cpr)
+- Audio CI checks (LUFS, True Peak, sample rate, channels)
+- Waveform timestamped comments
+- Voice comments
+- Stem management with logical names
+- Reference track A/B comparison with level matching
+- Automatic watermarking of preview versions
+- Loudness analysis (EBU R128)
+
+### Review & Approval (8 features)
+- Review Sessions with approval chain
+- Numbered Review Rounds
+- Approval flow (approve/reject with comments)
+- Change Orders with pricing
+- Share Links with password + expiry + allowlist
+- Late-change protection (retention period + recall fee)
+- Automated reminders
+- Immutable Ledger (audit trail of all actions)
+
+### Project Management (11 features)
+- Kanban Boards
+- Tasks (Issues)
+- Wiki with revisions
+- Epics
+- Roadmaps (visual timeline)
+- Milestones
+- Calendar with recurrence
+- Time Tracking
+- Discussions (forum)
+- Requirements
+- OKRs (Objectives and Key Results)
+
+### Security & DevOps (14 features)
+- Workflows (YAML-based CI/CD)
+- SAST/DAST scanning
+- Security Alerts
+- Secrets Management (encrypted)
+- Environments (staging/production)
+- IP Allow List
+- Custom Roles
+- Audit Log
+- Container Registry (Docker)
+- Feature Flags
+- Error Tracking
+- Incident Management
+- On-call Schedules
+- Status Page
+
+### Testing (5 features)
+- Test Plans
+- Test Suites
+- Test Cases
+- Test Results
+- Load Testing
+
+### Collaboration (8 features)
+- Teams with roles
+- Session Groups
+- Session Tags
+- Session Templates
+- Portfolio (public sessions)
+- References (reference tracks)
+- Activity Feed
+- Notifications
+
+### API & Integrations (5 features)
+- REST API (364 endpoints)
+- GraphQL API
+- Full-text Search (SQLite FTS5)
+- Webhooks
+- Metadata
+
+### Packages & Distribution (4 features)
+- Packages (sample packs, presets, plugins)
+- Gists (snippets)
+- Sponsors
+- Artifact Feeds
+
+### Agile Delivery (3 features)
+- Sprints
+- Retrospectives
+- Story Points
+
+---
+
+## Business Model
+
+| Plan | Price | What you get |
+|------|-------|-------------|
+| **Free** | $0 | Open-source, self-hosted, everything included |
+| **Cloud (planned)** | TBD | Hosted version, no server setup needed |
+| **Enterprise (planned)** | Custom | SLA, SSO, dedicated instance, priority support |
+
+---
+
+## Scale of the Ecosystem
+
+- **Open source** — MIT license, anyone can self-host
+- **122 database models** — covering every aspect of music production workflow
+- **364 API endpoints** — full REST + GraphQL access
+- **6 DAW formats** supported natively
+- **20+ backend services** — storage, analysis, watermarking, versioning, webhooks, and more
+- **35 automated tests** — ensuring reliability
+
+---
+
+## Where SoundHub is NOT
+
+SoundHub is **not**:
+- A DAW (no audio editing, no real-time collaboration)
+- A sample marketplace (no buying/selling of sounds)
+- A streaming platform (no Spotify-like playback)
+- A social network (no follower feeds, no likes)
+- A mobile app (desktop + web only, for now)
+
+SoundHub **is** a **version control and collaboration platform** for music production — the place where producers, engineers, and labels manage their projects, review mixes, and deliver releases.
+
+---
+
+## In One Sentence
+
+**SoundHub is to music production what GitHub is to software development: a platform where you store your projects, track every change, review with your team, automate quality checks, and deliver releases — all in one place.**
 
 ![SoundHub demo — landing walkthrough](screenshots/demo.gif)
 
