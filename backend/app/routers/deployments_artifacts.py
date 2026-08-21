@@ -1,8 +1,9 @@
 """Artifact Feeds + Deployment Tracking + Environment Approvals + Branch Permissions."""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, or_, and_, func
 from sqlalchemy.orm import Session
+from typing import List, Optional
 
 from ..database import get_db
 from ..models import (
@@ -74,7 +75,132 @@ def publish_package(pid: int, fid: int, payload: PkgPublish,
                           size=payload.size, published_by=user.id)
     db.add(pkg)
     db.commit()
-    return {"id": pkg.id, "name": pkg.name, "version": pkg.version}
+    return {"id": pkg.id, "name": pkg.name, "version": pkg.version, "file_count": pkg.file_count}
+
+
+# ── Enhanced Artifact Library (Universal Artifact Store) ──────────────────────
+
+
+@router.get("/api/artifacts/search")
+def search_artifacts(
+    q: Optional[str] = Query(None, description="Search query"),
+    feed_type: Optional[str] = Query(None, description="Filter by feed type"),
+    tags: Optional[List[str]] = Query(None, description="Filter by tags"),
+    project_id: Optional[int] = Query(None, description="Limit to specific project"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Search across all accessible artifact packages."""
+    # Base query - get packages from feeds the user can access
+    query = select(ArtifactPackage).join(ArtifactFeed).join(Project)
+
+    # Apply access controls: user can see
+    # 1. Feeds in projects they own
+    # 2. Public feeds from any project
+    # 3. Internal feeds from projects they're a member of (simplified: same org for now)
+    access_conditions = or_(
+        Project.owner_id == user.id,  # Own projects
+        ArtifactFeed.visibility == "public",  # Public feeds
+        # For now, treat "internal" same as "public" - in a real system with orgs, this would be more complex
+        ArtifactFeed.visibility == "internal"
+    )
+    query = query.where(access_conditions)
+
+    # Apply filters
+    if q:
+        search_term = f"%{q}%"
+        query = query.where(or_(
+            ArtifactPackage.name.ilike(search_term),
+            ArtifactPackage.description.ilike(search_term)
+        ))
+    if feed_type:
+        query = query.where(ArtifactFeed.feed_type == feed_type)
+    if project_id:
+        # Verify user has access to the project
+        project = db.get(Project, project_id)
+        if not project:
+            raise HTTPException(404, "Project not found")
+        if project.owner_id != user.id:
+            # Check if user has access (simplified)
+            raise HTTPException(403, "Access denied to project")
+        query = query.where(ArtifactFeed.project_id == project_id)
+
+    # Note: Tag filtering would require a separate tags table or JSON field
+    # For now, we'll skip tag filtering as it would require schema changes
+
+    # Get total count for pagination
+    count_query = select(func.count()).select_from(query.subquery())
+    total = db.scalar(count_query)
+
+    # Apply pagination and get results
+    packages = db.scalars(
+        query.offset(offset).limit(limit)
+        .order_by(ArtifactPackage.created_at.desc())
+    ).all()
+
+    # Build results
+    results = []
+    for pkg in packages:
+        feed = db.get(ArtifactFeed, pkg.feed_id)
+        project = db.get(Project, feed.project_id) if feed else None
+        publisher = db.get(User, pkg.published_by) if pkg.published_by else None
+
+        results.append(ArtifactSearchResult(
+            id=pkg.id,
+            name=pkg.name,
+            version=pkg.version,
+            description=pkg.description or "",
+            feed_name=feed.name if feed else "",
+            feed_type=feed.feed_type if feed else "",
+            project_name=project.name if project else "",
+            published_by=publisher.username if publisher else "",
+            size=pkg.size,
+            download_count=pkg.download_count,
+            tags=[],  # Would populate from tags table if existed
+            created_at=pkg.created_at.isoformat()
+        ))
+
+    return {
+        "results": results,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
+
+@router.get("/api/projects/{pid}/artifact-feeds/{fid}/stats")
+def get_feed_stats(pid: int, fid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get statistics for an artifact feed."""
+    _get_project(db, pid, user)
+    feed = db.get(ArtifactFeed, fid)
+    if not feed or feed.project_id != pid:
+        raise HTTPException(404, "Feed not found")
+
+    # Get package count and total downloads
+    pkg_query = select(
+        func.count(ArtifactPackage.id),
+        func.coalesce(func.sum(ArtifactPackage.download_count), 0)
+    ).where(ArtifactPackage.feed_id == fid)
+
+    pkg_count, total_downloads = db.execute(pkg_query).one()
+
+    return FeedWithStats(
+        id=feed.id,
+        name=feed.name,
+        feed_type=feed.feed_type,
+        description=feed.description or "",
+        visibility=feed.visibility,
+        package_count=pkg_count or 0,
+        total_downloads=total_downloads or 0,
+        created_at=feed.created_at.isoformat()
+    )
+
+
+# Dependency tracking endpoints would go here in a full implementation
+# For now, we'll note that dependencies could be tracked via a separate table
+# linking packages to their dependencies with version constraints
 
 
 # ── Deployment Tracking ─────────────────────────────────────────────────────
@@ -178,6 +304,55 @@ class BPCreate(BaseModel):
     grant_type: str  # allow | deny
     user_id: int | None = None
     team_id: int | None = None
+
+
+# Enhanced Artifact Models
+class FeedUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    visibility: Optional[str] = None  # private | public | internal
+
+
+class PackagePublish(BaseModel):
+    name: str
+    version: str
+    description: str = ""
+    blob_sha: str
+    size: int = 0
+    file_count: int = 0
+    tags: List[str] = []
+
+
+class PackageDependency(BaseModel):
+    package_name: str
+    version_constraint: str  # e.g., "1.0.0", "^2.0.0", ">=1.0.0 <3.0.0"
+    dependency_type: str = "runtime"  # runtime | dev | peer
+
+
+class ArtifactSearchResult(BaseModel):
+    id: int
+    name: str
+    version: str
+    description: str
+    feed_name: str
+    feed_type: str
+    project_name: str
+    published_by: str
+    size: int
+    download_count: int
+    tags: List[str] = []
+    created_at: str
+
+
+class FeedWithStats(BaseModel):
+    id: int
+    name: str
+    feed_type: str
+    description: str
+    visibility: str
+    package_count: int
+    total_downloads: int
+    created_at: str
 
 
 @router.post("/api/projects/{pid}/branch-permissions", status_code=201)
