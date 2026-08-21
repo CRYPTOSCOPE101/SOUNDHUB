@@ -51,7 +51,7 @@
 - Content-addressed storage (SHA-256) deduplicates identical audio blobs — pushing the same mix twice costs almost nothing
 
 ### 2. Project Hosting
-- Cloud storage for DAW projects (Ableton `.als`, FL Studio `.flp`, Logic `.logic`, Studio One `.song`, REAPER `.rpp`, Cubase `.cpr`)
+- Cloud storage for DAW projects (Ableton `.alp`, FL Studio `.flp`, Logic `.logic`, Studio One `.song`, REAPER `.rpp`, Cubase `.cpr`)
 - Pull Requests — the review process: propose a change → discuss → review → merge into main branch
 - Tasks — issue tracking and task management for music projects
 - Workflows — automated CI/CD pipelines (quality checks, builds, deployments triggered on every push)
