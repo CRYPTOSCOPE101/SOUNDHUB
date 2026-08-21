@@ -7,13 +7,13 @@
 
 :root,
 :root[data-theme="light"] {
-  --bg: #f2f0eb;           /* page — bandcamp off-white */
-  --bg2: #f2f0eb;          /* panels blend with the page — flat, no white boxes */
-  --bg3: #ece8e1;          /* hover, inputs */
-  --bg4: #ddd8cf;          /* pressed / strong hover */
-  --border: #d8d3c8;       /* warm gray borders */
-  --text: #1f1f1f;         /* near-black text */
-  --muted: #4f4b45;        /* darker muted — crisp contrast on off-white */
+  --bg: #ffffff;           /* page — pure white */
+  --bg2: #ffffff;          /* panels — pure white */
+  --bg3: #f5f5f5;          /* hover, inputs */
+  --bg4: #e8e8e8;          /* pressed / strong hover */
+  --border: #e0e0e0;       /* light gray borders */
+  --text: #1a1a1a;         /* near-black text */
+  --muted: #555555;        /* muted text */
   --accent: #ff5e1a;       /* bandcamp orange */
   --accent-hover: #e8500e;
   --accent-text: #ffffff;
@@ -25,15 +25,15 @@
   --code-bg: #f4f2ec;
   --shadow: 0 1px 2px rgba(31, 31, 31, 0.08);
   --tab-active-border: #1f1f1f;
-  --bg-soft: #f2f0eb;
-  --card: #f2f0eb;
+  --bg-soft: #f9f9f9;
+  --card: #ffffff;
   --accent-soft: rgba(255, 94, 26, 0.1);
   --green-soft: rgba(31, 122, 61, 0.1);
   --red-soft: rgba(192, 60, 46, 0.1);
   --muted-soft: rgba(107, 103, 97, 0.12);
   --blue-soft: rgba(58, 76, 107, 0.1);
-  --shot-bg: #d6d2c7;                       /* screenshot blocks sit on a dark gray pad */
-  --shot-border: #b5ae9e;
+  --shot-bg: #f0f0f0;
+  --shot-border: #e0e0e0;
   --shot-shadow: 0 4px 12px rgba(31, 31, 31, 0.2), 0 34px 90px rgba(31, 31, 31, 0.32);
 }
 
@@ -76,11 +76,9 @@ body {
   margin: 0;
   background: var(--bg);
   color: #000000;
-  /* system stack like bandcamp — Segoe UI renders crisp via ClearType on
-     Windows, SF Pro on macOS; no web font to soften glyphs */
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 18px;
-  line-height: 1.5;
+  font-size: 20px;
+  line-height: 1.6;
   transition: background 0.2s, color 0.2s;
 }
 
@@ -4841,7 +4839,7 @@ pre.diff-raw code {
 
 .cr-badge {
   display: inline-block;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -5014,7 +5012,7 @@ pre.diff-raw code {
 }
 
 .cr-feature-list li {
-  font-size: 15px;
+  font-size: 18px;
   color: var(--text);
   padding-left: 24px;
   position: relative;
@@ -5045,8 +5043,8 @@ pre.diff-raw code {
   color: var(--muted);
   max-width: 640px;
   margin: -14px auto 30px;
-  font-size: 17px;
-  line-height: 1.6;
+  font-size: 20px;
+  line-height: 1.65;
 }
 
 .cr-context-grid {
@@ -5331,15 +5329,15 @@ pre.diff-raw code {
 
 .bento-title {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.3px;
   margin: 0;
 }
 
 .bento-text {
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 17px;
+  line-height: 1.6;
   color: var(--muted);
   margin: 0;
   max-width: 46ch;
@@ -5669,16 +5667,16 @@ pre.diff-raw code {
 }
 
 .cr-tabpanel-title {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 800;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.4px;
   margin: 0 0 10px;
 }
 
 .cr-tabpanel-text {
   color: var(--muted);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 19px;
+  line-height: 1.65;
   margin: 0 0 16px;
 }
 
@@ -5994,7 +5992,7 @@ pre.diff-raw code {
 }
 
 .cr-plan-name {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -6002,7 +6000,7 @@ pre.diff-raw code {
 }
 
 .cr-plan-price {
-  font-size: 34px;
+  font-size: 40px;
   font-weight: 900;
   letter-spacing: -0.5px;
 }
@@ -6013,7 +6011,7 @@ pre.diff-raw code {
 
 .cr-plan-note {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 16px;
   margin-bottom: 8px;
 }
 
@@ -6152,9 +6150,9 @@ pre.diff-raw code {
 
 .bc-h2 {
   font-family: var(--font-display);
-  font-size: clamp(30px, 3.4vw, 40px);
+  font-size: clamp(36px, 4vw, 50px);
   font-weight: 780;
-  letter-spacing: -0.8px;
+  letter-spacing: -1px;
   text-align: center;
   margin: 0 0 26px;
 }
@@ -6166,9 +6164,9 @@ pre.diff-raw code {
 .bc-lead {
   text-align: center;
   color: var(--muted);
-  max-width: 560px;
+  max-width: 600px;
   margin: -14px auto 26px;
-  font-size: 14px;
+  font-size: 18px;
 }
 
 /* steps — numbered list like a bandcamp tracklist */
@@ -6189,7 +6187,7 @@ pre.diff-raw code {
 }
 
 .bc-step-n {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   color: var(--accent);
   font-variant-numeric: tabular-nums;
@@ -6199,14 +6197,14 @@ pre.diff-raw code {
 
 .bc-step-body h3 {
   margin: 0 0 4px;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .bc-step-body p {
   margin: 0;
   color: var(--muted);
-  font-size: 16px;
-  line-height: 1.55;
+  font-size: 19px;
+  line-height: 1.6;
 }
 
 /* smart diff */
@@ -6655,7 +6653,7 @@ pre.diff-raw code {
   cursor: pointer;
   padding: 15px 44px 15px 16px;
   font-weight: 600;
-  font-size: 16.5px;
+  font-size: 20px;
   list-style: none;
   position: relative;
 }
@@ -6689,8 +6687,8 @@ pre.diff-raw code {
   margin: 0;
   padding: 0 16px 15px;
   color: var(--muted);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 19px;
+  line-height: 1.65;
 }
 
 /* final CTA */
