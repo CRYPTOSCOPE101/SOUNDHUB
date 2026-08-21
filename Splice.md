@@ -1,155 +1,154 @@
-# Полное досье на Splice Studio и конкурентов
+# Complete Dossier on Splice Studio and Competitors
 
 ---
 
-# ЧАСТЬ 1: SPLICE STUDIO
+# PART 1: SPLICE STUDIO
 
 ---
 
-## Что такое Splice Studio
+## What is Splice Studio
 
-**Splice Studio** — бесплатное облачное приложение для совместной работы музыкантов и продюсеров, основанное на контроле версий и автоматическом бэкапе файлов DAW. Его часто называли **"GitHub для музыкантов"** — за аналогию с git-workflow: автоматическое сохранение, история версий, комментарии к изменениям, приглашение коллег.
+**Splice Studio** — a free cloud application for collaborative music production, based on version control and automatic DAW file backup. It was often called **"GitHub for musicians"** — for its analogy with git-workflow: automatic saving, version history, change comments, colleague invitations.
 
-**Статус: ЗАКРЫТ** (март — июнь 2023)
-
----
-
-## История и дата запуска
-
-| Дата | Событие |
-|------|---------|
-| **Октябрь 2013** | Приватная бета macOS-версии Splice Studio |
-| **Конец 2013** | Вышла Windows-версия |
-| **Сентябрь 2014** | Публичный запуск ($4.5M Series A, инвесторы: Tiësto, Scooter Braun, True Ventures) |
-| **Декабрь 2015** | Выпуск Splice Studio v2 — улучшенный UI, поддержка Audio-Only Projects |
-| **2017** | Последний крупный апдейт Studio. Далее — только поддержка |
-| **9 марта 2023** | CEO Kakul Srivastava объявил о закрытии Studio |
-| **7 апреля 2023** | Отключена возможность создания новых проектов в Desktop App |
-| **5 июня 2023** | Полное удаление Studio из меню и Desktop App |
+**Status: CLOSED** (March – June 2023)
 
 ---
 
-## Основатель и компания
+## History and Launch Timeline
+
+| Date | Event |
+|------|-------|
+| **October 2013** | Private beta of macOS version of Splice Studio |
+| **Late 2013** | Windows version released |
+| **September 2014** | Public launch ($4.5M Series A, investors: Tiësto, Scooter Braun, True Ventures) |
+| **December 2015** | Splice Studio v2 release — improved UI, Audio-Only Projects support |
+| **2017** | Last major Studio update. Only maintenance after that |
+| **March 9, 2023** | CEO Kakul Srivastava announced Studio closure |
+| **April 7, 2023** | New project creation disabled in Desktop App |
+| **June 5, 2023** | Studio completely removed from menu and Desktop App |
+
+---
+
+## Founders and Company
 
 | | |
 |---|---|
-| **Основатели** | Steve Martocci (GroupMe) и Matt Aimonetti (Sony PlayStation, LivingSocial) |
-| **Компания** | Splice (Distributed Creation Inc) |
-| **Штаб-квартира** | Нью-Йорк |
-| **Текущий CEO** | Kakul Srivastava (с мая 2022) |
-| **Технологии** | Go, Objective-C, C#, JavaScript |
-| **Общий объём инвестиций** | >$150 млн (Series A-D, Goldman Sachs lead на Series D) |
-| **Оценка** | ~$500 млн |
-| **Сейчас** | Платформа сфокусирована на Splice Sounds (сэмплы) и Rent-to-Own (плагины). В апреле 2025 купили Spitfire Audio |
+| **Founders** | Steve Martocci (GroupMe) and Matt Aimonetti (Sony PlayStation, LivingSocial) |
+| **Company** | Splice (Distributed Creation Inc) |
+| **Headquarters** | New York |
+| **Current CEO** | Kakul Srivastava (since May 2022) |
+| **Technologies** | Go, Objective-C, C#, JavaScript |
+| **Total funding** | >$150M (Series A-D, Goldman Sachs lead on Series D) |
+| **Valuation** | ~$500M |
+| **Now** | Platform focused on Splice Sounds (samples) and Rent-to-Own (plugins). Acquired Spitfire Audio in April 2025 |
 
 ---
 
-## Что умел Splice Studio — полный список возможностей
+## What Splice Studio Could Do — Full Feature List
 
-### Автоматический бэкап
-- При каждом нажатии **Save** в DAW проект автоматически загружался в облако
-- Все сэмплы и зависимости файла тоже синхронизировались
-- **Бесплатное неограниченное хранилище** навсегда
+### Automatic Backup
+- On every **Save** in DAW, the project was automatically uploaded to the cloud
+- All samples and dependencies were also synced
+- **Free unlimited storage** forever
 
-### Контроль версий (Version Control)
-- Каждое сохранение — это новая версия с таймстэмпом
-- Можно вернуться к любой предыдущей версии
-- Визуальная таймлайн (Timeline) проекта в браузере и приложении
-- Отслеживание того, кто и что изменил (как git blame)
+### Version Control
+- Each save was a new version with timestamp
+- Could revert to any previous version
+- Visual timeline of the project in browser and app
+- Tracking who changed what (like git blame)
 
-### Совместная работа (Collaboration)
-- Приглашение коллег по email
-- Коллега получал доступ ко всем версиям и таймлайну
-- Комментарии к каждой ревизии
-- Проект приватный по умолчанию — только приглашённые видели его
+### Collaboration
+- Invite colleagues by email
+- Colleague got access to all versions and timeline
+- Comments on each revision
+- Project was private by default — only invited people could see it
 
-### DAW-интеграция (Native Awareness)
-Splice Studio "понимал" форматы DAW и мог показывать:
-- Названия треков внутри сессии
-- Список использованных плагинов
-- Визуализацию структуры трека
-- Работал с нативными файлами, а не только со stems
+### DAW Integration (Native Awareness)
+Splice Studio "understood" DAW formats and could show:
+- Track names within the session
+- List of used plugins
+- Track structure visualization
+- Worked with native files, not just stems
 
-**Поддерживаемые DAW:**
+**Supported DAWs:**
 - Ableton Live
-- FL Studio (включая Mac-версию с FL Studio 20)
-- Apple Logic Pro X и GarageBand
+- FL Studio (including Mac version with FL Studio 20)
+- Apple Logic Pro X and GarageBand
 - PreSonus Studio One
-- Pro Tools (только stems)
-- Reaper — НЕ поддерживался
-- Reason Studios — НЕ поддерживался
+- Pro Tools (stems only)
+- Reaper — NOT supported
+- Reason Studios — NOT supported
 
 ### Audio-Only Projects (Stems Sharing)
-- Загрузка экспортированных аудио-стемов для кросс-платформенной работы
-- Позволяло работать с коллегой, у которого другой DAW или отсутствуют нужные плагины
+- Upload exported audio stems for cross-platform work
+- Allowed working with a colleague who has a different DAW or is missing plugins
 
 ### DNA Player
-- Публичный плеер для прослушивания треков
-- Визуализировал каждый отдельный трек (не только waveform)
-- Функции mute/solo отдельных инструментов
-- Комментарии от слушателей (по аналогии с SoundCloud)
-- Возможность сделать трек публично ремиксируемым
+- Public player for listening to tracks
+- Visualized each individual track (not just waveform)
+- Mute/solo functions for individual instruments
+- Listener comments (similar to SoundCloud)
+- Ability to make a track publicly remixable
 
 ### Desktop App
-- Приложение для macOS и Windows
-- Pop-up меню в трее показывало проекты с последними версиями
-- Можно было добавлять комментарии к сохранениям прямо из меню
-- Синхронизация в фоне
+- Application for macOS and Windows
+- Pop-up tray menu showed projects with latest versions
+- Could add comments to saves directly from menu
+- Background synchronization
 
-### Community Tab (закрыта в 2023)
-- Фильтрация проектов по жанру и DAW
-- Просмотр проектов других музыкантов
-- Скачивание чужих проектов для изучения
-- Поиск коллабораторов
-
----
-
-## Ограничения и слабые стороны
-
-| Проблема | Детали |
-|----------|--------|
-| Только Splice-папка | Все синхронизируемые проекты должны лежать в специальной Splice-директории. Можно было изменить путь, но только одну папку |
-| Нет real-time | Коллеги не могли работать одновременно — только по очереди (async) |
-| Нужны одинаковые DAW + плагины | Для полноценного открытия проекта обе стороны должны были использовать тот же DAW и все плагины |
-| Нет Pro Tools/Reaper/Reason | Pro Tools, Reaper, Reason не поддерживались нативно |
-| Баги накапливались | Разработка не велась с 2017, баги копились |
-| Не монетизировался | Был полностью бесплатным — cost center для компании |
-| Ненадёжный бэкап | Эксперты не рекомендовали использовать как единственный backup — критичные файлы лучше дублировать |
-| Нет мобильного Studio | Мобильное приложение — только для браузинга сэмплов |
+### Community Tab (closed in 2023)
+- Browse other musicians' projects
+- Download others' projects for study
+- Find collaborators
 
 ---
 
-## Цена
+## Limitations and Weaknesses
 
-**Совершенно бесплатно.** Неограниченное хранилище. Без подписки. Без рекламы.
-
-Это и стало причиной закрытия — функция никогда не монетизировалась и тормозила развитие основного бизнеса Splice (сэмплы + Rent-to-Own).
-
----
-
-## Почему закрыли
-
-Из письма CEO Kakul Srivastava (9 марта 2023):
-
-> "Хотя потенциал Studio помочь музыкантам в совместной работе был в основе нашей идеологии, эта функция не была в фокусе с 2017 года. Проще говоря, мы не смогли обеспечить качество, которым можем гордиться. Фактически, поддержание её работоспособности замедляло нас в создании ценности быстрее."
-
-Ключевые причины:
-1. **Нерентабельность** — бесплатный продукт без монетизации
-2. **Приоритеты** — Splice сосредоточился на Sounds (сэмплы) и Rent-to-Own (плагины)
-3. **Отсутствие развития** — 6 лет без существенных обновлений
-4. **Конкуренция** — пользователи нашли альтернативы
+| Problem | Details |
+|---------|---------|
+| Only Splice folder | All synced projects had to live in a special Splice directory. Could change the path, but only one folder |
+| No real-time | Colleagues couldn't work simultaneously — only async |
+| Need same DAW + plugins | For full project opening, both sides needed the same DAW and all plugins |
+| No Pro Tools/Reaper/Reason | Pro Tools, Reaper, Reason were not natively supported |
+| Bugs accumulated | No development since 2017, bugs piled up |
+| Not monetized | Completely free — cost center for the company |
+| Unreliable backup | Experts didn't recommend using as sole backup — critical files better duplicated |
+| No mobile Studio | Mobile app only for browsing samples |
 
 ---
 
-## Что Splice Studio значил для индустрии
+## Pricing
 
-- **Первый масштабный** инструмент контроля версий для DAW-файлов
-- **GitHub-подобный подход** к музыкальному продакшну
-- Использовался топ-продюсерами: Kid Cudi, Jhené Aiko, Tiësto, и другие
-- Источником вдохновения для десятков последующих стартапов
-- Запустил концепцию DNA Player — интерактивного прослушивания с мьютингом треков
+**Completely free.** Unlimited storage. No subscription. No ads.
 
-**Примеры треков со Splice-сэмплами (Splice Sounds, не Studio, но иллюстрирует бренд):**
+This was the reason for closure — the feature was never monetized and hindered Splice's core business (samples + Rent-to-Own).
+
+---
+
+## Why It Was Closed
+
+From CEO Kakul Srivastava's letter (March 9, 2023):
+
+> "While the potential of Studio to help musicians collaborate was at the heart of our ideology, this feature has not been in focus since 2017. Simply put, we weren't able to deliver quality we could be proud of. In fact, maintaining it was slowing us down from creating value faster."
+
+Key reasons:
+1. **Unprofitability** — free product without monetization
+2. **Priorities** — Splice focused on Sounds (samples) and Rent-to-Own (plugins)
+3. **Lack of development** — 6 years without significant updates
+4. **Competition** — users found alternatives
+
+---
+
+## What Splice Studio Meant for the Industry
+
+- **First large-scale** version control tool for DAW files
+- **GitHub-like approach** to music production
+- Used by top producers: Kid Cudi, Jhené Aiko, Tiësto, and others
+- Inspiration for dozens of subsequent startups
+- Launched the DNA Player concept — interactive listening with track muting
+
+**Example tracks with Splice samples (Splice Sounds, not Studio, but illustrates the brand):**
 - Sabrina Carpenter — "Espresso"
 - Justin Bieber — "Running Over"
 - Zedd & Grey — "The Middle"
@@ -159,7 +158,7 @@ Splice Studio "понимал" форматы DAW и мог показывать
 
 ---
 
-## Техническая архитектура
+## Technical Architecture
 
 ```
 Desktop App (macOS/Win) --> Splice Cloud (unlimited) --> Web Browser (Timeline, DNA Player)
@@ -167,557 +166,557 @@ Desktop App (macOS/Win) --> Splice Cloud (unlimited) --> Web Browser (Timeline, 
        | Filesystem Watcher       | version storage
        | (auto-sync on DAW save)  |
        v                          v
-Splice Project Folder <-- Единственная папка для всех проектов
+Splice Project Folder <-- Single folder for all projects
 ```
 
-**Файлы DAW (natively):**
+**Native DAW files:**
 - `.als` (Ableton)
 - `.flp` (FL Studio)
 - `.logic` / `.band` (Logic/GarageBand)
 - `.song` (Studio One)
 
-**Стек:** Go (backend), Objective-C (macOS), C# (Windows), JavaScript (web)
+**Stack:** Go (backend), Objective-C (macOS), C# (Windows), JavaScript (web)
 
 ---
 
-## Итоговая оценка Splice Studio
+## Final Rating of Splice Studio
 
-| Критерий | Оценка |
-|----------|--------|
-| Важность для индустрии | 5/5 — Пионер в контроле версий для музыки |
-| Функциональность | 4/5 — Бесплатный, неограниченный, DAW-aware |
-| Стабильность | 3/5 — Баги копились, поддержка свёрнута |
-| Удобство | 4/5 — Простой workflow, авто-бэкап |
-| Цена | 5/5 — Бесплатно |
-| Наследие | 5/5 — Запустил волну стартапов (SyncMuse, Boombox, и др.) |
-
----
-
-# ЧАСТЬ 2: КОНКУРЕНТЫ И АЛЬТЕРНАТИВЫ
+| Criterion | Rating |
+|-----------|--------|
+| Importance for the industry | 5/5 — Pioneer in version control for music |
+| Functionality | 4/5 — Free, unlimited, DAW-aware |
+| Stability | 3/5 — Bugs accumulated, support scaled back |
+| Usability | 4/5 — Simple workflow, auto-backup |
+| Price | 5/5 — Free |
+| Legacy | 5/5 — Launched a wave of startups (SyncMuse, Boombox, etc.) |
 
 ---
 
-## Обзор рынка
+# PART 2: COMPETITORS AND ALTERNATIVES
 
-После закрытия Splice Studio в мае 2023 года на рынке музыкальной коллаборации образовалась ниша. Десятки платформ пытаются восполнить её — от прямых замен до принципиально новых решений.
+---
 
-Рынок делится на 4 категории:
-1. **Async-коллаборация** (stems, версии, фидбек) — SyncMuse, Boombox, Feedtracks, musiciansXchange
-2. **Real-time DAW** (совместная работа в одном DAW) — BandLab, Soundtrap, Sesh, Sessionwire
-3. **Аудио-ревью** (фидбек для продакшн-команд) — Pibox, Feedtracks
-4. **Краудсорсинг** (поиск музыкантов) — Kompoz, musiciansXchange
+## Market Overview
+
+After Splice Studio closed in May 2023, a void appeared in the music collaboration market. Dozens of platforms are trying to fill it — from direct replacements to fundamentally new solutions.
+
+The market divides into 4 categories:
+1. **Async collaboration** (stems, versions, feedback) — SyncMuse, Boombox, Feedtracks, musiciansXchange
+2. **Real-time DAW** (collaborative work in one DAW) — BandLab, Soundtrap, Sesh, Sessionwire
+3. **Audio review** (feedback for production teams) — Pibox, Feedtracks
+4. **Crowdsourcing** (finding musicians) — Kompoz, musiciansXchange
 
 ---
 
 ## 1. SyncMuse
 
-**Сайт:** syncmuse.co
-**Статус:** Активен (стартап, ранняя стадия)
-**Цель:** Духовный наследник Splice Studio — async-коллаборация без хаоса
+**Website:** syncmuse.co
+**Status:** Active (startup, early stage)
+**Goal:** Spiritual successor to Splice Studio — async collaboration without the chaos
 
-### Что это
-Платформа для асинхронной совместной работы музыкантов. Работает со stems и аудиофайлами (не с DAW-проектами). Специально создана как замена Splice Studio.
+### What it is
+Platform for asynchronous music collaboration. Works with stems and audio files (not DAW projects). Specifically created as a Splice Studio replacement.
 
-### Ключевые возможности
-- **Version history** — каждое загружаемое видео/аудио создаёт новую версию в таймлайне
-- **Timestamped waveform feedback** — комментарии привязаны к конкретным моментам на волновой форме
-- **DAW-agnostic** — работает с любым DAW, т.к. принимает WAV/MP3 (stems)
-- **Secure sharing** — контролируемые ссылки с истечением срока и granular permissions
-- **Сравнение версий** — A/B сравнение любых двух версий
+### Key Features
+- **Version history** — every uploaded video/audio creates a new version in the timeline
+- **Timestamped waveform feedback** — comments tied to specific moments on the waveform
+- **DAW-agnostic** — works with any DAW since it accepts WAV/MP3 (stems)
+- **Secure sharing** — controlled links with expiry and granular permissions
+- **Version comparison** — A/B comparison of any two versions
 
-### Что НЕТ (пока)
-- Desktop app с auto-sync (планируется)
-- Парсинг DAW-файлов (Ableton/Logic/FL)
-- Определение плагинов
+### What's NOT here (yet)
+- Desktop app with auto-sync (planned)
+- DAW file parsing (Ableton/Logic/FL)
+- Plugin detection
 - DNA Player
 
-### Цена
-- **Free план** — базовые функции, без кредитки
-- **Pro план** — (цена не указана, в разработке)
+### Pricing
+- **Free plan** — basic features, no credit card
+- **Pro plan** — (price not listed, in development)
 
-### Для кого
-- Продюсеры, которые работают асинхронно
-- Микс-инженеры, получающие стемы от клиентов
-- Банды, теряющие тейки в Dropbox
+### For whom
+- Producers working asynchronously
+- Mix engineers receiving stems from clients
+- Bands losing takes in Dropbox
 
-### Оценка
-- **Преимущества:** DAW-agnostic, красивый UI, timestamped feedback, версии
-- **Недостатки:** Ранняя стадия, нет desktop sync, нет DAW-aware, маленькая база (150+ пользователей)
+### Rating
+- **Pros:** DAW-agnostic, beautiful UI, timestamped feedback, versions
+- **Cons:** Early stage, no desktop sync, no DAW-aware, small base (150+ users)
 
 ---
 
 ## 2. Boombox
 
-**Сайт:** boombox.io
-**Статус:** Активен, 100K+ артистов
-**Цель:** All-in-one платформа для музыкантов — от идеи до дистрибуции
+**Website:** boombox.io
+**Status:** Active, 100K+ artists
+**Goal:** All-in-one platform for musicians — from idea to distribution
 
-### Что это
-Облачная платформа для совместной работы, хранения, дистрибуции и monetization музыки. Позиционируется как замена Splice Studio +更多.
+### What it is
+Cloud platform for collaboration, storage, distribution, and music monetization. Positioned as a Splice Studio replacement + more.
 
-### Ключевые возможности
+### Key Features
 
-**Drive и Хранение:**
-- Облачное хранилище для DAW-файлов, stems, bounce, видео
-- Enterprise-grade безопасность
-- Поддержка всех аудиоформатов
-- Автоматический синхронизация через Boombox Sync (macOS)
+**Drive and Storage:**
+- Cloud storage for DAW files, stems, bounce, video
+- Enterprise-grade security
+- All audio formats supported
+- Auto-sync via Boombox Sync (macOS)
 
-**Коллаборация:**
-- Добавление коллег в проекты
-- Таймстемповые комментарии на аудио
-- Версионирование миксов
-- Чат внутри платформы
+**Collaboration:**
+- Add colleagues to projects
+- Timestamped audio comments
+- Mix versioning
+- In-platform chat
 
 **Playlists:**
-- Создание приватных плейлистов (как Spotify, но для нерелизных треков)
-- Кастомные обложки
-- Аналитика прослушиваний
-- Защита паролем
+- Create private playlists (like Spotify, but for unreleased tracks)
+- Custom artwork
+- Listening analytics
+- Password protection
 
-**Song Splits и Контракты:**
-- Инструмент для распределения авторских прав
-- Юридически обязывающие контракты
-- Подпись парой кликов
+**Song Splits and Contracts:**
+- Copyright distribution tool
+- Legally binding contracts
+- Sign with a couple clicks
 
-**AI-инструменты (Boombot AI):**
-- Разделение на stems
-- AI-mastering
-- Генератор аккордов
-- Помощник по лирике
+**AI Tools (Boombot AI):**
+- Stem splitting
+- AI mastering
+- Chord generator
+- Lyrics assistant
 
-**Дистрибуция:**
-- Spotify, Apple Music, 150+ платформ
-- 100% роялти остаются у артиста
-- Управление сплитами
+**Distribution:**
+- Spotify, Apple Music, 150+ platforms
+- 100% royalties stay with the artist
+- Split management
 
-### Цена
+### Pricing
 
-| План | Цена | Хранилище | Особенности |
-|------|------|-----------|-------------|
-| **Collaborator (Free)** | $0/мес | 1 GB | Таймстемповые комментарии, версионирование, 45 AI-кредитов, 5 треков в плейлисте |
-| **Starter** | $4.20/мес ($50/год) | 500 GB | Видео, фан-опросы, 55 AI-кредитов, без рекламы |
-| **Creator** | $8.35/мес ($100/год) | 2 TB | Брендированные шары, password protection, AI-поиск, 100 кредитов, дистрибуция для 2 артистов |
-| **Pro** | $15.85/мес ($190/год) | Безлимит | Библиотека live-стримов, аналитика плейлистов, 200 кредитов, безлимитная дистрибуция |
+| Plan | Price | Storage | Features |
+|------|-------|---------|----------|
+| **Collaborator (Free)** | $0/mo | 1 GB | Timestamped comments, versioning, 45 AI credits, 5 tracks in playlist |
+| **Starter** | $4.20/mo ($50/yr) | 500 GB | Video, fan polls, 55 AI credits, ad-free |
+| **Creator** | $8.35/mo ($100/yr) | 2 TB | Branded shares, password protection, AI search, 100 credits, distribution for 2 artists |
+| **Pro** | $15.85/mo ($190/yr) | Unlimited | Live stream library, playlist analytics, 200 credits, unlimited distribution |
 
-### Для кого
-- Продюсеры, которым нужен бэкап + коллаборация + дистрибуция
-- Инди-артисты, ищущие all-in-one решение
-- Банды, работающие асинхронно
+### For whom
+- Producers who need backup + collaboration + distribution
+- Indie artists looking for all-in-one solution
+- Bands working asynchronously
 
-### Оценка
-- **Преимущества:** Широкий функционал, мобильные приложения, splits/контракты, дистрибуция, AI-инструменты, доступная цена
-- **Недостатки:** Нет real-time DAW, нет нативной интеграции с DAW, нет auto-sync (только macOS через отдельное приложение)
+### Rating
+- **Pros:** Wide functionality, mobile apps, splits/contracts, distribution, AI tools, affordable price
+- **Cons:** No real-time DAW, no native DAW integration, no auto-sync (macOS only via separate app)
 
 ---
 
 ## 3. BandLab
 
-**Сайт:** bandlab.com
-**Статус:** Активен, 100M+ создателей
-**Цель:** Бесплатный браузерный DAW + социальная сеть + AI-инструменты
+**Website:** bandlab.com
+**Status:** Active, 100M+ creators
+**Goal:** Free browser DAW + social network + AI tools
 
-### Что это
-Полнофункциональный DAW в браузере с социальными функциями и AI-инструментами. Работает на любом устройстве без установки.
+### What it is
+Full-featured DAW in the browser with social features and AI tools. Works on any device without installation.
 
-### Ключевые возможности
+### Key Features
 
 **BandLab Studio (DAW):**
-- 16-48 треков (в зависимости от плана)
-- 436+ виртуальных инструментов
-- 300+ пресетов эффектов
-- Автоматизация
-- Мульти-трековая запись
-- Real-time коллаборация (до 50 человек)
-- Версионирование
-- Экспорт WAV/MP3
+- 16-48 tracks (depending on plan)
+- 436+ virtual instruments
+- 300+ effect presets
+- Automation
+- Multi-track recording
+- Real-time collaboration (up to 50 people)
+- Versioning
+- WAV/MP3 export
 
-**AI-инструменты:**
-- **SongStarter** — генерация битов/рифов из жанра (бесплатно, без лимитов)
-- **Splitter** — разделение на stems (vocals/drums/bass/instruments, до 7 стемов)
-- **AutoMix** — автоматический микс по жанру
-- **Voice Cleaner** — удаление шума с вокала
-- **Voice Changer** — 17 AI-голосов
-- **FX Preset Generator** — генерация цепочек эффектов из текста
+**AI Tools:**
+- **SongStarter** — generate beats/riffs from genre (free, unlimited)
+- **Splitter** — stem splitting (vocals/drums/bass/instruments, up to 7 stems)
+- **AutoMix** — automatic mix by genre
+- **Voice Cleaner** — noise removal from vocals
+- **Voice Changer** — 17 AI voices
+- **FX Preset Generator** — generate effect chains from text
 
-**Социальная сеть:**
-- Публикация треков
-- Подписчики, лайки, комментарии
-- Поиск коллег по инструменту/жанру
-- Буст продвижения
+**Social Network:**
+- Publish tracks
+- Followers, likes, comments
+- Find colleagues by instrument/genre
+- Boost promotion
 
-**Интеграция:**
-- Cakewalk Next и Sonar (desktop DAW от BandLab)
-- Мобильные приложения (iOS/Android)
+**Integration:**
+- Cakewalk Next and Sonar (desktop DAW from BandLab)
+- Mobile apps (iOS/Android)
 
-### Цена
+### Pricing
 
-| План | Цена | Особенности |
-|------|------|-------------|
-| **Free** | $0 | 16 треков, базовые FX, 2 бита/неделю, 20 сэмплов/мес, 3 стем-сплита/день |
-| **Pro** | $14.99/мес или $99/год | 32 трека, без рекламы, AI-инструменты, 10 битов/неделю, дистрибуция |
-| **Max** | Coming Soon ($199/год) | Безлимит, Mastering EQ, $50 Boost/мес, приоритетная поддержка |
+| Plan | Price | Features |
+|------|-------|----------|
+| **Free** | $0 | 16 tracks, basic FX, 2 beats/week, 20 samples/mo, 3 stem splits/day |
+| **Pro** | $14.99/mo or $99/yr | 32 tracks, ad-free, AI tools, 10 beats/week, distribution |
+| **Max** | Coming Soon ($199/yr) | Unlimited, Mastering EQ, $50 Boost/mo, priority support |
 
-### Для кого
-- Начинающие музыканты
-- Бюджетные продюсеры
-- Мобильные создатели
-- Те, кому нужен free DAW для эскизов
+### For whom
+- Beginner musicians
+- Budget producers
+- Mobile creators
+- Those who need a free DAW for sketches
 
-### Оценка
-- **Преимущества:** Полностью бесплатный, мощные AI-инструменты, 100M+ комьюнити, real-time коллаб до 50 человек, мобильные приложения
-- **Недостатки:** Нет поддержки VST/AU плагинов, экспорт 16-bit/44.1kHz, только облако, ограниченный professional mixing
+### Rating
+- **Pros:** Completely free, powerful AI tools, 100M+ community, real-time collab up to 50 people, mobile apps
+- **Cons:** No VST/AU plugin support, 16-bit/44.1kHz export, cloud-only, limited professional mixing
 
 ---
 
-## 4. Soundtrap (Spotify → основатели)
+## 4. Soundtrap (Spotify → Founders)
 
-**Сайт:** soundtrap.com
-**Статус:** Активен (Soundtrap 2.0 запущен в марте 2026)
-**Цель:** Браузерный DAW для real-time коллаборации и образования
+**Website:** soundtrap.com
+**Status:** Active (Soundtrap 2.0 launched March 2026)
+**Goal:** Browser DAW for real-time collaboration and education
 
-### Что это
-Браузерный DAW, принадлежавший Spotify (2017-2023), сейчас снова принадлежит основателям. Специализируется на real-time коллаборации и образовании.
+### What it is
+Browser DAW owned by Spotify (2017-2023), now back to founders. Specializes in real-time collaboration and education.
 
-### Ключевые возможности
+### Key Features
 
-**Soundtrap Studio 2.0 (март 2026):**
-- Полностью обновлённый интерфейс
-- Desktop app для Mac (Windows скоро)
-- Автоматизация почти для всех эффектов
-- 1000+ новых лупов и пресетов
-- Без лимита на треки
-- Мобильное приложение для прослушивания
+**Soundtrap Studio 2.0 (March 2026):**
+- Completely redesigned interface
+- Desktop app for Mac (Windows coming soon)
+- Automation for nearly all effects
+- 1000+ new loops and presets
+- Unlimited tracks
+- Mobile app for listening
 
-**Real-time коллаборация:**
-- До 30 одновременных пользователей (Unlimited план)
-- Цветовые курсоры каждого участника
-- Встроенный голосовой чат (push-to-talk)
-- Текстовый чат
+**Real-time Collaboration:**
+- Up to 30 simultaneous users (Unlimited plan)
+- Color cursors for each participant
+- Built-in voice chat (push-to-talk)
+- Text chat
 
-**Инструменты:**
-- Beatmaker, sampler, синты, драм-киты, 808
-- 10,000+ royalty-free лупов
+**Tools:**
+- Beatmaker, sampler, synths, drum kits, 808
+- 10,000+ royalty-free loops
 - Auto-Tune (Antares)
-- 40+ эффектов (reverb, distortion, EQ, delay, compressor)
+- 40+ effects (reverb, distortion, EQ, delay, compressor)
 
-**Образование:**
-- Soundtrap for Education ( Classroom, School, District планы)
-- Google Classroom интеграция
+**Education:**
+- Soundtrap for Education (Classroom, School, District plans)
+- Google Classroom integration
 - COPPA/GDPR/FERPA compliant
 
-### Цена
+### Pricing
 
-| План | Цена | Особенности |
-|------|------|-------------|
-| **Free** | $0 | 5 проектов, ограниченные лупы, 2 коллега, MP3 экспорт |
-| **Sound Starter** | $9.99/мес ($7.99/год) | Вокальные тюнинг, автоматизация, расширенные лупы |
-| **Music Production** | $9.99/мес | Полная библиотека, WAV экспорт, безлимитные проекты |
-| **Vocals & Songwriting** | $14.99/мес | Вокальные инструменты, транскрипция, подкасты |
-| **Production & Vocals** | $14.99/мес | Всё вместе |
-| **Unlimited** | $16.99/мес ($13.99/год) | 30 коллег, ранний доступ, полная библиотека |
-| **Spotify Bundle** | $19.99/мес | Unlimited + Spotify Premium |
+| Plan | Price | Features |
+|------|-------|----------|
+| **Free** | $0 | 5 projects, limited loops, 2 collaborators, MP3 export |
+| **Sound Starter** | $9.99/mo ($7.99/yr) | Vocal tuning, automation, extended loops |
+| **Music Production** | $9.99/mo | Full library, WAV export, unlimited projects |
+| **Vocals & Songwriting** | $14.99/mo | Vocal tools, transcription, podcasts |
+| **Production & Vocals** | $14.99/mo | Everything combined |
+| **Unlimited** | $16.99/mo ($13.99/yr) | 30 collaborators, early access, full library |
+| **Spotify Bundle** | $19.99/mo | Unlimited + Spotify Premium |
 
-### Для кого
-- Начинающие музыканты
-- Образовательные учреждения
-- Подкастеры
-- Те, кому нужна real-time коллаборация
+### For whom
+- Beginner musicians
+- Educational institutions
+- Podcasters
+- Those who need real-time collaboration
 
-### Оценка
-- **Преимущества:** Best-in-class real-time (30 человек), чистый UI, образовательные планы, начальная цена $0
-- **Недостатки:** Нет VST/AU, ограниченная автоматизация (объём/панорама), нет MIDI-экспорта, негативные отзывы о багах и поддержке
+### Rating
+- **Pros:** Best-in-class real-time (30 people), clean UI, education plans, starting at $0
+- **Cons:** No VST/AU, limited automation (volume/pan), no MIDI export, negative reviews about bugs and support
 
 ---
 
 ## 5. Pibox
 
-**Сайт:** pibox.com
-**Статус:** Активен, используют Universal Production Music, Epidemic Sound
-**Цель:** Аудио/видео коллаборация для продакшн-команд
+**Website:** pibox.com
+**Status:** Active, used by Universal Production Music, Epidemic Sound
+**Goal:** Audio/video collaboration for production teams
 
-### Что это
-Платформа для review и approval аудио/видео. Не DAW, а инструмент управления обратной связью. Позиционируется как "Dropbox + Trello + Asana для музыки".
+### What it is
+Platform for audio/video review and approval. Not a DAW, but a feedback management tool. Positioned as "Dropbox + Trello + Asana for music."
 
-### Ключевые возможности
-- **Timestamped комментарии** на волновой форме аудио и видео
-- **Lossless воспроизведение** — работа с оригинальным качеством
-- **Version chains** — связывание версий для сравнения
-- **Комментарии** — публичные и приватные
-- **Файловая система** — гибкие папки для всех форматов
-- **Метаданные** — кастомные формы, экспорт в Excel/API
-- **AI Workflows** — интеграция AI по выбору
-- **Чат** — командный и приватный
-- **Мобильное приложение** (iOS)
-- **Мульти-тим** — управление несколькими командами
+### Key Features
+- **Timestamped comments** on audio and video waveforms
+- **Lossless playback** — work with original quality
+- **Version chains** — link versions for comparison
+- **Comments** — public and private
+- **File system** — flexible folders for all formats
+- **Metadata** — custom forms, Excel/API export
+- **AI Workflows** — choose your own AI integration
+- **Chat** — team and private
+- **Mobile app** (iOS)
+- **Multi-team** — manage multiple teams
 
-### Цена
+### Pricing
 
-| План | Цена | Особенности |
-|------|------|-------------|
-| **Free** | $0 | 2 пользователя, 1 GB, 1 группа |
-| **Pro** | $10/user/мес | 100 GB, безлимитные проекты, архивация, RAW воспроизведение |
-| **Team** | $20/user/мес | 1 TB, приватные комментарии, auto-forwarding, кастомные статусы |
-| **Enterprise** | Кастомная | SLA, SSO, API, мульти-тим, ISO-27001 |
+| Plan | Price | Features |
+|------|-------|----------|
+| **Free** | $0 | 2 users, 1 GB, 1 group |
+| **Pro** | $10/user/mo | 100 GB, unlimited projects, archiving, RAW playback |
+| **Team** | $20/user/mo | 1 TB, private comments, auto-forwarding, custom statuses |
+| **Enterprise** | Custom | SLA, SSO, API, multi-team, ISO-27001 |
 
-### Для кого
-- Продакшн-команды (Universal, Epidemic Sound)
-- Микс-инженеры, получающие фидбек от клиентов
-- Лейблы, управляющие несколькими проектами
+### For whom
+- Production teams (Universal, Epidemic Sound)
+- Mix engineers receiving client feedback
+- Labels managing multiple projects
 
-### Оценка
-- **Преимущества:** Отличный waveform-фидбек, enterprise-безопасность, гибкая файловая система
-- **Недостатки:** Дорого для маленьких команд, нет DAW-интеграции, нет версионирования DAW-файлов
+### Rating
+- **Pros:** Excellent waveform feedback, enterprise security, flexible file system
+- **Cons:** Expensive for small teams, no DAW integration, no DAW file versioning
 
 ---
 
 ## 6. Sessionwire
 
-**Сайт:** sessionwire.com
-**Статус:** Активен, используют Berklee, Blackbird, CRAS
-**Цель:** Real-time DAW-сессии со студийным качеством звука
+**Website:** sessionwire.com
+**Status:** Active, used by Berklee, Blackbird, CRAS
+**Goal:** Real-time DAW sessions with studio-grade audio
 
-### Что это
-Платформа для real-time совместной работы прямо внутри DAW. Стримит 48kHz uncompressed stereo — не VoIP как Zoom.
+### What it is
+Platform for real-time collaboration directly inside DAW. Streams 48kHz uncompressed stereo — not VoIP like Zoom.
 
-### Ключевые возможности
-- **HQ Audio Streaming** — 48kHz стерео из DAW в DAW
-- **Automute** — автоматическое отключение talkback при воспроизведении
-- **Plugin Suite** (AAX/VST3/AU) — бесплатный плагин для любого DAW
-- **HD видео** — до 50 участников (Studio план)
-- **Screen sharing** и **Remote Desktop**
-- **P2P файлообмен** — шифрованный, без облака
-- **Запись сессий** на диск (видео + голос)
-- **15+ DAW** — Ableton, Logic, FL Studio, Pro Tools, Cubase и др.
+### Key Features
+- **HQ Audio Streaming** — 48kHz stereo from DAW to DAW
+- **Automute** — automatic talkback disable on playback
+- **Plugin Suite** (AAX/VST3/AU) — free plugin for any DAW
+- **HD video** — up to 50 participants (Studio plan)
+- **Screen sharing** and **Remote Desktop**
+- **P2P file sharing** — encrypted, no cloud
+- **Session recording** to disk (video + voice)
+- **15+ DAW** — Ableton, Logic, FL Studio, Pro Tools, Cubase, etc.
 
-### Цена
+### Pricing
 
-| План | Цена | Особенности |
-|------|------|-------------|
-| **Free** | $0 | Публичный профиль, безлимитные Connections, Plugin Suite |
-| **Basic** | $9/мес | Приватная Studio, 1 гость, 100MB файлов, 5GB Vault |
-| **Studio** | $29/мес | 50 гостей, запись на диск, Remote Desktop, 100GB Vault, Puremix Pro |
-| **Business** | Кастомная | Мульти-сит, аналитика, онбординг, образовательные институты |
+| Plan | Price | Features |
+|------|-------|----------|
+| **Free** | $0 | Public profile, unlimited Connections, Plugin Suite |
+| **Basic** | $9/mo | Private Studio, 1 guest, 100MB files, 5GB Vault |
+| **Studio** | $29/mo | 50 guests, disk recording, Remote Desktop, 100GB Vault, Puremix Pro |
+| **Business** | Custom | Multi-site, analytics, onboarding, educational institutions |
 
-### Для кого
-- Профессиональные продюсеры и звукорежиссёры
-- Образовательные институты (Berklee, CRAS)
-- Записывающие студии
-- Real-time сессии с клиентами
+### For whom
+- Professional producers and audio engineers
+- Educational institutions (Berklee, CRAS)
+- Recording studios
+- Real-time sessions with clients
 
-### Оценка
-- **Преимущества:** Студийное качество звука, интеграция с DAW, запись на диск, Remote Desktop
-- **Недостатки:** Дорого ($29/мес для Studio), нет version control, нет облака для хранения
+### Rating
+- **Pros:** Studio-grade audio, DAW integration, disk recording, Remote Desktop
+- **Cons:** Expensive ($29/mo for Studio), no version control, no cloud storage
 
 ---
 
 ## 7. Sesh
 
-**Сайт:** sesh.fm
-**Статус:** Активен, 50K+ продюсеров
-**Цель:** Браузерный DAW для real-time коллаборации битмейкеров
+**Website:** sesh.fm
+**Status:** Active, 50K+ producers
+**Goal:** Browser DAW for real-time beatmaker collaboration
 
-### Что это
-Полноценный браузерный DAW с real-time коллаборацией и AI stem-сплиттером. Фокус на биты и хип-хоп.
+### What it is
+Full-featured browser DAW with real-time collaboration and AI stem splitter. Focus on beats and hip-hop.
 
-### Ключевые возможности
-- **Cloud Studio** — полный DAW в браузере
-- **Real-time коллаборация** — видите курсоры друг друга в реальном времени
-- **Serum-level synthesis** — про-grade синтез с mod matrix в браузере
-- **Collaborative piano roll** — совместное редактирование нот
-- **AI Stem Splitter** — 3 инструмента (acapella, drum remover, full splitter)
-- **18,000+ звуков**, сэмплов и пресетов
+### Key Features
+- **Cloud Studio** — full DAW in browser
+- **Real-time collaboration** — see each other's cursors in real time
+- **Serum-level synthesis** — pro-grade synthesis with mod matrix in browser
+- **Collaborative piano roll** — collaborative note editing
+- **AI Stem Splitter** — 3 tools (acapella, drum remover, full splitter)
+- **18,000+ sounds**, samples and presets
 - **Unlimited version history**
-- **Автосохранение** — каждое действие синхронизируется
-- **Чат** — встроенный в DAW
+- **Auto-save** — every action syncs
+- **Chat** — built into DAW
 
-### Цена
+### Pricing
 
-| План | Цена | Особенности |
-|------|------|-------------|
-| **Free (Starter)** | $0 | Ограниченные проекты, limited export, 1-часовая история |
-| **Pro** | $5/мес (годовой) или $19/мес | Безлимитные проекты/экспорт/коллеги/хранилище, commercial rights |
-| **Founders Club** | $6 (одноразово) | Lifetime 20% скидка, ранний доступ, 1TB хранилище |
+| Plan | Price | Features |
+|------|-------|----------|
+| **Free (Starter)** | $0 | Limited projects, limited export, 1-hour history |
+| **Pro** | $5/mo (annual) or $19/mo | Unlimited projects/export/collaborators/storage, commercial rights |
+| **Founders Club** | $6 (one-time) | Lifetime 20% discount, early access, 1TB storage |
 
-### Для кого
-- Битмейкеры (хип-хоп, трэп, ло-фай)
-- Начинающие продюсеры
-- Банды, работающие в реальном времени
+### For whom
+- Beatmakers (hip-hop, trap, lo-fi)
+- Beginner producers
+- Bands working in real-time
 
-### Оценка
-- **Преимущества:** Serum-level синтез в браузере, без установки, без пропсов, real-time, AI stem splitter, очень доступная цена
-- **Недостатки:** Только браузер, нет offline, ограниченная функциональность для professional mixing
+### Rating
+- **Pros:** Serum-level synthesis in browser, no install, no props, real-time, AI stem splitter, very affordable
+- **Cons:** Browser only, no offline, limited functionality for professional mixing
 
 ---
 
 ## 8. Feedtracks
 
-**Сайт:** feedtracks.com
-**Статус:** Активен
-**Цель:** Google Drive для аудио + waveform-комментарии
+**Website:** feedtracks.com
+**Status:** Active
+**Goal:** Google Drive for audio + waveform comments
 
-### Что это
-Облачное хранилище с аудио-специфичными функциями: waveform-комментарии, версионирование, плейлисты, shared drives.
+### What it is
+Cloud storage with audio-specific features: waveform comments, versioning, playlists, shared drives.
 
-### Ключевые возможности
-- **Timestamped комментарии** на волновой форме
-- **Audio comments** — голосовая обратная связь
-- **Track versioning** — сравнение версий миксов
-- **Playlists** — организация треков
-- **Shared drives** — командная работа
-- **Blockchain Certification** — доказательство авторства
-- **Безопасность** — OAuth, magic links, passkeys, парольная защита
-- **Dashboard** — аналитика и статистика
+### Key Features
+- **Timestamped comments** on waveform
+- **Audio comments** — voice feedback
+- **Track versioning** — compare mix versions
+- **Playlists** — organize tracks
+- **Shared drives** — team collaboration
+- **Blockchain Certification** — proof of authorship
+- **Security** — OAuth, magic links, passkeys, password protection
+- **Dashboard** — analytics and statistics
 
-### Цена
+### Pricing
 
-| План | Цена | Хранилище |
-|------|------|-----------|
-| **Free** | $0 | 1 GB, 100MB/плейлист |
-| **Fan** | €6.99/мес | 200 GB, безлимитные плейлисты, 2 сертификата/мес |
-| **Pro** | €12.99/мес | 500 GB, приоритетная поддержка, 5 сертификатов/мес |
-| **Studio** | Кастомная | 1 TB, безлимитные shared drives |
+| Plan | Price | Storage |
+|------|-------|---------|
+| **Free** | $0 | 1 GB, 100MB/playlist |
+| **Fan** | €6.99/mo | 200 GB, unlimited playlists, 2 certificates/mo |
+| **Pro** | €12.99/mo | 500 GB, priority support, 5 certificates/mo |
+| **Studio** | Custom | 1 TB, unlimited shared drives |
 
-### Для кого
-- Продюсеры, которым нужен "Google Drive для аудио"
-- Маленькие студии
-- Подкастеры
+### For whom
+- Producers who need "Google Drive for audio"
+- Small studios
+- Podcasters
 
-### Оценка
-- **Преимущества:** Знакомый workflow (как Google Drive), waveform-комментарии, blockchain-сертификация
-- **Недостатки:** Нет real-time DAW, нет DAW-интеграции, ограниченная функциональность для больших команд
+### Rating
+- **Pros:** Familiar workflow (like Google Drive), waveform comments, blockchain certification
+- **Cons:** No real-time DAW, no DAW integration, limited functionality for large teams
 
 ---
 
 ## 9. musiciansXchange
 
-**Сайт:** musiciansxchange.com
-**Статус:** Активен (ранняя стадия, 500 founding members)
-**Цель:** "Недостающий слой коллаборации" — discovery + stems + version control + фидбек + auto-credit
+**Website:** musiciansxchange.com
+**Status:** Active (early stage, 500 founding members)
+**Goal:** "The missing collaboration layer" — discovery + stems + version control + feedback + auto-credit
 
-### Что это
-Платформа, объединяющая поиск коллег, шаринг stems, контроль версий и кредитование в одном месте. Не DAW, не стриминг, не маркетплейс — именно коллаборационный слой.
+### What it is
+Platform combining finding collaborators, sharing stems, version control, and crediting in one place. Not a DAW, not streaming, not a marketplace — specifically the collaboration layer.
 
-### Ключевые возможности
+### Key Features
 - **DAW-agnostic stem sharing** — WAV, MP3, AIFF, FLAC, M4A, AAC
-- **Git-style version control** — ветки (branches), сравнение, откат, per-branch ревизии
-- **Timestamped feedback** — комментарии на волновой форме
-- **Discovery** — поиск по инструменту, роли, жанру, уровню, локации
-- **Auto-credit** — автоматическое кредитование всех участников
-- **Audit trail** — каждый action логируется (download, upload, change)
-- **Showcase** — публикация готовых треков с кредитами
-- **Desktop app** — Windows (macOS скоро), watch DAW export folders
-- **Real-time chat** — SignalR в каждом workspace
+- **Git-style version control** — branches, comparison, revert, per-branch revisions
+- **Timestamped feedback** — comments on waveform
+- **Discovery** — search by instrument, role, genre, level, location
+- **Auto-credit** — automatic crediting of all participants
+- **Audit trail** — every action logged (download, upload, change)
+- **Showcase** — publish finished tracks with credits
+- **Desktop app** — Windows (macOS coming soon), watch DAW export folders
+- **Real-time chat** — SignalR in every workspace
 
-### Цена
+### Pricing
 
-| План | Цена | Особенности |
-|------|------|-------------|
-| **Free** | $0 навсегда | 2 GB, 1 приватная коллаборация, безлимитныеjoined collaborations |
-| **Pro** | $3.99/мес ($39/год) | 25 GB, безлимитные треки и коллаборации |
-| **Unlimited** | $9.99/мес ($99/год) | Безлимит всё, storage grows |
-| **Founders** | Бесплатно (первые 500) | Unlimited навсегда бесплатно |
+| Plan | Price | Features |
+|------|-------|----------|
+| **Free** | $0 forever | 2 GB, 1 private collaboration, unlimited joined collaborations |
+| **Pro** | $3.99/mo ($39/yr) | 25 GB, unlimited tracks and collaborations |
+| **Unlimited** | $9.99/mo ($99/yr) | Unlimited everything, storage grows |
+| **Founders** | Free (first 500) | Unlimited forever free |
 
-### Для кого
-- Музыканты, ищущие коллег
-- Продюсеры, работающие с session-музыкантами
-- Те, кому нужен Git-подобный workflow для аудио
+### For whom
+- Musicians looking for collaborators
+- Producers working with session musicians
+- Those who need Git-like workflow for audio
 
-### Оценка
-- **Преимущества:** Уникальное сочетание discovery + version control + auto-credit, Git-style ветки, desktop app с DAW watch, очень доступная цена
-- **Недостатки:** Ранняя стадия, маленькая база, нет real-time DAW
+### Rating
+- **Pros:** Unique combination of discovery + version control + auto-credit, Git-style branches, desktop app with DAW watch, very affordable
+- **Cons:** Early stage, small base, no real-time DAW
 
 ---
 
 ## 10. Satellite Sessions
 
-**Сайт:** mixedinkey.com/satellite
-**Статус:** Активен
-**Цель:** Real-time DAW-коллаборация через плагин
+**Website:** mixedinkey.com/satellite
+**Status:** Active
+**Goal:** Real-time DAW collaboration via plugin
 
-### Что это
-VST/AU/AAX плагин, который позволяет делиться аудио и MIDI между DAW в реальном времени. "Кабель между DAW".
+### What it is
+VST/AU/AAX plugin that allows sharing audio and MIDI between DAWs in real time. "The cable between DAWs."
 
-### Ключевые возможности
+### Key Features
 - **Cross-DAW sync** — Ableton ↔ Logic ↔ Pro Tools ↔ FL Studio ↔ Cubase
-- **BPM/Time Signature/Sample Rate sync** автоматически
-- **Satellite Audio** — стриминг аудио между DAW
-- **Satellite MIDI** — обмен MIDI-данными
-- **Drag & Drop** — перетаскивание аудио/MIDI между DAW и Satellite
-- **Unlimited guests** — приглашайте кого угодно
-- **Chaos Mode** — любой может загружать аудио
+- **BPM/Time Signature/Sample Rate sync** automatically
+- **Satellite Audio** — audio streaming between DAWs
+- **Satellite MIDI** — MIDI data exchange
+- **Drag & Drop** — drag audio/MIDI between DAW and Satellite
+- **Unlimited guests** — invite anyone
+- **Chaos Mode** — anyone can upload audio
 
-### Цена
+### Pricing
 
-| План | Цена | Особенности |
-|------|------|-------------|
-| **Free** | $0 | 30 мин/сессия, viewer-only |
-| **Pro** | $9.99/мес | Без ограничений, co-host, VIP, безлимитные гости |
+| Plan | Price | Features |
+|------|-------|----------|
+| **Free** | $0 | 30 min/session, viewer-only |
+| **Pro** | $9.99/mo | No limits, co-host, VIP, unlimited guests |
 
-### Для кого
-- Продюсеры, работающие в разных DAW
-- Реал-тайм джем-сессии
-- Записывающие студии
+### For whom
+- Producers working in different DAWs
+- Real-time jam sessions
+- Recording studios
 
-### Оценка
-- **Преимущества:** Работает прямо внутри DAW, cross-platform sync, без экспорта стемов
-- **Недостатки:** Нет version control, нет облака, нужен интернет, 30 мин лимит на free
+### Rating
+- **Pros:** Works directly inside DAW, cross-platform sync, no stem export needed
+- **Cons:** No version control, no cloud, internet required, 30 min limit on free
 
 ---
 
 ## 11. Kompoz
 
-**Сайт:** kompoz.com
-**Статус:** Активен с 2007
-**Цель:** Краудсорсинг музыки — найди коллег worldwide
+**Website:** kompoz.com
+**Status:** Active since 2007
+**Goal:** Music crowdsourcing — find collaborators worldwide
 
-### Что это
-Платформа для поиска музыкантов worldwide и совместного создания треков. Не DAW, а networking + project management.
+### What it is
+Platform for finding musicians worldwide and collaboratively creating tracks. Not a DAW, but networking + project management.
 
-### Ключевые возможности
-- Поиск коллег по инструменту, жанру, лицензии
-- Загрузка треков для коллаборации
-- Интеграция со SoundBlend (продажа музыки)
-- Кредитование участников
-- Creative Commons и традиционные лицензии
+### Key Features
+- Find collaborators by instrument, genre, license
+- Upload tracks for collaboration
+- Integration with SoundBlend (music sales)
+- Participant crediting
+- Creative Commons and traditional licenses
 
-### Цена
+### Pricing
 
-| План | Цена | Особенности |
-|------|------|-------------|
-| **Starter** | $0 | 3 public + 1 private коллаборация/год |
-| **Plus** | $5/мес ($49/год) | Больше коллабораций, FLAC загрузки |
-| **Premier** | $10/мес | 70+ коллабораций/год, 90% роялти |
-| **Pro** | $20/мес | Безлимитные коллаборации |
+| Plan | Price | Features |
+|------|-------|----------|
+| **Starter** | $0 | 3 public + 1 private collaboration/year |
+| **Plus** | $5/mo ($49/yr) | More collaborations, FLAC downloads |
+| **Premier** | $10/mo | 70+ collaborations/year, 90% royalties |
+| **Pro** | $20/mo | Unlimited collaborations |
 
-### Оценка
-- **Преимущества:** Большая база (200K+ треков), мировой поиск, продажа через SoundBlend
-- **Недостатки:** Нет real-time, нет version control, нет waveform-комментариев, устаревший UI
-
----
-
-## 12. Другие платформы
-
-- **Splice Sounds** (текущий Splice) — сэмплы + AI-поиск, $9.99/мес
-- **LANDR** — AI-mastering, дистрибуция, $9.99/мес
-- **SoundBetter** — маркетплейс сессионных музыкантов
-- **JamKazam** — real-time джем через интернет
+### Rating
+- **Pros:** Large base (200K+ tracks), worldwide search, sales through SoundBlend
+- **Cons:** No real-time, no version control, no waveform comments, outdated UI
 
 ---
 
-# ЧАСТЬ 3: СРАВНИТЕЛЬНЫЕ ТАБЛИЦЫ
+## 12. Other Platforms
+
+- **Splice Sounds** (current Splice) — samples + AI search, $9.99/mo
+- **LANDR** — AI mastering, distribution, $9.99/mo
+- **SoundBetter** — session musician marketplace
+- **JamKazam** — real-time jamming over internet
 
 ---
 
-## По типу коллаборации
+# PART 3: COMPARISON TABLES
 
-| Платформа | Async stems | Real-time DAW | Waveform feedback | Version control | Discovery |
-|-----------|:-----------:|:-------------:|:-----------------:|:---------------:|:---------:|
+---
+
+## By Collaboration Type
+
+| Platform | Async stems | Real-time DAW | Waveform feedback | Version control | Discovery |
+|----------|:-----------:|:-------------:|:-----------------:|:---------------:|:---------:|
 | **Splice Studio** | ✅ | ❌ | ✅ | ✅ | ❌ |
 | **SyncMuse** | ✅ | ❌ | ✅ | ✅ | ❌ |
 | **Boombox** | ✅ | ❌ | ✅ | ✅ | ❌ |
-| **BandLab** | ✅ | ✅ (до 50) | ❌ | ✅ | ✅ |
-| **Soundtrap** | ✅ | ✅ (до 30) | ❌ | ✅ | ❌ |
+| **BandLab** | ✅ | ✅ (up to 50) | ❌ | ✅ | ✅ |
+| **Soundtrap** | ✅ | ✅ (up to 30) | ❌ | ✅ | ❌ |
 | **Sesh** | ✅ | ✅ (unlimited) | ❌ | ✅ | ❌ |
 | **Sessionwire** | ✅ | ✅ (real-time) | ❌ | ❌ | ❌ |
 | **Satellite** | ✅ | ✅ (real-time) | ❌ | ❌ | ❌ |
@@ -728,36 +727,36 @@ VST/AU/AAX плагин, который позволяет делиться ау
 
 ---
 
-## По цене (минимальный платный план)
+## By Price (Minimum Paid Plan)
 
-| Платформа | Минимальная цена | Что даёт |
-|-----------|:----------------:|----------|
-| **BandLab** | $0 (бесплатно) | Полный DAW, AI-инструменты |
-| **musiciansXchange** | $3.99/мес | 25 GB, безлимитные коллаборации |
-| **Sesh** | $5/мес | Безлимитные проекты, AI stem splitter |
-| **Kompoz** | $5/мес | Больше коллабораций |
-| **Boombox** | $4.20/мес | 500 GB, видео, AI-инструменты |
-| **Feedtracks** | €6.99/мес | 200 GB, безлимитные плейлисты |
-| **SyncMuse** | Freemium | Базовые функции |
-| **Soundtrap** | $9.99/мес | Полная библиотека, WAV экспорт |
-| **Sessionwire** | $9/мес | Приватная Studio, 1 гость |
-| **Satellite** | $9.99/мес | Безлимитные сессии |
-| **Pibox** | $10/user/мес | 100 GB, безлимитные проекты |
+| Platform | Minimum Price | What you get |
+|----------|:------------:|-------------|
+| **BandLab** | $0 (free) | Full DAW, AI tools |
+| **musiciansXchange** | $3.99/mo | 25 GB, unlimited collaborations |
+| **Sesh** | $5/mo | Unlimited projects, AI stem splitter |
+| **Kompoz** | $5/mo | More collaborations |
+| **Boombox** | $4.20/mo | 500 GB, video, AI tools |
+| **Feedtracks** | €6.99/mo | 200 GB, unlimited playlists |
+| **SyncMuse** | Freemium | Basic features |
+| **Soundtrap** | $9.99/mo | Full library, WAV export |
+| **Sessionwire** | $9/mo | Private Studio, 1 guest |
+| **Satellite** | $9.99/mo | Unlimited sessions |
+| **Pibox** | $10/user/mo | 100 GB, unlimited projects |
 
 ---
 
-## По DAW-интеграции
+## By DAW Integration
 
-| Платформа | DAW-aware | Поддерживаемые DAW |
-|-----------|:---------:|-------------------|
+| Platform | DAW-aware | Supported DAWs |
+|----------|:---------:|---------------|
 | **Splice Studio** | ✅ | Ableton, Logic, FL Studio, GarageBand, Studio One |
-| **Sessionwire** | ✅ (плагин) | 15+ DAW через AAX/VST3/AU |
-| **Satellite** | ✅ (плагин) | Ableton, Logic, FL Studio, Pro Tools, Cubase, Studio One |
+| **Sessionwire** | ✅ (plugin) | 15+ DAW via AAX/VST3/AU |
+| **Satellite** | ✅ (plugin) | Ableton, Logic, FL Studio, Pro Tools, Cubase, Studio One |
 | **musiciansXchange** | ✅ (desktop app) | DAW-agnostic (watch export folders) |
-| **Boombox** | Частично (macOS sync) | DAW-agnostic |
-| **BandLab** | ✅ (встроенный) | BandLab Studio + Cakewalk |
-| **Soundtrap** | ✅ (встроенный) | Soundtrap Studio |
-| **Sesh** | ✅ (встроенный) | Sesh DAW |
+| **Boombox** | Partial (macOS sync) | DAW-agnostic |
+| **BandLab** | ✅ (built-in) | BandLab Studio + Cakewalk |
+| **Soundtrap** | ✅ (built-in) | Soundtrap Studio |
+| **Sesh** | ✅ (built-in) | Sesh DAW |
 | **SyncMuse** | ❌ | DAW-agnostic (stems) |
 | **Pibox** | ❌ | DAW-agnostic (stems) |
 | **Feedtracks** | ❌ | DAW-agnostic (stems) |
@@ -765,318 +764,82 @@ VST/AU/AAX плагин, который позволяет делиться ау
 
 ---
 
-## По образованию и оценке
+## By Education and Reviews
 
-| Платформа | Рейтинг App Store | Отзывы | Образование |
-|-----------|:------------------:|:------:|:-----------:|
+| Platform | App Store Rating | Reviews | Education |
+|----------|:----------------:|:-------:|:---------:|
 | **BandLab** | 4.7/5 (498K) | ⭐⭐⭐⭐ | ❌ |
-| **Soundtrap** | 4.5/5 | ⭐⭐⭐ (баги) | ✅ (Classroom/School) |
+| **Soundtrap** | 4.5/5 | ⭐⭐⭐ (bugs) | ✅ (Classroom/School) |
 | **Sessionwire** | — | ⭐⭐⭐⭐ | ✅ (Berklee, CRAS) |
 | **Pibox** | — | ⭐⭐⭐⭐ | ❌ |
 | **Sesh** | — | ⭐⭐⭐ | ❌ |
 
 ---
 
-# ЧАСТЬ 4: РЕКОМЕНДАЦИИ И ИТОГИ
+# PART 4: RECOMMENDATIONS AND CONCLUSIONS
 
 ---
 
-## Рекомендации по сценариям
+## Recommendations by Scenario
 
-### "Мне нужен замена Splice Studio"
-→ **SyncMuse** (если важны версии + waveform feedback) или **Boombox** (если нужен бэкап + дистрибуция)
+### "I need a Splice Studio replacement"
+→ **SyncMuse** (if versions + waveform feedback matter) or **Boombox** (if you need backup + distribution)
 
-### "Мне нужен бесплатный DAW с коллаборацией"
-→ **BandLab** (полностью бесплатный, 100M+ комьюнити) или **Sesh** (если фокус на биты)
+### "I need a free DAW with collaboration"
+→ **BandLab** (completely free, 100M+ community) or **Sesh** (if focused on beats)
 
-### "Мне нужен real-time DAW-плагин"
-→ **Sessionwire** (студийное качество) или **Satellite Sessions** (бесплатный 30 мин)
+### "I need a real-time DAW plugin"
+→ **Sessionwire** (studio-grade) or **Satellite Sessions** (free 30 min)
 
-### "Мне нужен Google Drive для аудио с фидбеком"
-→ **Feedtracks** (waveform комментарии + версии) или **Pibox** (для enterprise-команд)
+### "I need Google Drive for audio with feedback"
+→ **Feedtracks** (waveform comments + versions) or **Pibox** (for enterprise teams)
 
-### "Мне нужны коллеги worldwide"
-→ **musiciansXchange** (discovery + Git-версии + auto-credit) или **Kompoz** (200K+ треков)
+### "I need collaborators worldwide"
+→ **musiciansXchange** (discovery + Git versions + auto-credit) or **Kompoz** (200K+ tracks)
 
-### "Мне нужна дистрибуция + коллаборация"
-→ **Boombox** (всё-в-одном) или **BandLab** (бесплатная дистрибуция в Pro)
-
----
-
-## Тренды рынка 2024-2026
-
-1. **AI-инструменты** — stem splitting, auto-mix, генерация — стандарт для всех платформ
-2. **Browser-first** — BandLab, Soundtrap, Sesh доказали, что браузерные DAW готовы для серьёзной работы
-3. **Real-time vs Async** — рынок разделился: real-time (BandLab, Soundtrap, Sessionwire) vs async (SyncMuse, Boombox)
-4. **Git-подобный workflow** — musiciansXchange и SyncMuse вдохновлены Splice Studio
-5. **All-in-one** — тенденция объединять хранение + коллаборацию + дистрибуцию (Boombox, BandLab)
-6. **Образование** — Soundtrap и BandLab активно работают со школами и университетами
+### "I need distribution + collaboration"
+→ **Boombox** (all-in-one) or **BandLab** (free distribution in Pro)
 
 ---
 
-## Финальный итог
+## Market Trends 2024-2026
 
-**Splice Studio** оставил после себя нишу, которую заполняют минимум 10+ платформ. Ни одна не повторяет его 1:1 — каждая добавляет что-то своё.
-
-**Самые близкие к оригиналу:**
-- **SyncMuse** — по духу и функционалу (async + версии + фидбек)
-- **musiciansXchange** — по концепции "GitHub для музыкантов" (Git-ветки + discovery)
-
-**Самые функциональные:**
-- **BandLab** — мощнейший бесплатный DAW + AI + соцсеть
-- **Boombox** — широчайший функционал (хранилище + коллаб + splits + дистрибуция)
-
-**Самые профессиональные:**
-- **Sessionwire** — студийное качество real-time DAW-сессий
-- **Pibox** — enterprise-подход к аудио-ревью
+1. **AI tools** — stem splitting, auto-mix, generation — standard for all platforms
+2. **Browser-first** — BandLab, Soundtrap, Sesh proved browser DAWs are ready for serious work
+3. **Real-time vs Async** — market split: real-time (BandLab, Soundtrap, Sessionwire) vs async (SyncMuse, Boombox)
+4. **Git-like workflow** — musiciansXchange and SyncMuse inspired by Splice Studio
+5. **All-in-one** — trend to combine storage + collaboration + distribution (Boombox, BandLab)
+6. **Education** — Soundtrap and BandLab actively working with schools and universities
 
 ---
 
-**Резюме:** Splice Studio был революционным бесплатным инструментом, который привнёс Git-подобный workflow в музыкальный продакшн. Он работал с 2014 по 2023, поддерживал 5 DAW, предлагал безлимитное хранилище и DAW-aware контроль версий. Закрыт из-за нерентабельности и приоритета Splice на сэмплы и плагины. Сейчас рынок заполняют SyncMuse, Boombox, BandLab и другие платформы, пытающиеся восполнить потерю.
+## Final Verdict
+
+**Splice Studio** left behind a void that at least 10+ platforms are filling. None replicates it 1:1 — each adds something unique.
+
+**Closest to the original:**
+- **SyncMuse** — in spirit and functionality (async + versions + feedback)
+- **musiciansXchange** — in concept "GitHub for musicians" (Git branches + discovery)
+
+**Most feature-rich:**
+- **BandLab** — most powerful free DAW + AI + social network
+- **Boombox** — widest functionality (storage + collab + splits + distribution)
+
+**Most professional:**
+- **Sessionwire** — studio-grade real-time DAW sessions
+- **Pibox** — enterprise approach to audio review
 
 ---
 
-# ЧАСТЬ 5: SOUNDHUB vs КОНКУРЕНТЫ — ИТОГОВАЯ СРАВНИТЕЛЬНАЯ ТАБЛИЦА
+**Summary:** Splice Studio was a revolutionary free tool that brought Git-like workflow to music production. It worked from 2014 to 2023, supported 5 DAWs, offered unlimited storage and DAW-aware version control. Closed due to unprofitability and Splice's focus on samples and plugins. The market is now filled by SyncMuse, Boombox, BandLab, and other platforms trying to fill the gap.
 
 ---
 
-## Краткое описание платформ
+# PART 5: SOUNDHUB VS COMPETITORS — FINAL COMPARISON TABLE
 
-| Платформа | Описание | Статус | Год запуска |
-|-----------|----------|--------|-------------|
-| **SoundHub** | GitHub для музыки — Git-like version control + DAW-aware + professional review workflow + project management | ✅ Активна | 2024+ |
-| **Splice Studio** | Облачный бэкап + контроль версий для DAW + DNA Player | ❌ Закрыта (2023) | 2013 |
-| **SyncMuse** | Async-коллаборация через stems + waveform feedback | ✅ Активна (ранняя стадия) | 2023 |
-| **Boombox** | All-in-one: хранилище + коллаб + splits + дистрибуция + AI | ✅ Активна (100K+) | 2020 |
-| **BandLab** | Бесплатный браузерный DAW + AI + соцсеть | ✅ Активна (100M+) | 2011 |
-| **Soundtrap** | Real-time браузерный DAW (ex-Spotify) | ✅ Активна | 2012 |
-| **Pibox** | Enterprise аудио/видео ревью | ✅ Активна | 2018 |
-| **Sessionwire** | Real-time DAW-плагин (студийное качество) | ✅ Активна | 2020 |
-| **Sesh** | Браузерный DAW для битмейкеров | ✅ Активна (50K+) | 2021 |
-| **Feedtracks** | Google Drive для аудио + waveform feedback | ✅ Активна | 2020 |
-| **musiciansXchange** | Git-подобный workflow + discovery + auto-credit | ✅ Активна (ранняя стадия) | 2023 |
-| **Satellite Sessions** | DAW-плагин для cross-DAW real-time | ✅ Активна | 2021 |
-| **Kompoz** | Краудсорсинг музыки (200K+ треков) | ✅ Активна | 2007 |
+> *See [SoundHub_vs_Competitors.md](./SoundHub_vs_Competitors.md) for the complete comparison table.*
+> *This section duplicates the content of SoundHub_vs_Competitors.md.*
 
 ---
 
-## Сравнение по ключевым возможностям
-
-### 🔧 Контроль версий и Git-workflow
-
-| Возможность | SoundHub | Splice Studio | SyncMuse | Boombox | musiciansXchange |
-|-------------|:--------:|:-------------:|:--------:|:-------:|:----------------:|
-| Branching (ветки) | ✅ Полноценные Git-ветки | ❌ Линейные версии | ❌ Линейные версии | ❌ Версионирование миксов | ✅ Git-style ветки |
-| Merge / Fast-forward | ✅ merge, squash, fast-forward | ❌ | ❌ | ❌ | ❌ |
-| Diff (сравнение версий) | ✅ DAW-aware diff + text diff | ❌ | ✅ A/B сравнение | ❌ | ❌ |
-| Pull Requests | ✅ Полные PR с ревью | ❌ | ❌ | ❌ | ❌ |
-| Branch Protection | ✅ + require reviewers + status checks | ❌ | ❌ | ❌ | ❌ |
-| CODEOWNERS | ✅ Автоматические ревьюеры | ❌ | ❌ | ❌ | ❌ |
-| Merge Trains | ✅ Очередь мержей | ❌ | ❌ | ❌ | ❌ |
-| Git Tags / Releases | ✅ Теги + release notes | ❌ | ❌ | ❌ | ❌ |
-| Push Rules | ✅ Валидация коммитов | ❌ | ❌ | ❌ | ❌ |
-| Auto-commit history | ✅ (commits с parent chain) | ✅ (таймлайн сохранений) | ✅ (timeline) | ❌ | ❌ |
-| Возврат к прошлой версии | ✅ Через checkout ветки | ✅ Через таймлайн | ❌ | ❌ | ❌ |
-
-### 🎵 Аудио-специфичные возможности
-
-| Возможность | SoundHub | Splice Studio | SyncMuse | Boombox | BandLab |
-|-------------|:--------:|:-------------:|:--------:|:-------:|:-------:|
-| DAW-aware (парсинг .als/.flp/.logic) | ✅ 4 формата + info | ✅ 4 формата | ❌ | ❌ | Встроенный DAW |
-| Waveform timestamped comments | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Voice comments (голосовые) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Stem management | ✅ С логическими именами | ✅ Audio-Only Projects | ✅ | ❌ | ✅ (AI split) |
-| Audio CI checks (LUFS, True Peak) | ✅ Автоматические при push | ❌ | ❌ | ❌ | ❌ |
-| Loudness analysis | ✅ integrated LUFS + true peak | ❌ | ❌ | ❌ | ❌ |
-| Sample rate / channel checks | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Reference track comparison | ✅ A/B с level matching | ❌ | ❌ | ❌ | ❌ |
-| Version A/B audio comparison | ✅ Short-term LUFS analysis | ❌ | ✅ (visual) | ❌ | ❌ |
-| Watermarking | ✅ Автоматический watermark | ❌ | ❌ | ❌ | ❌ |
-| DNA Player (мьютинг треков) | ❌ | ✅ | ❌ | ❌ | ❌ |
-| AI stem splitting | ❌ (пока) | ❌ | ❌ | ✅ Boombot AI | ✅ Splitter |
-| AI mastering | ❌ | ❌ | ❌ | ✅ | ❌ |
-
-### 💼 Professional Review Workflow
-
-| Возможность | SoundHub | Splice Studio | SyncMuse | Pibox | Feedtracks |
-|-------------|:--------:|:-------------:|:--------:|:-----:|:----------:|
-| Review Sessions | ✅ С approval chain | ❌ | ❌ | ❌ | ❌ |
-| Review Rounds (раунды фидбека) | ✅ Нумерованные раунды | ❌ | ❌ | ❌ | ❌ |
-| Approval flow | ✅ solo_client, approve/reject | ❌ | ❌ | ❌ | ❌ |
-| Change Orders | ✅ Заказы на изменения с ценой | ❌ | ❌ | ❌ | ❌ |
-| Share links (пароль + срок) | ✅ password + expiry + allowlist | ❌ | ✅ secure sharing | ❌ | ❌ |
-| Team roles (admin/maintainer) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Session members | ✅ email-based invitations | ✅ email invitations | ❌ | ✅ | ❌ |
-| Deposit / billing | ✅ stripe integration | ❌ | ❌ | ❌ | ❌ |
-| Required deliverables | ✅ Бриф + список | ❌ | ❌ | ❌ | ❌ |
-| Late-change protection | ✅ retention_until + recall_fee | ❌ | ❌ | ❌ | ❌ |
-| Reminder automation | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Access event logging | ✅ Полный audit trail | ❌ | ❌ | ✅ | ❌ |
-| Portfolio (публичные сессии) | ✅ | ✅ (Community Tab) | ❌ | ❌ | ❌ |
-
-### 📦 Релизы и дистрибуция
-
-| Возможность | SoundHub | Splice Studio | Boombox | BandLab | Soundtrap |
-|-------------|:--------:|:-------------:|:-------:|:-------:|:---------:|
-| Release Packages | ✅ С deliverables | ❌ | ❌ | ❌ | ❌ |
-| Immutable releases | ✅ immutable_at | ❌ | ❌ | ❌ | ❌ |
-| Delivery tokens | ✅ Безопасная выдача | ❌ | ❌ | ❌ | ❌ |
-| Invoice / billing | ✅ Stripe session | ❌ | ❌ | ❌ | ❌ |
-| Sample pack registry | ✅ Packages (sample_pack, preset, plugin) | ❌ | ❌ | ❌ | ❌ |
-| Song splits / contracts | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Distribution (Spotify etc.) | ❌ | ❌ | ✅ (150+ платформ) | ✅ (Pro) | ❌ |
-
-### 🏗️ Project Management
-
-| Возможность | SoundHub | Splice Studio | Boombox | BandLab | Другие |
-|-------------|:--------:|:-------------:|:-------:|:-------:|:------:|
-| Pull Requests | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Tasks (GitHub Issues) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Kanban Boards | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Milestones | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Wiki | ✅ С ревизиями | ❌ | ❌ | ❌ | ❌ |
-| Discussions (форум) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Time Tracking | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Epics | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Roadmaps | ✅ Визуальная шкала | ❌ | ❌ | ❌ | ❌ |
-| Calendar | ✅ С повторением | ❌ | ❌ | ❌ | ❌ |
-| Requirements | ✅ | ❌ | ❌ | ❌ | ❌ |
-| OKRs | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Gists (сниппеты) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Sponsors (спонсорство) | ✅ | ❌ | ❌ | ❌ | ❌ |
-
-### 🔒 Безопасность и DevOps
-
-| Возможность | SoundHub | Splice Studio | Boombox | BandLab | Другие |
-|-------------|:--------:|:-------------:|:-------:|:-------:|:------:|
-| Workflows (CI/CD) | ✅ YAML-based | ❌ | ❌ | ❌ | ❌ |
-| Audio CI checks | ✅ Автоматические | ❌ | ❌ | ❌ | ❌ |
-| SAST/DAST scanning | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Security alerts (Dependabot) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Secrets management | ✅ Зашифрованные | ❌ | ❌ | ❌ | ❌ |
-| Environments (staging/prod) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Variable groups | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Secure files | ✅ | ❌ | ❌ | ❌ | ❌ |
-| IP Allow List | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Push rules | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Custom roles | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Audit log | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Container Registry | ✅ Docker images | ❌ | ❌ | ❌ | ❌ |
-| Feature Flags | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Error Tracking | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Incident Management | ✅ | ❌ | ❌ | ❌ | ❌ |
-| On-call Schedules | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Status Page | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Webhooks | ✅ С доставкой | ❌ | ❌ | ❌ | ❌ |
-| Git LFS | ✅ | ❌ | ❌ | ❌ | ❌ |
-| GraphQL API | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Full-text search (FTS5) | ✅ | ❌ | ❌ | ❌ | ❌ |
-
-### 🌐 Коллаборация и социальные
-
-| Возможность | SoundHub | Splice Studio | SyncMuse | Boombox | BandLab |
-|-------------|:--------:|:-------------:|:--------:|:-------:|:-------:|
-| Real-time DAW collaboration | ❌ | ❌ | ❌ | ❌ | ✅ (до 50) |
-| Async stem sharing | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Teams | ✅ С ролями | ❌ | ❌ | ❌ | ❌ |
-| Project Star / Watch / Fork | ✅ | ❌ | ❌ | ❌ | ✅ (follow) |
-| User profiles (bio, specialty) | ✅ | ❌ | ❌ | ✅ | ✅ |
-| Activity feed | ✅ | ❌ | ❌ | ❌ | ✅ |
-| In-app notifications | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Service Desk (email support) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Design management | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Desktop app | ❌ (CLI/API) | ✅ (macOS/Win) | ❌ | ✅ (macOS) | ✅ (mobile) |
-| Mobile app | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Browser DAW | ❌ | ❌ | ❌ | ❌ | ✅ |
-
-### 💰 Ценообразование
-
-| Платформа | Бесплатный план | Минимальная цена | Что даёт |
-|-----------|:---------------:|:----------------:|----------|
-| **SoundHub** | ✅ Open-source | $0 | Всё включено (self-hosted) |
-| **Splice Studio** | ✅ (был бесплатен) | $0 (закрыт) | Безлимитное хранилище |
-| **SyncMuse** | ✅ | $0 (Pro TBD) | Базовые функции |
-| **Boombox** | ✅ (1 GB) | $4.20/мес | 500 GB, видео, AI |
-| **BandLab** | ✅ (полный DAW) | $0 | 16 треков, AI, дистрибуция |
-| **Soundtrap** | ✅ (5 проектов) | $9.99/мес | Полная библиотека |
-| **Pibox** | ✅ (2 user, 1 GB) | $10/user/мес | 100 GB, безлимитные проекты |
-| **Sessionwire** | ✅ (базовый) | $9/мес | Приватная Studio |
-| **Sesh** | ✅ (ограничен) | $5/мес | Безлимитные проекты |
-| **Feedtracks** | ✅ (1 GB) | €6.99/мес | 200 GB |
-| **musiciansXchange** | ✅ (2 GB) | $3.99/мес | 25 GB, безлимит коллабораций |
-| **Satellite** | ✅ (30 мин) | $9.99/мес | Безлимитные сессии |
-| **Kompoz** | ✅ (3 public) | $5/мес | Больше коллабораций |
-
----
-
-## Уникальные преимущества SoundHub
-
-### Что есть ТОЛЬКО в SoundHub и НИГДЕ больше:
-
-1. **Audio CI Checks** — автоматическая проверка LUFS, True Peak, sample rate, channels при каждом push
-2. **Pull Requests для музыки** — полноценные PR с approve/request_changes, diff между ветками
-3. **Branch Protection Rules** — защита main-ветки, требование PR,限制 force push
-4. **CODEOWNERS** — автоматическое назначение ревьюеров по паттернам файлов
-5. **Merge Trains** — очередь мержей для предотвращения конфликтов
-6. **Kanban Boards + Epics + Roadmaps + Milestones** — полный project management
-7. **Change Orders** — система заказов на изменения с ценами и согласованием
-8. **Late-change Protection** — защита от поздних изменений (retention period + recall fee)
-9. **Watermarking** — автоматическая маркировка preview-версий
-10. **Reference Track A/B Comparison** — сравнение микса с референсом с level matching
-11. **Git LFS** — хранение больших аудиофайлов
-12. **SAST/DAST + Security Alerts** — безопасность на уровне enterprise
-13. **Service Desk** — система тикетов для клиентов
-14. **Design Management** — хранение и ревью обложек/арта
-15. **Wallet Authentication** — Web3 аутентификация через кошелёк
-16. **GraphQL API + Full-text Search** — расширенный API для интеграций
-
----
-
-## Итоговая оценка
-
-| Критерий | SoundHub | Splice | SyncMuse | Boombox | BandLab | Pibox | Sessionwire |
-|----------|:--------:|:------:|:--------:|:-------:|:-------:|:-----:|:-----------:|
-| Git-workflow | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐ | ⭐ | ⭐ | ⭐ | ⭐ |
-| DAW-aware | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐ | ⭐ | ⭐⭐⭐⭐ | ⭐ | ⭐⭐⭐ |
-| Audio CI/CD | ⭐⭐⭐⭐⭐ | ⭐ | ⭐ | ⭐ | ⭐ | ⭐ | ⭐ |
-| Review workflow | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐ | ⭐⭐⭐⭐ | ⭐ |
-| Project management | ⭐⭐⭐⭐⭐ | ⭐ | ⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐ |
-| Collaboration | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| AI features | ⭐⭐⭐ | ⭐ | ⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐ | ⭐ |
-| Mobile | ⭐ | ⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐ |
-| Community | ⭐⭐ | ⭐⭐⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐ | ⭐⭐ |
-| Price | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
-| **Средняя** | **⭐ 4.1** | **⭐ 2.7** | **⭐ 2.3** | **⭐ 3.1** | **⭐ 3.5** | **⭐ 2.4** | **⭐ 2.6** |
-
----
-
-## Выводы
-
-### SoundHub vs рынок — позиционирование
-
-**SoundHub — единственная платформа, которая объединяет:**
-1. ✅ **Git-like version control** (ветки, мержи, PR, branch protection)
-2. ✅ **DAW-aware** (парсинг Ableton/FL/Logic/Studio One)
-3. ✅ **Audio CI/CD** (автоматические проверки качества при push)
-4. ✅ **Professional review workflow** (раунды, approval, change orders, billing)
-5. ✅ **Full project management** (Kanban, Epics, Roadmaps, Wiki, Tasks)
-6. ✅ **Enterprise security** (SAST/DAST, secrets, audit log, IP allowlist)
-
-**Ни одна другая платформа не предлагает всё это вместе.**
-
-| Категория | Лидер |
-|-----------|-------|
-| Git-workflow для музыки | **SoundHub** (единственная) |
-| Real-time DAW | **BandLab** / **Sessionwire** |
-| All-in-one (хранение + дистрибуция) | **Boombox** |
-| Бесплатный DAW | **BandLab** |
-| Enterprise ревью | **Pibox** |
-| Async-фидбек (простой) | **SyncMuse** |
-| Discovery музыкантов | **Kompoz** / **musiciansXchange** |
-| DAW-плагин real-time | **Sessionwire** / **Satellite** |
-
-### Рекомендация для SoundHub
-
-**Целевая аудитория:** Professional music producers, mix engineers, recording studios, labels, и music production teams, которые работают в команде и нуждаются в структурированном workflow.
-
-**Ключевое competitive advantage:** SoundHub — единственная платформа, которая применяет software engineering best practices (Git, CI/CD, PR, code review) к музыкальному продакшну. Все остальные платформы либо offering real-time DAW (BandLab, Soundtrap), либо простой async-фидбек (SyncMuse, Pibox), либо all-in-one (Boombox), но ни одна не даёт professional-grade version control + CI/CD + project management для DAW-проектов.
+*Generated with Codebuff 🤖*

@@ -1,237 +1,237 @@
-# SoundHub — Gap-анализ: что нужно чтобы обойти конкурентов
+# SoundHub — Gap Analysis: What's Needed to Overtake Competitors
 
 ---
 
-## Резюме
+## Summary
 
-SoundHub уже лидирует в Git-workflow, DAW-aware, Audio CI/CD и Project Management. Но у конкурентов есть **5 критических зон**, где SoundHub отстаёт. Закрытие этих gaps сделает SoundHub **absolute leader** на рынке.
+SoundHub already leads in Git-workflow, DAW-aware, Audio CI/CD, and Project Management. But competitors have **5 critical areas** where SoundHub falls behind. Closing these gaps will make SoundHub the **absolute leader** in the market.
 
 ---
 
-## 🔴 КРИТИЧЕСКИЕ GAPS (нужно закрыть сейчас)
+## 🔴 CRITICAL GAPS (Must Close Now)
 
 ### Gap 1: Real-time DAW Collaboration
 
-**Где это есть:** BandLab (до 50 чел), Soundtrap (до 30 чел), Sessionwire, Satellite Sessions, Sesh
+**Where it exists:** BandLab (up to 50 users), Soundtrap (up to 30 users), Sessionwire, Satellite Sessions, Sesh
 
-**Что это значит:** У MusicHub нет возможности для нескольких пользователей работать одновременно в одном DAW-проекте. Все текущие функции — async.
+**What it means:** SoundHub has no capability for multiple users to work simultaneously in one DAW project. All current features are async.
 
-**Влияние:** Потеря ~40% рынка (real-time коллаборация — самая востребованная фича среди продюсеров)
+**Impact:** Loss of ~40% of the market (real-time collaboration is the most requested feature among producers)
 
-**Рекомендация:**
-- **Short-term (1-2 мес):** Плагин для DAW (VST/AU/AAX), который стримит MIDI/audio в реальном времени через WebRTC
-- **Medium-term (3-6 мес):** Встроенный браузерный DAW с real-time (как BandLab, но с Git-workflow)
-- **Приоритет:** 🔴 КРИТИЧЕСКИЙ
+**Recommendation:**
+- **Short-term (1-2 months):** DAW plugin (VST/AU/AAX) that streams MIDI/audio in real time via WebRTC
+- **Medium-term (3-6 months):** Built-in browser DAW with real-time (like BandLab, but with Git-workflow)
+- **Priority:** 🔴 CRITICAL
 
 ---
 
 ### Gap 2: Mobile App
 
-**Где это есть:** BandLab (iOS/Android), Boombox (iOS/Android), Soundtrap (mobile), Pibox (iOS)
+**Where it exists:** BandLab (iOS/Android), Boombox (iOS/Android), Soundtrap (mobile), Pibox (iOS)
 
-**Что это значит:** У SoundHub нет мобильного приложения. Современные музыканты работают на телефоне: записывают идеи, слушают миксы, оставляют комментарии.
+**What it means:** SoundHub has no mobile app. Modern musicians work on phones: recording ideas, listening to mixes, leaving comments.
 
-**Влияние:** Недоступность для ~60% музыкантов, которые используют mobile-first workflow
+**Impact:** Inaccessible to ~60% of musicians who use mobile-first workflows
 
-**Рекомендация:**
-- **Phase 1 (1-2 мес):** React Native app для review session (прослушивание + комментарии + approval)
-- **Phase 2 (3-6 мес):** Полноценный mobile DAW (простой sequencer + stem preview)
-- **Приоритет:** 🔴 КРИТИЧЕСКИЙ
-
----
-
-### Gap 3: Desktop App с Auto-Sync
-
-**Где это есть:** Splice Studio (macOS/Win), Boombox (macOS)
-
-**Что это значит:** У SoundHub нет desktop app, который автоматически синхронизирует DAW-проекты при сохранении. Splice Studio — именно за это любили.
-
-**Влияние:** Ручная загрузка файлов = friction = fewer saves = fewer lock-in
-
-**Рекомендация:**
-- **Phase 1 (1-2 мес):** CLI-утилита с filesystem watcher (как git-credential-manager)
-- **Phase 2 (3-6 мес):** Electron app с tray icon, показывающий projects + latest versions (как Splice Studio)
-- **Фичи:** Auto-sync on DAW save, background upload, tray menu с комментариями
-- **Приоритет:** 🔴 КРИТИЧЕСКИЙ
+**Recommendation:**
+- **Phase 1 (1-2 months):** React Native app for review sessions (listening + comments + approval)
+- **Phase 2 (3-6 months):** Full mobile DAW (simple sequencer + stem preview)
+- **Priority:** 🔴 CRITICAL
 
 ---
 
-### Gap 4: AI-инструменты
+### Gap 3: Desktop App with Auto-Sync
 
-**Где это есть:** BandLab (SongStarter, Splitter, AutoMix, Voice Cleaner, Voice Changer, FX Generator), Boombox (Boombot AI: stem split, mastering, chords, lyrics), Sesh (AI Stem Splitter)
+**Where it exists:** Splice Studio (macOS/Win), Boombox (macOS)
 
-**Что это значит:** У SoundHub нет AI-функций. Все конкуренты активно внедряют AI.
+**What it means:** SoundHub has no desktop app that automatically syncs DAW projects on save. Splice Studio was loved exactly for this.
 
-**Влияние:** ~70% музыкантов хотят AI-инструменты; их отсутствие = ощущение "устаревшей" платформы
+**Impact:** Manual file uploads = friction = fewer saves = less lock-in
 
-**Рекомендация:**
-- **Phase 1 (1-2 мес):** AI Stem Splitter (vocal/drums/bass/instruments) — интеграция с существующим stem upload
-- **Phase 2 (3-4 мес):** AI Mastering preview (LUFS target matching)
-- **Phase 3 (4-6 мес):** AI Mix suggestions (на основе reference track comparison)
-- **Приоритет:** 🔴 КРИТИЧЕСКИЙ
-
----
-
-### Gap 5: Дистрибуция и monetization
-
-**Где это есть:** Boombox (Spotify, Apple Music, 150+ платформ), BandLab (дистрибуция в Pro)
-
-**Что это значит:** SoundHub позволяет готовить релизы, но не может выпустить их на стриминговые платформы.
-
-**Влияние:** Потеря ~30% пользователей, которые хотят all-in-one решение
-
-**Рекомендация:**
-- **Phase 1 (2-3 мес):** Интеграция с DistroKid / TuneCore API для one-click distribution из Release Package
-- **Phase 2 (4-6 мес):** Внутренняя дистрибуция (SoundHub Distribution)
-- **Приоритет:** 🟡 ВАЖНЫЙ
+**Recommendation:**
+- **Phase 1 (1-2 months):** CLI utility with filesystem watcher (like git-credential-manager)
+- **Phase 2 (3-6 months):** Electron app with tray icon showing projects + latest versions (like Splice Studio)
+- **Features:** Auto-sync on DAW save, background upload, tray menu with comments
+- **Priority:** 🔴 CRITICAL
 
 ---
 
-## 🟡 ВАЖНЫЕ GAPS (нужно закрыть в ближайшее время)
+### Gap 4: AI Tools
+
+**Where it exists:** BandLab (SongStarter, Splitter, AutoMix, Voice Cleaner, Voice Changer, FX Generator), Boombox (Boombot AI: stem split, mastering, chords, lyrics), Sesh (AI Stem Splitter)
+
+**What it means:** SoundHub has no AI features. All competitors are actively adopting AI.
+
+**Impact:** ~70% of musicians want AI tools; their absence = feeling of an "outdated" platform
+
+**Recommendation:**
+- **Phase 1 (1-2 months):** AI Stem Splitter (vocal/drums/bass/instruments) — integration with existing stem upload
+- **Phase 2 (3-4 months):** AI Mastering preview (LUFS target matching)
+- **Phase 3 (4-6 months):** AI Mix suggestions (based on reference track comparison)
+- **Priority:** 🔴 CRITICAL
+
+---
+
+### Gap 5: Distribution & Monetization
+
+**Where it exists:** Boombox (Spotify, Apple Music, 150+ platforms), BandLab (distribution in Pro)
+
+**What it means:** SoundHub allows preparing releases but cannot publish them to streaming platforms.
+
+**Impact:** Loss of ~30% of users who want an all-in-one solution
+
+**Recommendation:**
+- **Phase 1 (2-3 months):** Integration with DistroKid / TuneCore API for one-click distribution from Release Package
+- **Phase 2 (4-6 months):** Internal distribution (SoundHub Distribution)
+- **Priority:** 🟡 IMPORTANT
+
+---
+
+## 🟡 IMPORTANT GAPS (Must Close Soon)
 
 ### Gap 6: Social Features / Community
 
-**Где это есть:** BandLab (100M+ соцсеть), Splice Studio (Community Tab), Kompoz (discovery)
+**Where it exists:** BandLab (100M+ social network), Splice Studio (Community Tab), Kompoz (discovery)
 
-**Что это значит:** У SoundHub нет social graph: follow пользователей, discovery проектов, leaderboard, trending tracks.
+**What it means:** SoundHub has no social graph: follow users, project discovery, leaderboard, trending tracks.
 
-**Рекомендация:**
-- Follow/unfollow пользователей
-- Trending projects (по stars/views)
-- Discovery feed (проекты по genre, DAW, instruments)
-- Leaderboard (топ продюсеров)
-- **Приоритет:** 🟡 ВАЖНЫЙ
+**Recommendation:**
+- Follow/unfollow users
+- Trending projects (by stars/views)
+- Discovery feed (projects by genre, DAW, instruments)
+- Leaderboard (top producers)
+- **Priority:** 🟡 IMPORTANT
 
 ---
 
 ### Gap 7: Browser DAW (MVP)
 
-**Где это есть:** BandLab Studio, Soundtrap, Sesh — все имеют встроенный DAW в браузере
+**Where it exists:** BandLab Studio, Soundtrap, Sesh — all have built-in browser DAWs
 
-**Что это значит:** Пользователи SoundHub должны использовать внешний DAW. Нет возможности快速 создать эскиз прямо в платформе.
+**What it means:** SoundHub users must use an external DAW. No ability to quickly create a sketch within the platform.
 
-**Рекомендация:**
-- **Phase 1:** Простой piano roll + drum machine (web audio API)
-- **Phase 2:**波形 editing (trim, split, fade)
-- **Приоритет:** 🟡 ВАЖНЫЙ
+**Recommendation:**
+- **Phase 1:** Simple piano roll + drum machine (Web Audio API)
+- **Phase 2:** Waveform editing (trim, split, fade)
+- **Priority:** 🟡 IMPORTANT
 
 ---
 
-### Gap 8: Song Splits / Контракты
+### Gap 8: Song Splits / Contracts
 
-**Где это есть:** Boombox (song splits + юридические контракты + подпись)
+**Where it exists:** Boombox (song splits + legal contracts + signing)
 
-**Что это значит:** У SoundHub нет инструмента для автоматического распределения авторских прав между соавторами.
+**What it means:** SoundHub has no tool for automatically distributing copyright between co-writers.
 
-**Рекомендация:**
+**Recommendation:**
 - Split sheet template (percentage allocation)
 - Digital signing (e-signature integration)
-- Auto-credit в Release Notes
-- **Приоритет:** 🟡 ВАЖНЫЙ
+- Auto-credit in Release Notes
+- **Priority:** 🟡 IMPORTANT
 
 ---
 
-### Gap 9: Видео-поддержка
+### Gap 9: Video Support
 
-**Где это есть:** Boombox (видео-загрузка, фан-опросы), Pibox (video review)
+**Where it exists:** Boombox (video upload, fan polls), Pibox (video review)
 
-**Что это значит:** Музыканты часто работают с music videos, lyric videos, visualizers. SoundHub не поддерживает видео.
+**What it means:** Musicians often work with music videos, lyric videos, visualizers. SoundHub doesn't support video.
 
-**Рекомендация:**
+**Recommendation:**
 - Video upload + waveform overlay
 - Timestamped video comments
 - Video version comparison
-- **Приоритет:** 🟡 ВАЖНЫЙ
+- **Priority:** 🟡 IMPORTANT
 
 ---
 
-### Gap 10: Плагин для DAW (Remote Control)
+### Gap 10: DAW Plugin (Remote Control)
 
-**Где это есть:** Sessionwire (AAX/VST3/AU), Satellite Sessions (VST/AU/AAX)
+**Where it exists:** Sessionwire (AAX/VST3/AU), Satellite Sessions (VST/AU/AAX)
 
-**Что это значит:** Пользователям нужно переключаться между DAW и браузером. Плагин внутри DAW = seamless workflow.
+**What it means:** Users need to switch between DAW and browser. A plugin inside DAW = seamless workflow.
 
-**Рекомендация:**
-- **VST3/AU/AAX плагин**, который показывает:
-  - Текущий project status (branch, last commit)
-  - Push/commit прямо из DAW
+**Recommendation:**
+- **VST3/AU/AAX plugin** showing:
+  - Current project status (branch, last commit)
+  - Push/commit directly from DAW
   - Review comments overlay
   - AI analysis results
-- **Приоритет:** 🟡 ВАЖНЫЙ
+- **Priority:** 🟡 IMPORTANT
 
 ---
 
-## 🟢 ЖЕЛАТЕЛЬНЫЕ GAPS (long-term roadmap)
+## 🟢 DESIRABLE GAPS (Long-term Roadmap)
 
-### Gap 11: Marketplace (продажа сэмплов/плагинов)
+### Gap 11: Marketplace (Sample/Plugin Sales)
 
-**Где это есть:** Splice Sounds ($9.99/мес), BandLab (сэмплы)
+**Where it exists:** Splice Sounds ($9.99/mo), BandLab (samples)
 
-**Рекомендация:** Внутренний marketplace для продажи sample packs, presets, project templates
+**Recommendation:** Internal marketplace for selling sample packs, presets, project templates
 
 ### Gap 12: Education / Classroom
 
-**Где это есть:** Soundtrap (COPPA/GDPR/FERPA), BandLab (education)
+**Where it exists:** Soundtrap (COPPA/GDPR/FERPA), BandLab (education)
 
-**Рекомендация:** SoundHub for Education — classroom mode, teacher dashboard, student progress
+**Recommendation:** SoundHub for Education — classroom mode, teacher dashboard, student progress
 
 ### Gap 13: Offline Mode
 
-**Где это есть:** Sesh (ограниченный offline)
+**Where it exists:** Sesh (limited offline)
 
-**Рекомендация:** Offline commit queue + sync when online (как git)
+**Recommendation:** Offline commit queue + sync when online (like git)
 
-### Gap 14: Integration с внешними сервисами
+### Gap 14: External Service Integrations
 
-**Рекомендация:**
-- Spotify (preview треков)
+**Recommendation:**
+- Spotify (track previews)
 - SoundCloud (import/export)
 - YouTube (video embedding)
-- Discord (уведомления)
+- Discord (notifications)
 - Slack (webhook notifications)
 
-### Gap 15: White-label / API для третьих лиц
+### Gap 15: White-label / API for Third Parties
 
-**Рекомендация:** Позволить лейблам и студиям создавать собственные branded instances SoundHub
+**Recommendation:** Allow labels and studios to create their own branded SoundHub instances
 
 ---
 
 ## Roadmap Priority Matrix
 
-| Приоритет | Gap | Время реализации | ROI |
-|-----------|-----|------------------|-----|
-| 🔴 P0 | Real-time DAW | 1-3 мес | ⭐⭐⭐⭐⭐ |
-| 🔴 P0 | Mobile App | 1-3 мес | ⭐⭐⭐⭐⭐ |
-| 🔴 P0 | Desktop Auto-Sync | 1-2 мес | ⭐⭐⭐⭐⭐ |
-| 🔴 P0 | AI Stem Splitter | 1-2 мес | ⭐⭐⭐⭐ |
-| 🟡 P1 | Distribution | 2-3 мес | ⭐⭐⭐⭐ |
-| 🟡 P1 | Social / Discovery | 2-3 мес | ⭐⭐⭐ |
-| 🟡 P1 | Browser DAW (MVP) | 3-4 мес | ⭐⭐⭐ |
-| 🟡 P1 | Song Splits | 2-3 мес | ⭐⭐⭐ |
-| 🟡 P1 | Video support | 3-4 мес | ⭐⭐ |
-| 🟡 P1 | DAW Plugin | 2-3 мес | ⭐⭐⭐⭐ |
-| 🟢 P2 | Marketplace | 4-6 мес | ⭐⭐⭐ |
-| 🟢 P2 | Education | 4-6 мес | ⭐⭐ |
-| 🟢 P2 | Offline mode | 6+ мес | ⭐⭐ |
-| 🟢 P2 | External integrations | 3-6 мес | ⭐⭐⭐ |
-| 🟢 P2 | White-label API | 6+ мес | ⭐⭐ |
+| Priority | Gap | Timeline | ROI |
+|----------|-----|----------|-----|
+| 🔴 P0 | Real-time DAW | 1-3 months | ⭐⭐⭐⭐⭐ |
+| 🔴 P0 | Mobile App | 1-3 months | ⭐⭐⭐⭐⭐ |
+| 🔴 P0 | Desktop Auto-Sync | 1-2 months | ⭐⭐⭐⭐⭐ |
+| 🔴 P0 | AI Stem Splitter | 1-2 months | ⭐⭐⭐⭐ |
+| 🟡 P1 | Distribution | 2-3 months | ⭐⭐⭐⭐ |
+| 🟡 P1 | Social / Discovery | 2-3 months | ⭐⭐⭐ |
+| 🟡 P1 | Browser DAW (MVP) | 3-4 months | ⭐⭐⭐ |
+| 🟡 P1 | Song Splits | 2-3 months | ⭐⭐⭐ |
+| 🟡 P1 | Video support | 3-4 months | ⭐⭐ |
+| 🟡 P1 | DAW Plugin | 2-3 months | ⭐⭐⭐⭐ |
+| 🟢 P2 | Marketplace | 4-6 months | ⭐⭐⭐ |
+| 🟢 P2 | Education | 4-6 months | ⭐⭐ |
+| 🟢 P2 | Offline mode | 6+ months | ⭐⭐ |
+| 🟢 P2 | External integrations | 3-6 months | ⭐⭐⭐ |
+| 🟢 P2 | White-label API | 6+ months | ⭐⭐ |
 
 ---
 
-## Quick Wins (можно сделать за 1-2 недели)
+## Quick Wins (Can Be Done in 1-2 Weeks)
 
-1. **AI Stem Splitter** — интеграция с Demucs/Spleeter API
-2. **CLI auto-sync** — Python/Go утилита с watchdog
-3. **Mobile review** — React Native обёртка над текущим web app
-4. **Follow/Unfollow** — простая social graph модель
-5. **Song splits template** — PDF/HTML генератор
+1. **AI Stem Splitter** — Integration with Demucs/Spleeter API
+2. **CLI auto-sync** — Python/Go utility with watchdog
+3. **Mobile review** — React Native wrapper over current web app
+4. **Follow/Unfollow** — Simple social graph model
+5. **Song splits template** — PDF/HTML generator
 
 ---
 
-## Итого: SoundHub Competitive Scorecard после закрытия gaps
+## Summary: SoundHub Competitive Scorecard After Closing Gaps
 
-| Критерий | Сейчас | После P0 gaps | После P0+P1 gaps |
-|----------|:------:|:--------------:|:-----------------:|
+| Criterion | Current | After P0 gaps | After P0+P1 gaps |
+|-----------|:-------:|:-------------:|:-----------------:|
 | Git-workflow | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | DAW-aware | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | Audio CI/CD | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
@@ -243,6 +243,6 @@ SoundHub уже лидирует в Git-workflow, DAW-aware, Audio CI/CD и Proj
 | Desktop sync | ⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | Distribution | ⭐ | ⭐ | ⭐⭐⭐⭐ |
 | Social / community | ⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
-| **Средняя** | **⭐ 3.2** | **⭐ 4.4** | **⭐ 4.7** |
+| **Average** | **⭐ 3.2** | **⭐ 4.4** | **⭐ 4.7** |
 
-**Цель:** После закрытия P0+P1 gaps — **⭐ 4.7/5**, что делает SoundHub безусловным лидером рынка.
+**Goal:** After closing P0+P1 gaps — **⭐ 4.7/5**, making SoundHub the undisputed market leader.

@@ -1,122 +1,121 @@
-# SoundHub vs Splice Studio и конкуренты — Итоговая сравнительная таблица
+# SoundHub vs Splice Studio and Competitors — Final Comparison Table
 
 ---
 
-## Краткое описание платформ
+## Platform Overview
 
-| Платформа | Описание | Статус | Год запуска |
-|-----------|----------|--------|-------------|
-| **SoundHub** | GitHub для музыки — Git-like version control + DAW-aware + professional review workflow + project management | ✅ Активна | 2024+ |
-| **Splice Studio** | Облачный бэкап + контроль версий для DAW + DNA Player | ❌ Закрыта (2023) | 2013 |
-| **SyncMuse** | Async-коллаборация через stems + waveform feedback | ✅ Активна (ранняя стадия) | 2023 |
-| **Boombox** | All-in-one: хранилище + коллаб + splits + дистрибуция + AI | ✅ Активна (100K+) | 2020 |
-| **BandLab** | Бесплатный браузерный DAW + AI + соцсеть | ✅ Активна (100M+) | 2011 |
-| **Soundtrap** | Real-time браузерный DAW (ex-Spotify) | ✅ Активна | 2012 |
-| **Pibox** | Enterprise аудио/видео ревью | ✅ Активна | 2018 |
-| **Sessionwire** | Real-time DAW-плагин (студийное качество) | ✅ Активна | 2020 |
-| **Sesh** | Браузерный DAW для битмейкеров | ✅ Активна (50K+) | 2021 |
-| **Feedtracks** | Google Drive для аудио + waveform feedback | ✅ Активна | 2020 |
-| **musiciansXchange** | Git-подобный workflow + discovery + auto-credit | ✅ Активна (ранняя стадия) | 2023 |
-| **Satellite Sessions** | DAW-плагин для cross-DAW real-time | ✅ Активна | 2021 |
-| **Kompoz** | Краудсорсинг музыки (200K+ треков) | ✅ Активна | 2007 |
+| Platform | Description | Status | Launch Year |
+|----------|-------------|--------|-------------|
+| **SoundHub** | GitHub for music — Git-like version control + DAW-aware + professional review workflow + project management | ✅ Active | 2024+ |
+| **Splice Studio** | Cloud backup + version control for DAW + DNA Player | ❌ Closed (2023) | 2013 |
+| **SyncMuse** | Async collaboration via stems + waveform feedback | ✅ Active (early stage) | 2023 |
+| **Boombox** | All-in-one: storage + collab + splits + distribution + AI | ✅ Active (100K+) | 2020 |
+| **BandLab** | Free browser DAW + AI + social network | ✅ Active (100M+) | 2011 |
+| **Soundtrap** | Real-time browser DAW (ex-Spotify) | ✅ Active | 2012 |
+| **Pibox** | Enterprise audio/video review | ✅ Active | 2018 |
+| **Sessionwire** | Real-time DAW plugin (studio-grade) | ✅ Active | 2020 |
+| **Sesh** | Browser DAW for beatmakers | ✅ Active (50K+) | 2021 |
+| **Feedtracks** | Google Drive for audio + waveform feedback | ✅ Active | 2020 |
+| **musiciansXchange** | Git-like workflow + discovery + auto-credit | ✅ Active (early stage) | 2023 |
+| **Satellite Sessions** | DAW plugin for cross-DAW real-time | ✅ Active | 2021 |
+| **Kompoz** | Music crowdsourcing (200K+ tracks) | ✅ Active | 2007 |
 
 ---
 
-## Сравнение по ключевым возможностям
+## Key Feature Comparison
 
-### 🔧 Контроль версий и Git-workflow
+### 🔧 Version Control & Git-workflow
 
-| Возможность | SoundHub | Splice Studio | SyncMuse | Boombox | musiciansXchange |
-|-------------|:--------:|:-------------:|:--------:|:-------:|:----------------:|
-| Branching (ветки) | ✅ Полноценные Git-ветки | ❌ Линейные версии | ❌ Линейные версии | ❌ Версионирование миксов | ✅ Git-style ветки |
+| Feature | SoundHub | Splice Studio | SyncMuse | Boombox | musiciansXchange |
+|---------|:--------:|:-------------:|:--------:|:-------:|:----------------:|
+| Branching | ✅ Full Git branches | ❌ Linear versions | ❌ Linear versions | ❌ Mix versioning | ✅ Git-style branches |
 | Merge / Fast-forward | ✅ merge, squash, fast-forward | ❌ | ❌ | ❌ | ❌ |
-| Diff (сравнение версий) | ✅ DAW-aware diff + text diff | ❌ | ✅ A/B сравнение | ❌ | ❌ |
-| Pull Requests | ✅ Полные PR с ревью | ❌ | ❌ | ❌ | ❌ |
+| Diff (version comparison) | ✅ DAW-aware diff + text diff | ❌ | ✅ A/B comparison | ❌ | ❌ |
+| Pull Requests | ✅ Full PRs with review | ❌ | ❌ | ❌ | ❌ |
 | Branch Protection | ✅ + require reviewers + status checks | ❌ | ❌ | ❌ | ❌ |
-| CODEOWNERS | ✅ Автоматические ревьюеры | ❌ | ❌ | ❌ | ❌ |
-| Merge Trains | ✅ Очередь мержей | ❌ | ❌ | ❌ | ❌ |
-| Git Tags / Releases | ✅ Теги + release notes | ❌ | ❌ | ❌ | ❌ |
-| Push Rules | ✅ Валидация коммитов | ❌ | ❌ | ❌ | ❌ |
-| Auto-commit history | ✅ (commits с parent chain) | ✅ (таймлайн сохранений) | ✅ (timeline) | ❌ | ❌ |
-| Возврат к прошлой версии | ✅ Через checkout ветки | ✅ Через таймлайн | ❌ | ❌ | ❌ |
+| CODEOWNERS | ✅ Automatic reviewers | ❌ | ❌ | ❌ | ❌ |
+| Merge Trains | ✅ Merge queue | ❌ | ❌ | ❌ | ❌ |
+| Git Tags / Releases | ✅ Tags + release notes | ❌ | ❌ | ❌ | ❌ |
+| Push Rules | ✅ Commit validation | ❌ | ❌ | ❌ | ❌ |
+| Auto-commit history | ✅ (commits with parent chain) | ✅ (save timeline) | ✅ (timeline) | ❌ | ❌ |
+| Revert to previous version | ✅ Via branch checkout | ✅ Via timeline | ❌ | ❌ | ❌ |
 
-### 🎵 Аудио-специфичные возможности
+### 🎵 Audio-Specific Features
 
-| Возможность | SoundHub | Splice Studio | SyncMuse | Boombox | BandLab |
-|-------------|:--------:|:-------------:|:--------:|:-------:|:-------:|
-| DAW-aware (парсинг .als/.flp/.logic) | ✅ 4 формата + info | ✅ 4 формата | ❌ | ❌ | Встроенный DAW |
+| Feature | SoundHub | Splice Studio | SyncMuse | Boombox | BandLab |
+|---------|:--------:|:-------------:|:--------:|:-------:|:-------:|
+| DAW-aware (parse .als/.flp/.logic) | ✅ 4 formats + info | ✅ 4 formats | ❌ | ❌ | Built-in DAW |
 | Waveform timestamped comments | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Voice comments (голосовые) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Stem management | ✅ С логическими именами | ✅ Audio-Only Projects | ✅ | ❌ | ✅ (AI split) |
-| Audio CI checks (LUFS, True Peak) | ✅ Автоматические при push | ❌ | ❌ | ❌ | ❌ |
+| Voice comments | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Stem management | ✅ With logical names | ✅ Audio-Only Projects | ✅ | ❌ | ✅ (AI split) |
+| Audio CI checks (LUFS, True Peak) | ✅ Automatic on push | ❌ | ❌ | ❌ | ❌ |
 | Loudness analysis | ✅ integrated LUFS + true peak | ❌ | ❌ | ❌ | ❌ |
 | Sample rate / channel checks | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Reference track comparison | ✅ A/B с level matching | ❌ | ❌ | ❌ | ❌ |
+| Reference track comparison | ✅ A/B with level matching | ❌ | ❌ | ❌ | ❌ |
 | Version A/B audio comparison | ✅ Short-term LUFS analysis | ❌ | ✅ (visual) | ❌ | ❌ |
-| Watermarking | ✅ Автоматический watermark | ❌ | ❌ | ❌ | ❌ |
-| DNA Player (мьютинг треков) | ❌ | ✅ | ❌ | ❌ | ❌ |
-| AI stem splitting | ❌ (пока) | ❌ | ❌ | ✅ Boombot AI | ✅ Splitter |
+| Watermarking | ✅ Automatic watermark | ❌ | ❌ | ❌ | ❌ |
+| DNA Player (track muting) | ❌ | ✅ | ❌ | ❌ | ❌ |
+| AI stem splitting | ❌ (planned) | ❌ | ❌ | ✅ Boombot AI | ✅ Splitter |
 | AI mastering | ❌ | ❌ | ❌ | ✅ | ❌ |
 
 ### 💼 Professional Review Workflow
 
-| Возможность | SoundHub | Splice Studio | SyncMuse | Pibox | Feedtracks |
-|-------------|:--------:|:-------------:|:--------:|:-----:|:----------:|
-| Review Sessions | ✅ С approval chain | ❌ | ❌ | ❌ | ❌ |
-| Review Rounds (раунды фидбека) | ✅ Нумерованные раунды | ❌ | ❌ | ❌ | ❌ |
+| Feature | SoundHub | Splice Studio | SyncMuse | Pibox | Feedtracks |
+|---------|:--------:|:-------------:|:--------:|:-----:|:----------:|
+| Review Sessions | ✅ With approval chain | ❌ | ❌ | ❌ | ❌ |
+| Review Rounds | ✅ Numbered rounds | ❌ | ❌ | ❌ | ❌ |
 | Approval flow | ✅ solo_client, approve/reject | ❌ | ❌ | ❌ | ❌ |
-| Change Orders | ✅ Заказы на изменения с ценой | ❌ | ❌ | ❌ | ❌ |
-| Share links (пароль + срок) | ✅ password + expiry + allowlist | ❌ | ✅ secure sharing | ❌ | ❌ |
+| Change Orders | ✅ Change orders with pricing | ❌ | ❌ | ❌ | ❌ |
+| Share links (password + expiry) | ✅ password + expiry + allowlist | ❌ | ✅ secure sharing | ❌ | ❌ |
 | Team roles (admin/maintainer) | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Session members | ✅ email-based invitations | ✅ email invitations | ❌ | ✅ | ❌ |
 | Deposit / billing | ✅ stripe integration | ❌ | ❌ | ❌ | ❌ |
-| Required deliverables | ✅ Бриф + список | ❌ | ❌ | ❌ | ❌ |
+| Required deliverables | ✅ Brief + list | ❌ | ❌ | ❌ | ❌ |
 | Late-change protection | ✅ retention_until + recall_fee | ❌ | ❌ | ❌ | ❌ |
 | Reminder automation | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Access event logging | ✅ Полный audit trail | ❌ | ❌ | ✅ | ❌ |
-| Portfolio (публичные сессии) | ✅ | ✅ (Community Tab) | ❌ | ❌ | ❌ |
+| Access event logging | ✅ Full audit trail | ❌ | ❌ | ✅ | ❌ |
+| Portfolio (public sessions) | ✅ | ✅ (Community Tab) | ❌ | ❌ | ❌ |
 
-### 📦 Релизы и дистрибуция
+### 📦 Releases & Distribution
 
-| Возможность | SoundHub | Splice Studio | Boombox | BandLab | Soundtrap |
-|-------------|:--------:|:-------------:|:-------:|:-------:|:---------:|
-| Release Packages | ✅ С deliverables | ❌ | ❌ | ❌ | ❌ |
+| Feature | SoundHub | Splice Studio | Boombox | BandLab | Soundtrap |
+|---------|:--------:|:-------------:|:-------:|:-------:|:---------:|
+| Release Packages | ✅ With deliverables | ❌ | ❌ | ❌ | ❌ |
 | Immutable releases | ✅ immutable_at | ❌ | ❌ | ❌ | ❌ |
-| Delivery tokens | ✅ Безопасная выдача | ❌ | ❌ | ❌ | ❌ |
+| Delivery tokens | ✅ Secure delivery | ❌ | ❌ | ❌ | ❌ |
 | Invoice / billing | ✅ Stripe session | ❌ | ❌ | ❌ | ❌ |
 | Sample pack registry | ✅ Packages (sample_pack, preset, plugin) | ❌ | ❌ | ❌ | ❌ |
 | Song splits / contracts | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Distribution (Spotify etc.) | ❌ | ❌ | ✅ (150+ платформ) | ✅ (Pro) | ❌ |
-| Blockchain certification | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Distribution (Spotify etc.) | ❌ | ❌ | ✅ (150+ platforms) | ✅ (Pro) | ❌ |
 
 ### 🏗️ Project Management
 
-| Возможность | SoundHub | Splice Studio | Boombox | BandLab | ANY другой |
-|-------------|:--------:|:-------------:|:-------:|:-------:|:----------:|
+| Feature | SoundHub | Splice Studio | Boombox | BandLab | Any other |
+|---------|:--------:|:-------------:|:-------:|:-------:|:---------:|
 | Pull Requests | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Tasks (GitHub Issues) | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Kanban Boards | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Milestones | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Wiki | ✅ С ревизиями | ❌ | ❌ | ❌ | ❌ |
-| Discussions (форум) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Wiki | ✅ With revisions | ❌ | ❌ | ❌ | ❌ |
+| Discussions (forum) | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Time Tracking | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Epics | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Roadmaps | ✅ Визуальная шкала | ❌ | ❌ | ❌ | ❌ |
-| Calendar | ✅ С повторением | ❌ | ❌ | ❌ | ❌ |
+| Roadmaps | ✅ Visual timeline | ❌ | ❌ | ❌ | ❌ |
+| Calendar | ✅ With recurrence | ❌ | ❌ | ❌ | ❌ |
 | Requirements | ✅ | ❌ | ❌ | ❌ | ❌ |
 | OKRs | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Gists (сниппеты) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Sponsors (спонсорство) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Gists (snippets) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Sponsors | ✅ | ❌ | ❌ | ❌ | ❌ |
 
-### 🔒 Безопасность и DevOps
+### 🔒 Security & DevOps
 
-| Возможность | SoundHub | Splice Studio | Boombox | BandLab | Другие |
-|-------------|:--------:|:-------------:|:-------:|:-------:|:------:|
+| Feature | SoundHub | Splice Studio | Boombox | BandLab | Others |
+|---------|:--------:|:-------------:|:-------:|:-------:|:------:|
 | Workflows (CI/CD) | ✅ YAML-based | ❌ | ❌ | ❌ | ❌ |
-| Audio CI checks | ✅ Автоматические | ❌ | ❌ | ❌ | ❌ |
+| Audio CI checks | ✅ Automatic | ❌ | ❌ | ❌ | ❌ |
 | SAST/DAST scanning | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Security alerts (Dependabot) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Secrets management | ✅ Зашифрованные | ❌ | ❌ | ❌ | ❌ |
+| Secrets management | ✅ Encrypted | ❌ | ❌ | ❌ | ❌ |
 | Environments (staging/prod) | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Variable groups | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Secure files | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -130,18 +129,18 @@
 | Incident Management | ✅ | ❌ | ❌ | ❌ | ❌ |
 | On-call Schedules | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Status Page | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Webhooks | ✅ С доставкой | ❌ | ❌ | ❌ | ❌ |
+| Webhooks | ✅ With delivery | ❌ | ❌ | ❌ | ❌ |
 | Git LFS | ✅ | ❌ | ❌ | ❌ | ❌ |
 | GraphQL API | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Full-text search (FTS5) | ✅ | ❌ | ❌ | ❌ | ❌ |
 
-### 🌐 Коллаборация и социальные
+### 🌐 Collaboration & Social
 
-| Возможность | SoundHub | Splice Studio | SyncMuse | Boombox | BandLab |
-|-------------|:--------:|:-------------:|:--------:|:-------:|:-------:|
-| Real-time DAW collaboration | ❌ | ❌ | ❌ | ❌ | ✅ (до 50) |
+| Feature | SoundHub | Splice Studio | SyncMuse | Boombox | BandLab |
+|---------|:--------:|:-------------:|:--------:|:-------:|:-------:|
+| Real-time DAW collaboration | ❌ | ❌ | ❌ | ❌ | ✅ (up to 50) |
 | Async stem sharing | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Teams | ✅ С ролями | ❌ | ❌ | ❌ | ❌ |
+| Teams | ✅ With roles | ❌ | ❌ | ❌ | ❌ |
 | Project Star / Watch / Fork | ✅ | ❌ | ❌ | ❌ | ✅ (follow) |
 | User profiles (bio, specialty) | ✅ | ❌ | ❌ | ✅ | ✅ |
 | Activity feed | ✅ | ❌ | ❌ | ❌ | ✅ |
@@ -152,82 +151,82 @@
 | Mobile app | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Browser DAW | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-### 💰 Ценообразование
+### 💰 Pricing
 
-| Платформа | Бесплатный план | Минимальная цена | Что даёт |
-|-----------|:---------------:|:----------------:|----------|
-| **SoundHub** | ✅ Open-source | $0 | Всё включено (self-hosted) |
-| **Splice Studio** | ✅ (был бесплатен) | $0 (закрыт) | Безлимитное хранилище |
-| **SyncMuse** | ✅ | $0 (Pro TBD) | Базовые функции |
-| **Boombox** | ✅ (1 GB) | $4.20/мес | 500 GB, видео, AI |
-| **BandLab** | ✅ (полный DAW) | $0 | 16 треков, AI, дистрибуция |
-| **Soundtrap** | ✅ (5 проектов) | $9.99/мес | Полная библиотека |
-| **Pibox** | ✅ (2 user, 1 GB) | $10/user/мес | 100 GB, безлимитные проекты |
-| **Sessionwire** | ✅ (базовый) | $9/мес | Приватная Studio |
-| **Sesh** | ✅ (ограничен) | $5/мес | Безлимитные проекты |
-| **Feedtracks** | ✅ (1 GB) | €6.99/мес | 200 GB |
-| **musiciansXchange** | ✅ (2 GB) | $3.99/мес | 25 GB, безлимит коллабораций |
-| **Satellite** | ✅ (30 мин) | $9.99/мес | Безлимитные сессии |
-| **Kompoz** | ✅ (3 public) | $5/мес | Больше коллабораций |
-
----
-
-## Уникальные преимущества SoundHub
-
-### Что есть ТОЛЬКО в SoundHub и НИГДЕ больше:
-
-1. **Audio CI Checks** — автоматическая проверка LUFS, True Peak, sample rate, channels при каждом push (аналог GitHub Actions для аудио)
-2. **Pull Requests для музыки** — полноценные PR с approve/request_changes, diff между ветками, required reviewers
-3. **Branch Protection Rules** — защита main-ветки, требование PR,限制 force push
-4. **CODEOWNERS** — автоматическое назначение ревьюеров по паттернам файлов
-5. **Merge Trains** — очередь мержей для предотвращения конфликтов
-6. **Kanban Boards + Epics + Roadmaps + Milestones** — полный project management
-7. **Change Orders** — система заказов на изменения с ценами и согласованием
-8. **Late-change Protection** — защита от поздних изменений (retention period + recall fee)
-9. **Watermarking** — автоматическая маркировка.preview-версий
-10. **Reference Track A/B Comparison** — сравнение микса с референсом с level matching
-11. **Git LFS** — хранение больших аудиофайлов (LAAD-оптимизированное)
-12. **SAST/DAST + Security Alerts** — безопасность на уровне enterprise
-13. **Service Desk** — система тикетов для клиентов
-14. **Design Management** — хранение и ревью обложек/арта
-15. **Wallet Authentication** — Web3 аутентификация через кошелёк
-16. **GraphQL API + Full-text Search** — расширенный API для интеграций
-
-### Сильные стороны по сравнению с каждым конкурентом:
-
-| vs Кого | Преимущества SoundHub |
-|---------|----------------------|
-| **vs Splice Studio** | Git-ветки, PR, branch protection, CI checks, project management, merge trains,安全 (Splice был только линейный) |
-| **vs SyncMuse** | DAW-aware, auto-sync через CLI, DAW diff, project management (SyncMuse — только stems) |
-| **vs Boombox** | Git-workflow, CI/CD, branch protection, не нужен Desktop app (Boombox — всё через GUI) |
-| **vs BandLab** | Профессиональный workflow, версионирование, review process (BandLab — social DAW) |
-| **vs Pibox** | Version control, DAW-aware, CI checks, project management (Pibox — только review) |
-| **vs musiciansXchange** | DAW-aware, project management, CI/CD, branch protection (musiciansXchange — discovery + stems) |
-| **vs Sessionwire** | Version control, cloud storage, review workflow (Sessionwire — только real-time streaming) |
+| Platform | Free Plan | Minimum Price | What you get |
+|----------|:---------:|:-------------:|-------------|
+| **SoundHub** | ✅ Open-source | $0 | Everything included (self-hosted) |
+| **Splice Studio** | ✅ (was free) | $0 (closed) | Unlimited storage |
+| **SyncMuse** | ✅ | $0 (Pro TBD) | Basic features |
+| **Boombox** | ✅ (1 GB) | $4.20/mo | 500 GB, video, AI |
+| **BandLab** | ✅ (full DAW) | $0 | 16 tracks, AI, distribution |
+| **Soundtrap** | ✅ (5 projects) | $9.99/mo | Full library |
+| **Pibox** | ✅ (2 users, 1 GB) | $10/user/mo | 100 GB, unlimited projects |
+| **Sessionwire** | ✅ (basic) | $9/mo | Private Studio |
+| **Sesh** | ✅ (limited) | $5/mo | Unlimited projects |
+| **Feedtracks** | ✅ (1 GB) | €6.99/mo | 200 GB |
+| **musiciansXchange** | ✅ (2 GB) | $3.99/mo | 25 GB, unlimited collabs |
+| **Satellite** | ✅ (30 min) | $9.99/mo | Unlimited sessions |
+| **Kompoz** | ✅ (3 public) | $5/mo | More collaborations |
 
 ---
 
-## Сравнительная матрица: что важно для какого сценария
+## SoundHub Unique Advantages
 
-| Сценарий | Лучший выбор | Почему |
-|----------|-------------|--------|
-| "Хочу GitHub-подобный workflow для музыки" | **SoundHub** | Единственная платформа с PR, branches, merge, CI/CD |
-| "Нужен бесплатный DAW с real-time" | **BandLab** | 100M+ комьюнити, полный бесплатный DAW |
-| "Нужен async-фидбек на миксах" | **SoundHub** или **Pibox** | Waveform comments + version control + approval |
-| "Нужна дистрибуция + splits" | **Boombox** | All-in-one: хранение + коллаб + контракты + дистрибуция |
-| "Нужен real-time DAW-плагин" | **Sessionwire** или **Satellite** | Студийное качество, интеграция с DAW |
-| "Нужен budget-friendly backup + фидбек" | **SyncMuse** или **Feedtracks** | Дешёвые, простые, waveform comments |
-| "Нужен professional mixing workflow" | **SoundHub** | Review rounds, approval chain, change orders, billing |
-| "Нужно enterprise-ревью для лейбла" | **Pibox** | Enterprise security, multi-team, API |
-| "Нужен Git для музыки + discovery" | **musiciansXchange** | Git-ветки + поиск коллег + auto-credit |
-| "Нужен браузерный DAW для битов" | **Sesh** | Serum-level синтез, real-time, $5/мес |
+### What is ONLY in SoundHub and NOWHERE else:
+
+1. **Audio CI Checks** — automatic LUFS, True Peak, sample rate, channels checks on every push (like GitHub Actions for audio)
+2. **Pull Requests for music** — full PRs with approve/request_changes, diff between branches, required reviewers
+3. **Branch Protection Rules** — protect main branch, require PR, restrict force push
+4. **CODEOWNERS** — automatic reviewer assignment by file patterns
+5. **Merge Trains** — merge queue to prevent conflicts
+6. **Kanban Boards + Epics + Roadmaps + Milestones** — full project management
+7. **Change Orders** — change order system with pricing and approval
+8. **Late-change Protection** — protection against late changes (retention period + recall fee)
+9. **Watermarking** — automatic watermarking of preview versions
+10. **Reference Track A/B Comparison** — mix comparison with reference with level matching
+11. **Git LFS** — large audio file storage (LAAD-optimized)
+12. **SAST/DAST + Security Alerts** — enterprise-level security
+13. **Service Desk** — ticket system for clients
+14. **Design Management** — cover/art storage and review
+15. **Wallet Authentication** — Web3 wallet authentication
+16. **GraphQL API + Full-text Search** — extended API for integrations
+
+### Strengths vs each competitor:
+
+| vs | SoundHub Advantages |
+|----|---------------------|
+| **vs Splice Studio** | Git branches, PR, branch protection, CI checks, project management, merge trains, security (Splice was linear only) |
+| **vs SyncMuse** | DAW-aware, auto-sync via CLI, DAW diff, project management (SyncMuse is stems only) |
+| **vs Boombox** | Git-workflow, CI/CD, branch protection, no Desktop app needed (Boombox is all GUI) |
+| **vs BandLab** | Professional workflow, versioning, review process (BandLab is social DAW) |
+| **vs Pibox** | Version control, DAW-aware, CI checks, project management (Pibox is review only) |
+| **vs musiciansXchange** | DAW-aware, project management, CI/CD, branch protection (musiciansXchange is discovery + stems) |
+| **vs Sessionwire** | Version control, cloud storage, review workflow (Sessionwire is real-time streaming only) |
 
 ---
 
-## Итоговая оценка
+## Comparison Matrix: What Matters for Each Scenario
 
-| Критерий | SoundHub | Splice | SyncMuse | Boombox | BandLab | Pibox | Sessionwire |
-|----------|:--------:|:------:|:--------:|:-------:|:-------:|:-----:|:-----------:|
+| Scenario | Best Choice | Why |
+|----------|-------------|-----|
+| "I want GitHub-like workflow for music" | **SoundHub** | Only platform with PR, branches, merge, CI/CD |
+| "I need a free DAW with real-time" | **BandLab** | 100M+ community, full free DAW |
+| "I need async feedback on mixes" | **SoundHub** or **Pibox** | Waveform comments + version control + approval |
+| "I need distribution + splits" | **Boombox** | All-in-one: storage + collab + contracts + distribution |
+| "I need a real-time DAW plugin" | **Sessionwire** or **Satellite** | Studio-grade, DAW integration |
+| "I need budget-friendly backup + feedback" | **SyncMuse** or **Feedtracks** | Cheap, simple, waveform comments |
+| "I need professional mixing workflow" | **SoundHub** | Review rounds, approval chain, change orders, billing |
+| "I need enterprise review for a label" | **Pibox** | Enterprise security, multi-team, API |
+| "I need Git for music + discovery" | **musiciansXchange** | Git branches + find collaborators + auto-credit |
+| "I need a browser DAW for beats" | **Sesh** | Serum-level synthesis, real-time, $5/mo |
+
+---
+
+## Final Rating
+
+| Criterion | SoundHub | Splice | SyncMuse | Boombox | BandLab | Pibox | Sessionwire |
+|-----------|:--------:|:------:|:--------:|:-------:|:-------:|:-----:|:-----------:|
 | Git-workflow | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐ | ⭐ | ⭐ | ⭐ | ⭐ |
 | DAW-aware | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐ | ⭐ | ⭐⭐⭐⭐ | ⭐ | ⭐⭐⭐ |
 | Audio CI/CD | ⭐⭐⭐⭐⭐ | ⭐ | ⭐ | ⭐ | ⭐ | ⭐ | ⭐ |
@@ -238,37 +237,37 @@
 | Mobile | ⭐ | ⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐ |
 | Community | ⭐⭐ | ⭐⭐⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐ | ⭐⭐ |
 | Price | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
-| **Средняя** | **⭐ 4.1** | **⭐ 2.7** | **⭐ 2.3** | **⭐ 3.1** | **⭐ 3.5** | **⭐ 2.4** | **⭐ 2.6** |
+| **Average** | **⭐ 4.1** | **⭐ 2.7** | **⭐ 2.3** | **⭐ 3.1** | **⭐ 3.5** | **⭐ 2.4** | **⭐ 2.6** |
 
 ---
 
-## Выводы
+## Conclusions
 
-### SoundHub vs рынок — позиционирование
+### SoundHub vs Market — Positioning
 
-**SoundHub — единственная платформа, которая объединяет:**
-1. ✅ **Git-like version control** (ветки, мержи, PR, branch protection)
-2. ✅ **DAW-aware** (парсинг Ableton/FL/Logic/Studio One)
-3. ✅ **Audio CI/CD** (автоматические проверки качества при push)
-4. ✅ **Professional review workflow** (раунды, approval, change orders, billing)
+**SoundHub is the only platform that combines:**
+1. ✅ **Git-like version control** (branches, merges, PR, branch protection)
+2. ✅ **DAW-aware** (parse Ableton/FL/Logic/Studio One)
+3. ✅ **Audio CI/CD** (automatic quality checks on push)
+4. ✅ **Professional review workflow** (rounds, approval, change orders, billing)
 5. ✅ **Full project management** (Kanban, Epics, Roadmaps, Wiki, Tasks)
 6. ✅ **Enterprise security** (SAST/DAST, secrets, audit log, IP allowlist)
 
-**Ни одна другая платформа не предлагает всё это вместе.**
+**No other platform offers all of this together.**
 
-| Категория | Лидер |
-|-----------|-------|
-| Git-workflow для музыки | **SoundHub** (единственная) |
+| Category | Leader |
+|----------|--------|
+| Git-workflow for music | **SoundHub** (only one) |
 | Real-time DAW | **BandLab** / **Sessionwire** |
-| All-in-one (хранение + дистрибуция) | **Boombox** |
-| Бесплатный DAW | **BandLab** |
-| Enterprise ревью | **Pibox** |
-| Async-фидбек (простой) | **SyncMuse** |
-| Discovery музыкантов | **Kompoz** / **musiciansXchange** |
-| DAW-плагин real-time | **Sessionwire** / **Satellite** |
+| All-in-one (storage + distribution) | **Boombox** |
+| Free DAW | **BandLab** |
+| Enterprise review | **Pibox** |
+| Async feedback (simple) | **SyncMuse** |
+| Musician discovery | **Kompoz** / **musiciansXchange** |
+| DAW plugin real-time | **Sessionwire** / **Satellite** |
 
-### Рекомендация для SoundHub
+### Recommendation for SoundHub
 
-**Целевая аудитория:** Professional music producers, mix engineers, recording studios, labels, и music production teams, которые работают в команде и нуждаются в структурированном workflow.
+**Target audience:** Professional music producers, mix engineers, recording studios, labels, and music production teams who work in teams and need structured workflows.
 
-**Ключевое competitive advantage:** SoundHub — это единственная платформа, которая применяет software engineering best practices (Git, CI/CD, PR, code review) к музыкальному продакшну. Все остальные платформы либо offering real-time DAW (BandLab, Soundtrap), либо простой async-фидбек (SyncMuse, Pibox), либо all-in-one (Boombox), но ни одна не даёт professional-grade version control + CI/CD + project management для DAW-проектов.
+**Key competitive advantage:** SoundHub is the only platform that applies software engineering best practices (Git, CI/CD, PR, code review) to music production. All other platforms either offer real-time DAW (BandLab, Soundtrap), simple async feedback (SyncMuse, Pibox), or all-in-one (Boombox), but none provides professional-grade version control + CI/CD + project management for DAW projects.

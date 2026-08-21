@@ -4,49 +4,49 @@
 
 ## 🎯 TL;DR
 
-**SoundHub = GitHub + Jira + CI/CD for Music Production**
+**SoundHub = GitHub + Jira + CI/CD для Music Production**
 
-The only platform that applies software engineering best practices to music production: Git branches, Pull Requests, Audio CI/CD, Branch Protection, Project Management.
+Единственная платформа, которая применяет software engineering best practices к музыкальному продакшну: Git-ветки, Pull Requests, Audio CI/CD, Branch Protection, Project Management.
 
-**Market:** $23B music production software (2026)
-**Problem:** Musicians lose files, can't collaborate effectively, lack structure
-**Solution:** Professional-grade version control + collaboration + CI/CD for DAW projects
+**Рынок:** $23B music production software (2026)
+**Проблема:** Музыканты теряют файлы, не могут эффективно работать в команде, нет структуры
+**Решение:** Professional-grade version control + collaboration + CI/CD для DAW-проектов
 
 ---
 
-## 💡 Product
+## 💡 Продукт
 
-### What it is
-A cloud platform for collaborative music production with Git-like workflow.
+### Что это
+Облачная платформа для collaborative music production с Git-like workflow.
 
-### Key Features
+### Ключевые фичи
 
-| Feature | What it does | Uniqueness |
-|---------|-------------|------------|
-| **Git Branches & Merges** | Branches, merges, squash, fast-forward for DAW files | Only one on the market |
-| **Pull Requests** | PR with approve/request_changes, diff between versions | Only one on the market |
-| **Audio CI Checks** | Automatic LUFS, True Peak, sample rate checks on push | Only one on the market |
-| **Branch Protection** | Protect main, require PR, restrict force push | Only one on the market |
-| **Review Sessions** | Feedback rounds, approval chain, change orders | Best on the market |
-| **DAW-Aware** | Parses .als, .flp, .logic, .song — shows tracks, plugins, BPM | Top-3 on the market |
-| **Project Management** | Kanban, Epics, Roadmaps, Wiki, Tasks, Milestones | Best on the market |
-| **Enterprise Security** | SAST/DAST, secrets, audit log, IP allowlist | Only one on the market |
+| Фича | Что делает | Уникальность |
+|------|-----------|-------------|
+| **Git Branches & Merges** | Ветки, мержи, squash, fast-forward для DAW-файлов | Единственная на рынке |
+| **Pull Requests** | PR с approve/request_changes, diff между версиями | Единственная на рынке |
+| **Audio CI Checks** | Автоматическая проверка LUFS, True Peak, sample rate при push | Единственная на рынке |
+| **Branch Protection** | Защита main, требование PR,限制 force push | Единственная на рынке |
+| **Review Sessions** | Раунды фидбека, approval chain, change orders | Лучшая на рынке |
+| **DAW-Aware** | Парсит .als, .flp, .logic, .song — показывает треки, плагины, BPM | Top-3 на рынке |
+| **Project Management** | Kanban, Epics, Roadmaps, Wiki, Tasks, Milestones | Лучшая на рынке |
+| **Enterprise Security** | SAST/DAST, secrets, audit log, IP allowlist | Единственная на рынке |
 
 ### Tech Stack
 - **Backend:** Python (FastAPI) + SQLAlchemy + SQLite/PostgreSQL
 - **Frontend:** React / Next.js
-- **CLI:** Python/Go daemon with filesystem watcher
+- **CLI:** Python/Go daemon с filesystem watcher
 - **AI:** Loudness analysis (EBU R128), stem splitting (Demucs/Spleeter)
 - **Storage:** Content-addressed blob storage (SHA-256)
 - **API:** REST + GraphQL + Webhooks
 
 ---
 
-## 📊 Market
+## 📊 Рынок
 
 ### Total Addressable Market (TAM)
-| Segment | Size | Growth |
-|---------|------|--------|
+| Сегмент | Размер | Рост |
+|---------|--------|------|
 | Music production software | $23B (2026) | +12% CAGR |
 | Collaboration tools (creative) | $8.2B (2026) | +18% CAGR |
 | CI/CD & DevOps | $12.4B (2026) | +25% CAGR |
@@ -87,15 +87,15 @@ A cloud platform for collaborative music production with Git-like workflow.
 
 ### Pricing Tiers
 
-| Plan | Price | Target Audience |
-|------|-------|----------------|
-| **Free** | $0 | Hobby producers, 1 project, 1 GB |
-| **Pro** | $10/mo | Professionals, unlimited projects, 100 GB |
-| **Team** | $25/user/mo | Studios/labels, all features, priority support |
-| **Enterprise** | Custom | Major labels, SLA, SSO, dedicated instance |
+| План | Цена | Целевая аудитория |
+|------|------|-------------------|
+| **Free** | $0 | Хобби-продюсеры, 1 project, 1 GB |
+| **Pro** | $10/мес | Профессионалы, безлимит projects, 100 GB |
+| **Team** | $25/user/мес | Студии/лейблы, все фичи, priority support |
+| **Enterprise** | Кастомная | Крупные лейблы, SLA, SSO, dedicated instance |
 
 ### Revenue Streams
-1. **Subscriptions** (primary, ~70%)
+1. **Subscriptions** (основной, ~70%)
 2. **Storage upgrades** (~15%)
 3. **AI features** (premium, ~10%)
 4. **Enterprise licensing** (~5%)
@@ -104,19 +104,19 @@ A cloud platform for collaborative music production with Git-like workflow.
 
 ## 🚀 Go-to-Market
 
-### Phase 1 (Months 1-6): Developer-First
+### Phase 1 (Месяцы 1-6): Developer-First
 - Target: Music producers who use Git/DAWs
 - Channels: Reddit (r/edmproduction, r/WeAreTheMusicMakers), Hacker News, Product Hunt
 - CTA: "GitHub for Music — Free"
 - Goal: 1,000 beta users
 
-### Phase 2 (Months 6-12): Professional Studios
+### Phase 2 (Месяцы 6-12): Professional Studios
 - Target: Mix engineers, recording studios, labels
 - Channels: Direct outreach, NAMM, AES convention
 - CTA: "Professional mixing workflow with CI/CD"
 - Goal: 10,000 users, 100 paying teams
 
-### Phase 3 (Months 12-24): Mass Market
+### Phase 3 (Месяцы 12-24): Mass Market
 - Target: All music producers
 - Channels: Content marketing, partnerships, mobile app
 - CTA: "The future of music collaboration"
@@ -126,8 +126,8 @@ A cloud platform for collaborative music production with Git-like workflow.
 
 ## 👥 Team
 
-| Role | Experience |
-|------|-----------|
+| Роль | Опыт |
+|------|------|
 | **CEO / Product** | Music production + tech startup experience |
 | **CTO / Engineering** | Full-stack, distributed systems, audio DSP |
 | **Lead Dev** | Python/FastAPI, SQLAlchemy, WebRTC |
@@ -137,7 +137,7 @@ A cloud platform for collaborative music production with Git-like workflow.
 
 ## 📈 Traction & Milestones
 
-| Milestone | Status |
+| Milestone | Статус |
 |-----------|--------|
 | MVP (backend API) | ✅ Done |
 | Git-like version control | ✅ Done |

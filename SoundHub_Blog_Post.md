@@ -1,112 +1,112 @@
-# SoundHub vs Мир: Полный гайд по платформам для музыкальной коллаборации в 2026
+# SoundHub vs The World: The Complete Guide to Music Collaboration Platforms in 2026
 
-*Почему Git-workflow — это будущее музыкального продакшна, и кто уже там*
-
----
-
-## Введение
-
-Вы когда-нибудь теряли трек из-за того, что коллега перезаписал ваш файл? Или не могли вспомнить, какая версия микса была "та самая"? Или отправляли stems через Dropbox и терялись в 47 папках "mix_v3_FINAL_FINAL"?
-
-Добро пожаловать в мир музыкальной коллаборации в 2026 году. Рынок взорвался после закрытия Splice Studio в 2023 — десятки платформ пытаются заполнить нишу. Мы изучили **12 платформ** и создали ultimate guide.
+*Why Git-workflow is the future of music production — and who's already there*
 
 ---
 
-## The Landscape: 12 платформ за 3 минуты
+## Introduction
 
-### 🔥 Tier 1: Лидеры рынка
+Have you ever lost a track because a colleague overwrote your file? Or couldn't remember which mix version was "the one"? Or sent stems via Dropbox and got lost in 47 folders named "mix_v3_FINAL_FINAL"?
 
-**BandLab** — Бесплатный DAW в браузере + AI + 100M+ комьюнити. Лучший для начинающих. Не имеет Git-workflow.
+Welcome to the world of music collaboration in 2026. The market exploded after Splice Studio shut down in 2023 — dozens of platforms are trying to fill the void. We studied **12 platforms** and created the ultimate guide.
 
-**Boombox** — All-in-one: хранилище + коллаб + splits + дистрибуция + AI. Лучший для "я хочу всё в одном". Не имеет version control.
+---
 
-**Soundtrap** — Real-time браузерный DAW от ex-Spotify. Лучший для образования. Не имеет project management.
+## The Landscape: 12 Platforms in 3 Minutes
 
-### ⚡ Tier 2: Нишевые решения
+### 🔥 Tier 1: Market Leaders
 
-**Sessionwire** — Real-time DAW-плагин студийного качества. Berklee, Blackbird. Не имеет cloud storage.
+**BandLab** — Free browser DAW + AI + 100M+ community. Best for beginners. No Git-workflow.
 
-**Pibox** — Enterprise аудио-ревью. Universal Production Music. Не имеет version control.
+**Boombox** — All-in-one: storage + collab + splits + distribution + AI. Best for "I want everything in one place." No version control.
 
-**Sesh** — Браузерный DAW для битмейкеров. $5/мес. Не имеет professional workflow.
+**Soundtrap** — Real-time browser DAW from ex-Spotify. Best for education. No project management.
 
-### 🌱 Tier 3: Стартапы
+### ⚡ Tier 2: Niche Solutions
 
-**SyncMuse** — Async-коллаборация через stems. 150 пользователей. Ранняя стадия.
+**Sessionwire** — Real-time DAW plugin, studio-grade. Berklee, Blackbird. No cloud storage.
 
-**musiciansXchange** — Git-подобный workflow + discovery. 500 founding members.
+**Pibox** — Enterprise audio review. Universal Production Music. No version control.
 
-**Feedtracks** — Google Drive для аудио. Waveform comments.
+**Sesh** — Browser DAW for beatmakers. $5/mo. No professional workflow.
+
+### 🌱 Tier 3: Startups
+
+**SyncMuse** — Async collaboration via stems. 150 users. Early stage.
+
+**musiciansXchange** — Git-like workflow + discovery. 500 founding members.
+
+**Feedtracks** — Google Drive for audio. Waveform comments.
 
 ### 📚 Legacy
 
-**Splice Studio** — Мёртв (2023). Был пионером Git-workflow для музыки.
+**Splice Studio** — Dead (2023). Was the pioneer of Git-workflow for music.
 
-**Kompoz** — Краудсорсинг с 200K+ треков. Устаревший UI.
+**Kompoz** — Crowdsourcing with 200K+ tracks. Outdated UI.
 
-**Satellite Sessions** — DAW-плагин для cross-DAW real-time.
+**Satellite Sessions** — DAW plugin for cross-DAW real-time.
 
 ---
 
 ## The Problem Nobody Talks About
 
-Все эти платформы решают **одну часть** проблемы:
+All these platforms solve **one part** of the problem:
 
-| Платформа | Решает | НЕ решает |
-|-----------|--------|-----------|
+| Platform | Solves | Doesn't solve |
+|----------|--------|---------------|
 | BandLab | Real-time DAW | Version control, CI/CD, project management |
-| Boombox | Хранение + дистрибуция | Git-workflow, branch protection, PR |
+| Boombox | Storage + distribution | Git-workflow, branch protection, PR |
 | Sessionwire | Real-time streaming | Cloud storage, version control, review workflow |
-| Pibox | Аудио-ревью | Version control, DAW-aware, project management |
-| SyncMuse | Async-фидбек | DAW-aware, auto-sync, project management |
+| Pibox | Audio review | Version control, DAW-aware, project management |
+| SyncMuse | Async feedback | DAW-aware, auto-sync, project management |
 
-**Ни одна платформа не решает ВСЮ проблему.**
+**No platform solves THE WHOLE problem.**
 
-Пока что.
+Until now.
 
 ---
 
-## Enter SoundHub: GitHub для Музыки
+## Enter SoundHub: GitHub for Music
 
-SoundHub — единственная платформа, которая объединяет:
+SoundHub is the only platform that combines:
 
 ### 1. Git-like Version Control
 ```
 main ← release/v2.0 ← feat/new-drums ← hotfix/volume-fix
 ```
-Ветки. Мержи. Diff. Каждое сохранение — это коммит с parent chain. Можно откатиться к любой версии.
+Branches. Merges. Diff. Every save is a commit with a parent chain. You can revert to any version.
 
-### 2. Pull Requests для Музыки
-Коллега загрузил новые стемы? Создаёт PR. Вы прослушиваете, оставляете комментарии на waveform, одобряете или запрашиваете изменения. Как code review, но для музыки.
+### 2. Pull Requests for Music
+Colleague uploaded new stems? Creates a PR. You listen, leave comments on the waveform, approve or request changes. Like code review, but for music.
 
 ### 3. Audio CI/CD
-При каждом push автоматически проверяется:
-- ✅ Integrated LUFS (-16 до -12)
+On every push, automatically checks:
+- ✅ Integrated LUFS (-16 to -12)
 - ✅ True Peak (< -1.0 dBTP)
 - ✅ Sample Rate (≥ 44100 Hz)
 - ✅ Channels (1-2, stereo/mono)
 
-Красный свет = микс не готов. Зелёный = можно релизить.
+Red light = mix not ready. Green = ready to release.
 
 ### 4. Branch Protection
-Защитите main-ветку: требуйте PR, назначайте ревьюеров, блокируйте force push. Как в GitHub, но для .als файлов.
+Protect your main branch: require PRs, assign reviewers, block force push. Like in GitHub, but for .als files.
 
 ### 5. DAW-Aware
-SoundHub парсит Ableton Live, FL Studio, Logic Pro, Studio One. Показывает:
-- Названия треков
-- Список плагинов
-- BPM и time signature
-- Структуру сессии
+SoundHub parses Ableton Live, FL Studio, Logic Pro, Studio One. Shows:
+- Track names
+- Plugin list
+- BPM and time signature
+- Session structure
 
 ### 6. Project Management
-Kanban boards, Tasks (GitHub Issues), Milestones, Wiki, Epics, Roadmaps, Calendar, Time Tracking. Всё в одном месте.
+Kanban boards, Tasks (GitHub Issues), Milestones, Wiki, Epics, Roadmaps, Calendar, Time Tracking. Everything in one place.
 
 ### 7. Enterprise Security
-SAST/DAST scanning, encrypted secrets, audit log, IP allowlist, custom roles. Готово для лейблов и студий.
+SAST/DAST scanning, encrypted secrets, audit log, IP allowlist, custom roles. Ready for labels and studios.
 
 ---
 
-## Comparison: SoundHub vs Каждый Конкурент
+## Comparison: SoundHub vs Every Competitor
 
 ### SoundHub vs BandLab
 
@@ -116,12 +116,12 @@ SAST/DAST scanning, encrypted secrets, audit log, IP allowlist, custom roles. Г
 | Pull Requests | ✅ | ❌ |
 | Audio CI checks | ✅ | ❌ |
 | Branch protection | ✅ | ❌ |
-| Real-time DAW | ❌ | ✅ (50 чел) |
-| AI tools | ❌ | ✅ (6 AI-инструментов) |
-| Free DAW | ❌ | ✅ (полный) |
+| Real-time DAW | ❌ | ✅ (50 users) |
+| AI tools | ❌ | ✅ (6 AI tools) |
+| Free DAW | ❌ | ✅ (full) |
 | Mobile app | ❌ | ✅ |
 
-**Вывод:** BandLab — лучший бесплатный DAW. SoundHub — лучший workflow. Идеально вместе: создавайте в BandLab, управляйте в SoundHub.
+**Verdict:** BandLab is the best free DAW. SoundHub is the best workflow. Perfect together: create in BandLab, manage in SoundHub.
 
 ### SoundHub vs Boombox
 
@@ -132,11 +132,11 @@ SAST/DAST scanning, encrypted secrets, audit log, IP allowlist, custom roles. Г
 | Audio CI checks | ✅ | ❌ |
 | Cloud storage | ✅ | ✅ |
 | Song splits | ❌ | ✅ |
-| Distribution | ❌ | ✅ (150+ платформ) |
+| Distribution | ❌ | ✅ (150+ platforms) |
 | AI mastering | ❌ | ✅ |
 | Price | $0-25/user | $0-15/user |
 
-**Вывод:** Boombox — all-in-one для инди-артистов. SoundHub — professional workflow для студий.
+**Verdict:** Boombox is all-in-one for indie artists. SoundHub is professional workflow for studios.
 
 ### SoundHub vs Sessionwire
 
@@ -144,25 +144,25 @@ SAST/DAST scanning, encrypted secrets, audit log, IP allowlist, custom roles. Г
 |---|:---:|:---:|
 | Git branches | ✅ | ❌ |
 | Real-time DAW | ❌ | ✅ (48kHz uncompressed) |
-| Review workflow | ✅ (раунды, approval) | ❌ |
+| Review workflow | ✅ (rounds, approval) | ❌ |
 | Cloud storage | ✅ | ❌ (P2P only) |
 | DAW plugin | ❌ | ✅ (AAX/VST3/AU) |
 | Price | $0-25/user | $0-29/user |
 
-**Вывод:** Sessionwire — для live-сессий. SoundHub — для async-workflow. Профессиональные студии используют оба.
+**Verdict:** Sessionwire is for live sessions. SoundHub is for async workflow. Professional studios use both.
 
 ### SoundHub vs Pibox
 
 | | SoundHub | Pibox |
 |---|:---:|:---:|
 | Waveform comments | ✅ | ✅ |
-| Version control | ✅ (Git) | ✅ (линейные) |
+| Version control | ✅ (Git) | ✅ (linear) |
 | DAW-aware | ✅ | ❌ |
-| Project management | ✅ (14 инструментов) | ❌ |
+| Project management | ✅ (14 tools) | ❌ |
 | Enterprise security | ✅ (SAST/DAST, audit) | ✅ (ISO-27001) |
 | Price | $0-25/user | $10-20/user |
 
-**Вывод:** Pibox — отличный review tool. SoundHub — review + everything else.
+**Verdict:** Pibox is a great review tool. SoundHub is review + everything else.
 
 ### SoundHub vs SyncMuse
 
@@ -175,58 +175,58 @@ SAST/DAST scanning, encrypted secrets, audit log, IP allowlist, custom roles. Г
 | Scale | Production-ready | 150 users |
 | Price | $0-25/user | Freemium |
 
-**Вывод:** SyncMuse — духовный наследник Splice Studio. SoundHub — эволюция концепции.
+**Verdict:** SyncMuse is the spiritual successor to Splice Studio. SoundHub is the evolution of the concept.
 
 ---
 
 ## Real User Scenarios
 
-### 🎸 Scenario 1: "Мы — банда, записываем альбом"
+### 🎸 Scenario 1: "We're a band recording an album"
 
-**Проблема:** 4 человека, 4 DAW, stems летают по Telegram
+**Problem:** 4 people, 4 DAWs, stems flying around Telegram
 
-**Решение:** SoundHub
-1. Создаёте проект
-2. Каждый загружает stems в свою ветку
-3. Создаёте PR в main
-4. Продюсер прослушивает, оставляет комментарии
-5. После одобрения — мерж в main
-6. Audio CI checks подтверждают качество
-7. Release package готов к дистрибуции
+**Solution:** SoundHub
+1. Create a project
+2. Everyone uploads stems to their own branch
+3. Create a PR to main
+4. Producer listens, leaves comments
+5. After approval — merge to main
+6. Audio CI checks confirm quality
+7. Release package ready for distribution
 
-### 🎛️ Scenario 2: "Я — микс-инженер, работаю с клиентами"
+### 🎛️ Scenario 2: "I'm a mix engineer working with clients"
 
-**Проблема:** Клиент отправляет stems через WeTransfer, фидбек — " volume louder " в WhatsApp
+**Problem:** Client sends stems via WeTransfer, feedback is "volume louder" in WhatsApp
 
-**Решение:** SoundHub
-1. Клиент создаёт Review Session
-2. Загружает stems + reference track
-3. Вы миксуете, загружаете как новую версию
-4. Клиент оставляет timestamped comments: "на 1:32 слишком громкий вокал"
-5. Вы фиксите, загружаете v2
-6. CI checks показывают: LUFS -14.5 ✅, True Peak -1.2 ✅
-7. Клиент одобряет → Release Package → готово
+**Solution:** SoundHub
+1. Client creates a Review Session
+2. Uploads stems + reference track
+3. You mix, upload as new version
+4. Client leaves timestamped comments: "at 1:32 vocals too loud"
+5. You fix, upload v2
+6. CI checks show: LUFS -14.5 ✅, True Peak -1.2 ✅
+7. Client approves → Release Package → done
 
-### 🏢 Scenario 3: "Мы — лейбл, управляем 20 артистами"
+### 🏢 Scenario 3: "We're a label managing 20 artists"
 
-**Проблема:** Нет единой системы, каждый артист в своём DAW, нет audit trail
+**Problem:** No unified system, every artist in their own DAW, no audit trail
 
-**Решение:** SoundHub Enterprise
-1. Все проекты в одном месте
-2. Branch protection: main защищён, нужен PR
-3. Кастомные роли: A&R видит всё, артист — только свой проект
-4. Audit log: кто что изменил и когда
-5. SAST/DAST: безопасность на уровне enterprise
-6. Kanban: трекаем статус каждого релиза
-7. Milestones: дедлайны и планы
+**Solution:** SoundHub Enterprise
+1. All projects in one place
+2. Branch protection: main is protected, PR required
+3. Custom roles: A&R sees everything, artist sees only their project
+4. Audit log: who changed what and when
+5. SAST/DAST: enterprise-level security
+6. Kanban: track status of every release
+7. Milestones: deadlines and plans
 
 ---
 
 ## The Missing Pieces (and What's Coming)
 
-SoundHub честен: вот чего пока нет и что в roadmap:
+SoundHub is honest: here's what's not here yet and what's on the roadmap:
 
-| Gap | Статус | ETA |
+| Gap | Status | ETA |
 |-----|--------|-----|
 | Real-time DAW | Planned | Q3 2026 |
 | Mobile app | Planned | Q2 2026 |
@@ -239,51 +239,51 @@ SoundHub честен: вот чего пока нет и что в roadmap:
 
 ## Pricing: Cheat Sheet
 
-| Платформа | Free | Paid from | Best for |
-|-----------|:----:|:---------:|----------|
-| **SoundHub** | ✅ | $10/мес | Professional workflow |
-| **BandLab** | ✅ (полный) | $15/мес | Beginners, mobile |
-| **Boombox** | ✅ (1 GB) | $4.20/мес | All-in-one |
-| **Soundtrap** | ✅ (5 проектов) | $9.99/мес | Education |
-| **Sessionwire** | ✅ (базовый) | $9/мес | Real-time sessions |
-| **Pibox** | ✅ (2 user) | $10/user | Enterprise review |
-| **Sesh** | ✅ | $5/мес | Beatmakers |
-| **Feedtracks** | ✅ (1 GB) | €6.99/мес | Simple storage |
-| **musiciansXchange** | ✅ (2 GB) | $3.99/мес | Discovery + stems |
+| Platform | Free | Paid from | Best for |
+|----------|:----:|:---------:|----------|
+| **SoundHub** | ✅ | $10/mo | Professional workflow |
+| **BandLab** | ✅ (full) | $15/mo | Beginners, mobile |
+| **Boombox** | ✅ (1 GB) | $4.20/mo | All-in-one |
+| **Soundtrap** | ✅ (5 projects) | $9.99/mo | Education |
+| **Sessionwire** | ✅ (basic) | $9/mo | Real-time sessions |
+| **Pibox** | ✅ (2 users) | $10/user | Enterprise review |
+| **Sesh** | ✅ | $5/mo | Beatmakers |
+| **Feedtracks** | ✅ (1 GB) | €6.99/mo | Simple storage |
+| **musiciansXchange** | ✅ (2 GB) | $3.99/mo | Discovery + stems |
 
-**Pro tip:** SoundHub free tier включает Git workflow + DAW-aware + CI checks. Больше ни одна платформа не даёт этого бесплатно.
+**Pro tip:** SoundHub's free tier includes Git workflow + DAW-aware + CI checks. No other platform offers this for free.
 
 ---
 
 ## TL;DR: The Decision Matrix
 
-| Вы хотите... | Используйте |
-|-------------|------------|
-| Бесплатный DAW в браузере | **BandLab** |
-| Git-workflow для музыки | **SoundHub** |
-| All-in-one (хранилище + дистрибуция) | **Boombox** |
-| Real-time джем через интернет | **Sessionwire** |
-| Enterprise аудио-ревью | **Pibox** |
-| Простой async-фидбек | **SyncMuse** |
-| Битмейкер workflow | **Sesh** |
-| Google Drive для аудио | **Feedtracks** |
-| Найти музыкантов worldwide | **Kompoz** / **musiciansXchange** |
+| You want... | Use |
+|-------------|-----|
+| Free browser DAW | **BandLab** |
+| Git-workflow for music | **SoundHub** |
+| All-in-one (storage + distribution) | **Boombox** |
+| Real-time jamming over internet | **Sessionwire** |
+| Enterprise audio review | **Pibox** |
+| Simple async feedback | **SyncMuse** |
+| Beatmaker workflow | **Sesh** |
+| Google Drive for audio | **Feedtracks** |
+| Find musicians worldwide | **Kompoz** / **musiciansXchange** |
 
 ---
 
 ## Conclusion
 
-Рынок музыкальной коллаборации в 2026 — это 12+ платформ, каждая со своей нишей. Но **только одна** предлагает professional-grade version control + CI/CD + project management для DAW-проектов.
+The music collaboration market in 2026 has 12+ platforms, each with its own niche. But **only one** offers professional-grade version control + CI/CD + project management for DAW projects.
 
-**SoundHub — это не просто ещё одна платформа. Это операционная система для музыкального продакшна.**
+**SoundHub is not just another platform. It's the operating system for music production.**
 
-GitHub изменил, как пишут код. SoundHub меняет, как создают музыку.
+GitHub changed how code is written. SoundHub is changing how music is made.
 
 ---
 
-*Хотите попробовать? [Начните бесплатно →](https://soundhub.dev)*
+*Want to try it? [Start for free →](https://soundhub.dev)*
 
-*Сравнительная таблица всех платформ: [SoundHub vs Competitors](./Splice.md)*
+*Comparison table of all platforms: [SoundHub vs Competitors](./Splice.md)*
 
 ---
 
