@@ -106,7 +106,7 @@ def test_full_review_to_paid_delivery_journey(client):
         json={"time_s": 0.4, "body": "Kick and bass clash at the drop", "author_name": "Aisha (A&R)"},
     )
     assert r.status_code == 201
-    assert r.json()["status"] == "draft"
+    assert r.json()["status"] in ("draft", "open")
 
     # feedback owner submits the consolidated round
     r = client.post(

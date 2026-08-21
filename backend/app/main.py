@@ -56,6 +56,7 @@ from .routers import (
     agile_delivery,
     search_engine as search_engine_router,
     versions,
+    demo,
 )
 
 app = FastAPI(
@@ -79,6 +80,7 @@ app.include_router(files.router)
 app.include_router(diffs.router)
 app.include_router(assets.router)
 app.include_router(sessions.router)
+app.include_router(demo.router)
 app.include_router(change_orders.router)
 app.include_router(release_packages.router)
 app.include_router(comparisons.router)
