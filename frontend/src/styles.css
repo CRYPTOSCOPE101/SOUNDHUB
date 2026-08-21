@@ -76,16 +76,18 @@ body {
   margin: 0;
   background: var(--bg);
   color: #000000;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 20px;
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   transition: background 0.2s, color 0.2s;
 }
 
 /* editorial display type (2026 trend): Fraunces variable serif for
    headline moments, system stack for body/UI. Loaded via Google Fonts. */
 :root {
-  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 :root[data-theme="dark"] body {
