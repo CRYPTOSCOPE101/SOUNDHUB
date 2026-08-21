@@ -17,57 +17,56 @@
 
 # 🎛 SoundHub — GitHub for Music
 
-**То же самое, что GitHub, но не для разработчиков, а для музыкальных продюсеров, саунд-дизайнеров, звукоинженеров и всех, кто создаёт музыку.**
+**The same thing as GitHub, but not for developers — for music producers, sound designers, audio engineers, and everyone who makes music.**
 
-GitHub изменил, как пишут код. SoundHub меняет, как создают музыку.
+GitHub changed how code is written. SoundHub is changing how music is made.
 
 ---
 
-## Аналогия
+## The Analogy
 
-| GitHub (для кода) | SoundHub (для музыки) |
+| GitHub (for code) | SoundHub (for music) |
 |-------------------|----------------------|
-| Хранение кода | Хранение DAW-проектов (.als, .flp, .logic, .song, .rpp, .cpr) |
-| Коммиты | Коммиты (снимки музыкальных проектов) |
-| Ветки | Ветки (параллельные версии трека) |
-| Pull Requests | Pull Requests (ревью микса) |
-| Branch Protection | Branch Protection (защита финального микса) |
+| Code storage | DAW project storage (.als, .flp, .logic, .song, .rpp, .cpr) |
+| Commits | Commits (snapshots of music projects) |
+| Branches | Branches (parallel versions of a track) |
+| Pull Requests | Pull Requests (mix review) |
+| Branch Protection | Branch Protection (protect final mix) |
 | CI/CD | Audio CI (LUFS, True Peak, sample rate) |
-| Issues | Tasks (задачи по проекту) |
+| Issues | Tasks (project tasks) |
 | Wiki | Wiki (notes, brief, references) |
-| Projects (Kanban) | Kanban (управление релизами) |
-| Code Review | Waveform Review (комментарии на таймлайне) |
-| Diff | DAW Diff (сравнение треков, плагинов, BPM) |
-| Merge | Merge (слияние версий микса) |
-| Releases | Release Packages (дистрибуция релизов) |
+| Projects (Kanban) | Kanban (release management) |
+| Code Review | Waveform Review (timeline comments) |
+| Diff | DAW Diff (compare tracks, plugins, BPM) |
+| Merge | Merge (merge mix versions) |
+| Releases | Release Packages (release distribution) |
 | Actions (CI/CD) | Workflows (YAML-based pipelines) |
 | Dependabot | Security Alerts |
-| Codespaces | Cloud IDE (планируется) |
 
 ---
 
-## Масштаб платформы
+## Platform Scale
 
-| Компонент | Количество | Описание |
-|-----------|:----------:|----------|
-| **Database Models** | 122 | Таблицы SQLAlchemy |
+| Component | Count | Description |
+|-----------|:-----:|-------------|
+| **Database Models** | 122 | SQLAlchemy tables |
 | **API Endpoints** | 364 | REST + GraphQL |
-| **Routers** | 48 | Модули API |
-| **Services** | 20+ | Бизнес-логика |
+| **Routers** | 48 | API modules |
+| **Services** | 20+ | Business logic |
 
 ---
 
-## Ключевые особенности
+## Key Features
 
-### 🎛 Git-like Version Control для DAW
+### 🎛 Git-like Version Control for DAW
 
 ```
 main ← release/v2.0 ← feat/new-drums ← hotfix/volume-fix
 ```
 
-Ветки. Мержи. Diff. Каждое сохранение — это коммит с parent chain. Можно откатиться к любой версии.
+Branches. Merges. Diff. Every save is a commit with a parent chain. You can revert to any version.
 
-**Поддерживаемые DAW:**
+**Supported DAWs:**
 - Ableton Live (`.als`)
 - FL Studio (`.flp`)
 - Logic Pro (`.logic`)
@@ -75,144 +74,144 @@ main ← release/v2.0 ← feat/new-drums ← hotfix/volume-fix
 - REAPER (`.rpp`)
 - Cubase (`.cpr`)
 
-### 🎵 Pull Requests для Музыки
+### 🎵 Pull Requests for Music
 
-Коллега загрузил новые стемы? Создаёт PR. Вы прослушиваете, оставляете комментарии на waveform, одобряете или запрашиваете изменения. Как code review, но для музыки.
+Colleague uploaded new stems? Creates a PR. You listen, leave comments on the waveform, approve or request changes. Like code review, but for music.
 
 ### ✅ Audio CI/CD
 
-При каждом push автоматически проверяется:
+On every push, automatically checks:
 
-| Проверка | Норма | Статус |
-|----------|-------|--------|
-| Integrated LUFS | -16 до -12 | ✅ / ⚠️ / ❌ |
+| Check | Target | Status |
+|-------|--------|--------|
+| Integrated LUFS | -16 to -12 | ✅ / ⚠️ / ❌ |
 | True Peak | < -1.0 dBTP | ✅ / ⚠️ / ❌ |
 | Sample Rate | ≥ 44100 Hz | ✅ / ❌ |
 | Channels | 1-2 (mono/stereo) | ✅ / ⚠️ |
 
+Red = mix not ready. Green = ready to release.
+
 ### 🛡 Branch Protection
 
-Защитите main-ветку: требуйте PR, назначайте ревьюеров, блокируйте force push.
+Protect your main branch: require PRs, assign reviewers, block force push.
 
 ### 📋 Project Management
 
-- **Kanban Boards** — визуализация задач
-- **Tasks (Issues)** — GitHub Issues для музыки
-- **Wiki** — документация проекта с ревизиями
-- **Epics** — крупные задачи
-- **Roadmaps** — планы развития (визуальная шкала)
-- **Milestones** — дедлайны
-- **Calendar** — события и повторения
-- **Time Tracking** — учёт времени
-- **Discussions** — форум для обсуждений
-- **Requirements** — требования к проекту
-- **OKRs** — цели и ключевые результаты
+- **Kanban Boards** — visualize tasks
+- **Tasks (Issues)** — GitHub Issues for music
+- **Wiki** — project documentation with revisions
+- **Epics** — large tasks
+- **Roadmaps** — visual timeline of plans
+- **Milestones** — deadlines
+- **Calendar** — events and recurrence
+- **Time Tracking** — time logging
+- **Discussions** — forum for conversations
+- **Requirements** — project requirements
+- **OKRs** — objectives and key results
 
 ### 🎤 Review Workflow
 
-- **Review Sessions** — раунды фидбека с approval chain
-- **Review Rounds** — нумерованные раунды
-- **Approvals** — approve/reject с комментариями
-- **Change Orders** — заказы на изменения с ценами
-- **Share Links** — публичные ссылки с паролем и сроком действия
-- **Waveform Comments** — таймстемповые комментарии
-- **Voice Comments** — голосовые комментарии
-- **Watermarking** — автоматическая маркировка preview-версий
+- **Review Sessions** — feedback rounds with approval chain
+- **Review Rounds** — numbered rounds
+- **Approvals** — approve/reject with comments
+- **Change Orders** — change orders with pricing
+- **Share Links** — public links with password and expiry
+- **Waveform Comments** — timestamped comments
+- **Voice Comments** — voice feedback
+- **Watermarking** — automatic preview watermarking
 
 ### 📦 Release Management
 
-- **Release Packages** — сборка релиза с deliverables
-- **Immutable Releases** — неизменяемые релизы
-- **Delivery Tokens** — безопасная выдача файлов
-- **Invoice / Billing** — Stripe интеграция
-- **Preflight QC** — проверка качества перед релизом
+- **Release Packages** — assemble releases with deliverables
+- **Immutable Releases** — immutable releases
+- **Delivery Tokens** — secure file delivery
+- **Invoice / Billing** — Stripe integration
+- **Preflight QC** — quality checks before release
 
 ### 🔍 DAW-Aware Intelligence
 
-- **DAW Parsing** — парсинг .als, .flp, .logic, .song, .rpp, .cpr
-- **Smart Diff** — сравнение треков, плагинов, BPM, структуры
-- **Stem Management** — логические имена стемов (Kick→drums, Bass→bass)
-- **Reference Track Comparison** — A/B сравнение с level matching
+- **DAW Parsing** — parse .als, .flp, .logic, .song, .rpp, .cpr
+- **Smart Diff** — compare tracks, plugins, BPM, structure
+- **Stem Management** — logical stem names (Kick→drums, Bass→bass)
+- **Reference Track Comparison** — A/B comparison with level matching
 
 ### 🔒 Enterprise Security
 
-- **SAST/DAST Scanning** — статический и динамический анализ
-- **Secrets Management** — зашифрованные секреты
-- **Audit Log** — журнал аудита
-- **IP Allow List** — белый список IP
-- **Custom Roles** — кастомные роли
+- **SAST/DAST Scanning** — static and dynamic analysis
+- **Secrets Management** — encrypted secrets
+- **Audit Log** — audit trail
+- **IP Allow List** — IP whitelist
+- **Custom Roles** — custom roles
 - **Environments** — staging/production
-- **Push Rules** — правила валидации коммитов
+- **Push Rules** — commit validation rules
 
 ### 🔄 CI/CD & DevOps
 
-- **Workflows** — YAML-based пайплайны
-- **Pipeline Artifacts** — артефакты сборки
-- **Container Registry** — Docker imágenes
-- **Feature Flags** — управление фичами
-- **Error Tracking** — отслеживание ошибок
-- **Incident Management** — управление инцидентами
-- **On-call Schedules** — дежурства
-- **Status Page** — страница статуса
+- **Workflows** — YAML-based pipelines
+- **Pipeline Artifacts** — build artifacts
+- **Container Registry** — Docker images
+- **Feature Flags** — feature management
+- **Error Tracking** — error tracking
+- **Incident Management** — incident management
+- **On-call Schedules** — on-call rotations
+- **Status Page** — status page
 
 ### 🧪 Testing
 
-- **Test Plans** — планы тестирования
-- **Test Suites** — наборы тестов
-- **Test Cases** — тест-кейсы
-- **Test Results** — результаты
-- **Test Runs** — запуски
-- **Load Testing** — нагрузочное тестирование
+- **Test Plans** — test plans
+- **Test Suites** — test suites
+- **Test Cases** — test cases
+- **Test Results** — results
+- **Load Testing** — load testing
 
 ### 🌐 Code Intelligence
 
-- **Code Search** — полнотекстовый поиск (FTS5)
-- **Code Insights** — отчёты по коду
-- **Code Owners** — автоматические ревьюеры
+- **Code Search** — full-text search (FTS5)
+- **Code Insights** — code reports
+- **Code Owners** — automatic reviewers
 
 ### 📊 Analytics & Monitoring
 
-- **Activity Feed** — лента активности
-- **Analytics** — аналитика проектов
-- **Notifications** — уведомления
-- **Reminders** — автоматические напоминания
+- **Activity Feed** — activity timeline
+- **Analytics** — project analytics
+- **Notifications** — notifications
+- **Reminders** — automated reminders
 
 ### 🏢 Collaboration
 
-- **Teams** — команды с ролями
-- **Session Groups** — группы сессий
-- **Session Tags** — теги для организации
-- **Session Templates** — шаблоны сессий
-- **Portfolio** — публичные сессии
-- **References** — референсные треки
+- **Teams** — teams with roles
+- **Session Groups** — session groups
+- **Session Tags** — tags for organization
+- **Session Templates** — session templates
+- **Portfolio** — public sessions
+- **References** — reference tracks
 
 ### 📱 Integrations
 
-- **Webhooks** — HTTP-уведомления
-- **GraphQL API** — расширенный API
-- **Full-text Search** — поиск по всему
-- **Metadata** — метаданные проектов
-- **Extensions** — расширения платформы
+- **Webhooks** — HTTP notifications
+- **GraphQL API** — extended API
+- **Full-text Search** — search across everything
+- **Metadata** — project metadata
+- **Extensions** — platform extensions
 
 ### 💰 Packages & Distribution
 
 - **Packages** — sample packs, presets, plugins
-- **Gists** — сниппеты
-- **Sponsors** — спонсорство
-- **Artifact Feeds** — фиды артефактов
+- **Gists** — snippets
+- **Sponsors** — sponsorship
+- **Artifact Feeds** — artifact feeds
 
 ### 🏃 Agile Delivery
 
-- **Sprints** — спринты
-- **Retrospectives** — ретроспективы
-- **Story Points** —.story points
-- **Task Groups** — группы задач
+- **Sprints** — sprints
+- **Retrospectives** — retrospectives
+- **Story Points** — story points
 
 ---
 
-## Как это работает
+## How It Works
 
-### 1. Создайте проект
+### 1. Create a project
 
 ```bash
 cd backend
@@ -220,24 +219,24 @@ cd backend
 ./snd push ./Track_v12.als --project "my-track" --branch main --message "initial"
 ```
 
-### 2. Загрузите новую версию
+### 2. Upload a new version
 
 ```bash
 ./snd push ./Track_v13.als --project "my-track" --branch feat/new-drums --message "v13: new drums"
 ```
 
-### 3. CI проверяет качество
+### 3. CI checks quality
 
 ```
-✅ LUFS -14.5 (в пределах нормы)
-✅ True Peak -1.2 dBTP (безопасно)
+✅ LUFS -14.5 (within range)
+✅ True Peak -1.2 dBTP (safe)
 ✅ Sample Rate 48000 Hz
 ✅ Channels 2 (stereo)
 ```
 
 ### 4. Pull Request → Review → Merge
 
-Коллега прослушивает, комментирует на waveform, одобряет → мерж в main.
+Colleague listens, comments on waveform, approves → merge to main.
 
 ---
 
@@ -296,12 +295,12 @@ cd backend
 
 ---
 
-## Полная таблица возможностей
+## Feature Matrix
 
 ### Version Control
 
-| Возможность | Статус |
-|-------------|:------:|
+| Feature | Status |
+|---------|:------:|
 | Git branches & merges | ✅ |
 | Commits with parent chain | ✅ |
 | File snapshots (content-addressed) | ✅ |
@@ -315,8 +314,8 @@ cd backend
 
 ### Audio
 
-| Возможность | Статус |
-|-------------|:------:|
+| Feature | Status |
+|---------|:------:|
 | DAW parsing (6 formats) | ✅ |
 | Audio CI checks (LUFS/True Peak) | ✅ |
 | Waveform comments | ✅ |
@@ -328,8 +327,8 @@ cd backend
 
 ### Review & Approval
 
-| Возможность | Статус |
-|-------------|:------:|
+| Feature | Status |
+|---------|:------:|
 | Review Sessions | ✅ |
 | Review Rounds | ✅ |
 | Approval flow | ✅ |
@@ -341,8 +340,8 @@ cd backend
 
 ### Project Management
 
-| Возможность | Статус |
-|-------------|:------:|
+| Feature | Status |
+|---------|:------:|
 | Kanban Boards | ✅ |
 | Tasks (Issues) | ✅ |
 | Wiki (with revisions) | ✅ |
@@ -357,8 +356,8 @@ cd backend
 
 ### Security & DevOps
 
-| Возможность | Статус |
-|-------------|:------:|
+| Feature | Status |
+|---------|:------:|
 | Workflows (CI/CD) | ✅ |
 | SAST/DAST | ✅ |
 | Security Alerts | ✅ |
@@ -376,8 +375,8 @@ cd backend
 
 ### Testing
 
-| Возможность | Статус |
-|-------------|:------:|
+| Feature | Status |
+|---------|:------:|
 | Test Plans | ✅ |
 | Test Suites | ✅ |
 | Test Cases | ✅ |
@@ -386,8 +385,8 @@ cd backend
 
 ### Collaboration
 
-| Возможность | Статус |
-|-------------|:------:|
+| Feature | Status |
+|---------|:------:|
 | Teams (with roles) | ✅ |
 | Session Groups | ✅ |
 | Session Tags | ✅ |
@@ -399,8 +398,8 @@ cd backend
 
 ### API & Integrations
 
-| Возможность | Статус |
-|-------------|:------:|
+| Feature | Status |
+|---------|:------:|
 | REST API (364 endpoints) | ✅ |
 | GraphQL API | ✅ |
 | Full-text Search (FTS5) | ✅ |
@@ -409,8 +408,8 @@ cd backend
 
 ### Packages & Distribution
 
-| Возможность | Статус |
-|-------------|:------:|
+| Feature | Status |
+|---------|:------:|
 | Packages (sample packs) | ✅ |
 | Gists | ✅ |
 | Sponsors | ✅ |
@@ -418,8 +417,8 @@ cd backend
 
 ### Agile Delivery
 
-| Возможность | Статус |
-|-------------|:------:|
+| Feature | Status |
+|---------|:------:|
 | Sprints | ✅ |
 | Retrospectives | ✅ |
 | Story Points | ✅ |
@@ -428,7 +427,7 @@ cd backend
 
 ## Roadmap
 
-### ✅ Shipped (все вышеперечисленное)
+### ✅ Shipped (all of the above)
 
 ### 🔄 In Progress
 - Desktop auto-sync CLI
