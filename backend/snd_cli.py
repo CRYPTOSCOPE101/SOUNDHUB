@@ -161,8 +161,9 @@ def _preflight_daw_readable(path: str) -> None:
         data = f.read()
     fmt = detect_format(path, data)
     if fmt is None:
-        raise CliError(f"Cannot read {path} as a DAW project file — unknown format")
-    if get_daw_info(path, data) is None:
+        raise CliError(f"Not found: {path}")
+    info = get_daw_info(path, data)
+    if info is None or (isinstance(info, dict) and info.get("error")):
         raise CliError(f"Cannot parse {path} as {fmt.upper()} — the file looks corrupt or truncated")
 
 
