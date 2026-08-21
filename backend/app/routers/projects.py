@@ -8,6 +8,7 @@ GitHub-quality branch management:
   - compare (ahead/behind/files changed)
 """
 import hashlib
+import json
 import re
 from datetime import datetime, timezone
 
@@ -24,6 +25,7 @@ from ..models import (
     Project,
     User,
     utcnow,
+    AudioCheck,
 )
 from ..schemas import (
     BranchCreate,
@@ -43,7 +45,8 @@ from ..schemas import (
     TreeOut,
 )
 from ..security import get_current_user
-from ..services import storage, versioning
+from ..services import storage, versioning, loudness
+from ..config import MAX_UPLOAD_SIZE
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -582,12 +585,23 @@ def push_branch(
         db.flush()
 
     # ── Upload files and create commit ──
-    uploaded: dict[str, bool] = {}
+    has_alsa = False
+    has_master = False
+    stem_count = 0
     dedup_count = 0
     file_snapshots: list[tuple[str, str, int]] = []  # (path, blob_sha, size)
+    review_url: str | None = None
+    version_id: int | None = None
+    session: object | None = None
+    session_id: int | None = None
+    manifest_stored: bool = False
 
+    total_upload_size = 0
     for upload in files:
         data = upload.file.read()
+        total_upload_size += len(data)
+        if total_upload_size > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail="File too large")
         blob_sha = storage.put_blob(data)
 
         # Check if blob already exists (dedup)
@@ -598,13 +612,52 @@ def push_branch(
             dedup_count += 1
 
         filename = (upload.filename or "file").replace("\\", "/")
+        # Prevent path traversal attacks
+        if ".." in filename or filename.startswith("/"):
+            raise HTTPException(status_code=400, detail="Invalid filename")
         ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
         if ext in DAW_EXTENSIONS:
-            uploaded[ext] = True
-        else:
-            uploaded["other"] = True
+            if ext == "als":
+                has_alsa = True
+        # Note: We don't track other file types in the uploaded dict for the API response
 
         file_snapshots.append((filename, blob_sha, len(data)))
+
+    # ── Validate audio extension before processing ──
+    AUDIO_EXTENSIONS = {"wav", "mp3", "flac", "aiff", "aif", "ogg", "m4a", "aac"}
+    if audio is not None:
+        audio_ext = (audio.filename or "master.wav").rsplit(".", 1)[-1].lower()
+        if audio_ext not in AUDIO_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported audio extension '.{audio_ext}' for master. Supported: {', '.join(sorted(AUDIO_EXTENSIONS))}",
+            )
+    # Stems require a master
+    if stems and not audio:
+        raise HTTPException(status_code=400, detail="Stems require --audio (master)")
+    # Validate stem extensions
+    for stem in stems:
+        stem_ext = (stem.filename or "stem.wav").rsplit(".", 1)[-1].lower()
+        if stem_ext not in AUDIO_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported stem extension '.{stem_ext}'. Supported: {', '.join(sorted(AUDIO_EXTENSIONS))}",
+            )
+
+    # ── Process manifest if provided ──
+    if manifest:
+        try:
+            # Validate that manifest is valid JSON
+            json.loads(manifest)
+            manifest_data = manifest.encode('utf-8')
+            manifest_sha = storage.put_blob(manifest_data)
+            file_snapshots.append(("SOUNDHUB-MANIFEST.json", manifest_sha, len(manifest_data)))
+            manifest_stored = True
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid manifest JSON")
+        except Exception as e:
+            # If manifest processing fails, reject the request
+            raise HTTPException(status_code=400, detail="Invalid manifest")
 
     # ── Create commit ──
     commit = Commit(
@@ -627,10 +680,120 @@ def push_branch(
     branch_obj.head_commit_id = commit.id
     project.updated_at = utcnow()
 
-    # ── Review session (if audio provided) ──
-    review_url: str | None = None
-    version_id: int | None = None
+    # ── Auto-trigger CI checks for audio files in regular uploads ──
+    audio_file_snapshots = [
+        (path, blob_sha, size) for path, blob_sha, size in file_snapshots
+        if any(path.lower().endswith(ext) for ext in {'.wav', '.mp3', '.flac', '.aiff', '.ogg', '.m4a', '.aac'})
+    ]
 
+    for path, blob_sha, size in audio_file_snapshots:
+        try:
+            audio_data = storage.read_blob(blob_sha)
+            loudness_data = loudness.analyse(audio_data)
+
+            # LUFS check
+            integrated_lufs = loudness_data.get('integrated_lufs')
+            if integrated_lufs is not None:
+                lufs_check = AudioCheck(
+                    commit_id=commit.id,
+                    check_type="lufs",
+                    value=str(integrated_lufs),
+                    expected="-16 to -12 LUFS (optimal for streaming)"
+                )
+                if -16 <= integrated_lufs <= -12:
+                    lufs_check.status = "pass"
+                    lufs_check.message = f"LUFS {integrated_lufs:.1f} is within target range (-16 to -12)"
+                elif -18 <= integrated_lufs <= -10:
+                    lufs_check.status = "warn"
+                    lufs_check.message = f"LUFS {integrated_lufs:.1f} is outside optimal range but acceptable"
+                else:
+                    lufs_check.status = "fail"
+                    lufs_check.message = f"LUFS {integrated_lufs:.1f} is too {'quiet' if integrated_lufs < -18 else 'loud'}"
+                db.add(lufs_check)
+
+            # True Peak check
+            true_peak_dbtp = loudness_data.get('true_peak_dbtp')
+            if true_peak_dbtp is not None:
+                tp_check = AudioCheck(
+                    commit_id=commit.id,
+                    check_type="true_peak",
+                    value=str(true_peak_dbtp),
+                    expected="< -1.0 dBTP (safe), < 0.0 dBTP (warning)"
+                )
+                if true_peak_dbtp < -1.0:
+                    tp_check.status = "pass"
+                    tp_check.message = f"True Peak {true_peak_dbtp:.2f} dBTP is safe"
+                elif true_peak_dbtp < 0.0:
+                    tp_check.status = "warn"
+                    tp_check.message = f"True Peak {true_peak_dbtp:.2f} dBTP is close to clipping"
+                else:
+                    tp_check.status = "fail"
+                    tp_check.message = f"True Peak {true_peak_dbtp:.2f} dBTP — clipping detected!"
+                db.add(tp_check)
+
+            # Format check
+            ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+            format_check = AudioCheck(
+                commit_id=commit.id,
+                check_type="format",
+                value=ext,
+                expected="wav/flac/aiff/mp3/ogg/m4a/aac"
+            )
+            if ext in {"wav", "flac", "aiff", "mp3", "ogg", "m4a", "aac"}:
+                format_check.status = "pass"
+                format_check.message = f"Format '{ext}' is supported"
+            else:
+                format_check.status = "fail"
+                format_check.message = f"Format '{ext}' is not supported"
+            db.add(format_check)
+
+            # Sample rate check
+            sample_rate = loudness_data.get('sample_rate')
+            if sample_rate is not None:
+                sr_check = AudioCheck(
+                    commit_id=commit.id,
+                    check_type="sample_rate",
+                    value=str(sample_rate),
+                    expected="≥ 44100 Hz"
+                )
+                if sample_rate >= 44100:
+                    sr_check.status = "pass"
+                    sr_check.message = f"Sample rate {sample_rate} Hz is OK"
+                else:
+                    sr_check.status = "fail"
+                    sr_check.message = f"Sample rate {sample_rate} Hz is below minimum 44100 Hz"
+                db.add(sr_check)
+
+            # Channels check
+            channels = loudness_data.get('channels')
+            if channels is not None:
+                ch_check = AudioCheck(
+                    commit_id=commit.id,
+                    check_type="channels",
+                    value=str(channels),
+                    expected="1 or 2 channels (mono/stereo)"
+                )
+                if channels in (1, 2):
+                    ch_check.status = "pass"
+                    ch_check.message = f"{channels} channel(s) — mono/stereo"
+                else:
+                    ch_check.status = "warn"
+                    ch_check.message = f"{channels} channel(s) — unusual channel count"
+                db.add(ch_check)
+
+        except Exception as e:
+            # If audio analysis fails, create a failed check
+            error_check = AudioCheck(
+                commit_id=commit.id,
+                check_type="lufs",
+                value="",
+                expected="Analysis failed"
+            )
+            error_check.status = "fail"
+            error_check.message = f"Audio analysis failed: {str(e)}"
+            db.add(error_check)
+
+    # ── Review session (if audio provided) ──
     if audio is not None:
         from ..models import ReviewSession, ReviewVersion
         import secrets as _secrets
@@ -639,19 +802,55 @@ def push_branch(
         audio_sha = storage.put_blob(audio_data)
         audio_ext = (audio.filename or "audio.wav").rsplit(".", 1)[-1].lower()
 
-        session = ReviewSession(
-            owner_id=user.id,
-            project_id=project_id,
-            name=message[:160] or f"Push from {branch}",
-            share_token=_secrets.token_urlsafe(16),
+        # Check audio blob dedup (check both FileSnapshot and ReviewVersion)
+        existing_audio = db.scalar(
+            select(FileSnapshot).where(FileSnapshot.blob_sha == audio_sha).limit(1)
         )
-        db.add(session)
-        db.flush()
+        if not existing_audio:
+            from ..models import ReviewVersion as _RV
+            existing_audio = db.scalar(
+                select(_RV).where(_RV.blob_sha == audio_sha).limit(1)
+            )
+        if existing_audio:
+            dedup_count += 1
+
+        session = None
+        if audio is not None:
+            # Look for an existing session in_review for this project and owner
+            existing_session = db.scalar(
+                select(ReviewSession)
+                .where(
+                    ReviewSession.project_id == project_id,
+                    ReviewSession.owner_id == user.id,
+                    ReviewSession.status == "in_review",
+                )
+                .order_by(ReviewSession.id.desc())  # get the most recent
+                .limit(1)
+            )
+            if existing_session is not None:
+                session = existing_session
+            else:
+                session = ReviewSession(
+                    owner_id=user.id,
+                    project_id=project_id,
+                    name=message[:160] or f"Push from {branch}",
+                    share_token=_secrets.token_urlsafe(16),
+                    share_permission="download",
+                )
+                db.add(session)
+                db.flush()
+
+        # Determine the next version number for this session
+        max_number = db.scalar(
+            select(func.max(ReviewVersion.number))
+            .where(ReviewVersion.session_id == session.id)
+        )
+        next_number = (max_number or 0) + 1
 
         rv = ReviewVersion(
             session_id=session.id,
-            number=1,
-            label=f"v1",
+            number=next_number,
+            label=f"v{next_number}",
             message=message,
             filename=audio.filename or f"master.{audio_ext}",
             blob_sha=audio_sha,
@@ -665,6 +864,181 @@ def push_branch(
 
         version_id = rv.id
         review_url = f"/r/{session.share_token}"
+        session_id = session.id
+        has_master = True
+
+        # Audio CI checks for the dedicated audio upload
+        try:
+            loudness_data = loudness.analyse(audio_data)
+
+            # LUFS check
+            integrated_lufs = loudness_data.get('integrated_lufs')
+            if integrated_lufs is not None:
+                lufs_check = AudioCheck(
+                    commit_id=commit.id,
+                    check_type="lufs",
+                    value=str(integrated_lufs),
+                    expected="-16 to -12 LUFS (optimal for streaming)"
+                )
+                if -16 <= integrated_lufs <= -12:
+                    lufs_check.status = "pass"
+                    lufs_check.message = f"LUFS {integrated_lufs:.1f} is within target range (-16 to -12)"
+                elif -18 <= integrated_lufs <= -10:
+                    lufs_check.status = "warn"
+                    lufs_check.message = f"LUFS {integrated_lufs:.1f} is outside optimal range but acceptable"
+                else:
+                    lufs_check.status = "fail"
+                    lufs_check.message = f"LUFS {integrated_lufs:.1f} is too {'quiet' if integrated_lufs < -18 else 'loud'}"
+                db.add(lufs_check)
+
+            # True Peak check
+            true_peak_dbtp = loudness_data.get('true_peak_dbtp')
+            if true_peak_dbtp is not None:
+                tp_check = AudioCheck(
+                    commit_id=commit.id,
+                    check_type="true_peak",
+                    value=str(true_peak_dbtp),
+                    expected="< -1.0 dBTP (safe), < 0.0 dBTP (warning)"
+                )
+                if true_peak_dbtp < -1.0:
+                    tp_check.status = "pass"
+                    tp_check.message = f"True Peak {true_peak_dbtp:.2f} dBTP is safe"
+                elif true_peak_dbtp < 0.0:
+                    tp_check.status = "warn"
+                    tp_check.message = f"True Peak {true_peak_dbtp:.2f} dBTP is close to clipping"
+                else:
+                    tp_check.status = "fail"
+                    tp_check.message = f"True Peak {true_peak_dbtp:.2f} dBTP — clipping detected!"
+                db.add(tp_check)
+
+            # Format check
+            ext = audio_ext
+            format_check = AudioCheck(
+                commit_id=commit.id,
+                check_type="format",
+                value=ext,
+                expected="wav/flac/aiff/mp3/ogg/m4a/aac"
+            )
+            if ext in {"wav", "flac", "aiff", "mp3", "ogg", "m4a", "aac"}:
+                format_check.status = "pass"
+                format_check.message = f"Format '{ext}' is supported"
+            else:
+                format_check.status = "fail"
+                format_check.message = f"Format '{ext}' is not supported"
+            db.add(format_check)
+
+            # Sample rate check
+            sample_rate = loudness_data.get('sample_rate')
+            if sample_rate is not None:
+                sr_check = AudioCheck(
+                    commit_id=commit.id,
+                    check_type="sample_rate",
+                    value=str(sample_rate),
+                    expected="≥ 44100 Hz"
+                )
+                if sample_rate >= 44100:
+                    sr_check.status = "pass"
+                    sr_check.message = f"Sample rate {sample_rate} Hz is OK"
+                else:
+                    sr_check.status = "fail"
+                    sr_check.message = f"Sample rate {sample_rate} Hz is below minimum 44100 Hz"
+                db.add(sr_check)
+
+            # Channels check
+            channels = loudness_data.get('channels')
+            if channels is not None:
+                ch_check = AudioCheck(
+                    commit_id=commit.id,
+                    check_type="channels",
+                    value=str(channels),
+                    expected="1 or 2 channels (mono/stereo)"
+                )
+                if channels in (1, 2):
+                    ch_check.status = "pass"
+                    ch_check.message = f"{channels} channel(s) — mono/stereo"
+                else:
+                    ch_check.status = "warn"
+                    ch_check.message = f"{channels} channel(s) — unusual channel count"
+                db.add(ch_check)
+
+        except Exception as e:
+            # If audio analysis fails, create a failed check
+            error_check = AudioCheck(
+                commit_id=commit.id,
+                check_type="lufs",
+                value="",
+                expected="Analysis failed"
+            )
+            error_check.status = "fail"
+            error_check.message = f"Audio analysis failed: {str(e)}"
+            db.add(error_check)
+
+        # Mapping from common stem filename prefixes to standardized logical names
+        stem_name_mapping = {
+            # Drum variations
+            "kick": "drums",
+            "kick in": "drums",
+            "kick out": "drums",
+            "snare": "drums",
+            "snare top": "drums",
+            "snare bottom": "drums",
+            "tom": "drums",
+            "tom 1": "drums",
+            "tom 2": "drums",
+            "floor tom": "drums",
+            "hi hat": "drums",
+            "hihat": "drums",
+            "hat": "drums",
+            "ride": "drums",
+            "crash": "drums",
+            "cymbal": "drums",
+            "drum": "drums",
+            "drums": "drums",
+            "percussion": "drums",
+            "perc": "drums",
+
+            # Bass variations
+            "bass": "bass",
+            "bass guitar": "bass",
+            "electric bass": "bass",
+            "acoustic bass": "bass",
+            "sub bass": "bass",
+            "subbass": "bass",
+
+            # Vocal variations
+            "vocal": "vocal",
+            "vocals": "vocal",
+            "vox": "vocal",
+            "voice": "vocal",
+            "singing": "vocal",
+            "singer": "vocal",
+            "lead vocal": "vocal",
+            "backing vocal": "vocal",
+            "harmony": "vocal",
+
+            # Guitar variations
+            "guitar": "guitar",
+            "rhythm guitar": "guitar",
+            "lead guitar": "guitar",
+            "acoustic guitar": "guitar",
+            "electric guitar": "guitar",
+            "gtr": "guitar",
+
+            # Keyboard variations
+            "keys": "keys",
+            "keyboard": "keys",
+            "piano": "keys",
+            "synth": "keys",
+            "synthesizer": "keys",
+            "organ": "keys",
+
+            # Other common stems
+            "strings": "strings",
+            "horns": "horns",
+            "brass": "horns",
+            "sax": "horns",
+            "saxophone": "horns",
+        }
 
         # Upload stems
         stem_count = 0
@@ -672,20 +1046,33 @@ def push_branch(
             stem_data = stem_upload.file.read()
             stem_sha = storage.put_blob(stem_data)
             from ..models import StemAsset
+
+            # Extract filename without extension and convert to lowercase for mapping
+            filename_stem = (stem_upload.filename or "stem").rsplit(".", 1)[0].lower().strip()
+
+            # Try to map to a standardized logical name, fallback to original stem
+            logical_name = stem_name_mapping.get(filename_stem, filename_stem)
+
             db.add(StemAsset(
                 version_id=rv.id,
-                logical_name=(stem_upload.filename or "stem").rsplit(".", 1)[0],
+                logical_name=logical_name,
                 display_name=stem_upload.filename or "stem",
                 blob_sha=stem_sha,
                 size=len(stem_data),
                 audio_format=(stem_upload.filename or "stem.wav").rsplit(".", 1)[-1].lower(),
             ))
             stem_count += 1
-        if stem_count:
-            uploaded["stems"] = stem_count
 
     db.commit()
 
+    # Build the uploaded dict for the API response
+    uploaded = {
+        "als": has_alsa,
+        "master": has_master,
+        "stems": stem_count
+    }
+
+    print(f"DEBUG: uploaded dict at return: {uploaded}")
     return PushOut(
         ok=True,
         project_id=project_id,
@@ -696,7 +1083,10 @@ def push_branch(
         deduplicated=dedup_count,
         review_url=review_url,
         version_id=version_id,
+        session_id=session_id,
+        share_token=session.share_token if session else None,
         message=message,
+        manifest_stored=manifest_stored,
     )
 
 

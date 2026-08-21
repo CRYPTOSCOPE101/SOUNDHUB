@@ -55,6 +55,7 @@ from .routers import (
     deployments_artifacts,
     agile_delivery,
     search_engine as search_engine_router,
+    versions,
 )
 
 app = FastAPI(
@@ -117,6 +118,7 @@ app.include_router(test_plans.router)
 app.include_router(deployments_artifacts.router)
 app.include_router(agile_delivery.router)
 app.include_router(search_engine_router.router)
+app.include_router(versions.router)
 
 # GraphQL endpoint
 from strawberry.fastapi import GraphQLRouter
