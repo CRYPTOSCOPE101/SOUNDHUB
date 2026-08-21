@@ -30,9 +30,7 @@
 </a>
 </div>
 
-# 🎛 What is SoundHub?
 
-The user wants a detailed description of SoundHub, modeled after the detailed GitHub description I gave earlier, but adapted for music producers and sound designers instead of developers.
 
 
 
