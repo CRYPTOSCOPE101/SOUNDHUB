@@ -606,6 +606,7 @@ def test_asset_download_token(client):
 
     # Create a test user and package in the database
     db_session = database.SessionLocal()
+    test_user_id = None
     try:
         # Create a test user
         test_user = User(
@@ -615,6 +616,7 @@ def test_asset_download_token(client):
         db_session.add(test_user)
         db_session.commit()
         db_session.refresh(test_user)
+        test_user_id = test_user.id
 
         # Create the package with ID=1 that the test expects
         test_package = Package(
@@ -642,7 +644,7 @@ def test_asset_download_token(client):
         db_session.close()
 
     # valid short-lived token (signed with the app secret)
-    token = catalog.make_download_token(cfg.SECRET_KEY, listing_id=1)
+    token = catalog.make_download_token(cfg.SECRET_KEY, listing_id=1, user_id=test_user_id)
     r = client.get("/api/assets/1/download", params={"token": token})
     assert r.status_code == 200
     assert r.headers["X-License"] == "Commercial"
@@ -660,7 +662,7 @@ def test_asset_download_token(client):
     # verify after time has moved beyond the expiry
     import time as _t
 
-    expired = catalog.make_download_token(cfg.SECRET_KEY, listing_id=1, expires_in=1)
+    expired = catalog.make_download_token(cfg.SECRET_KEY, listing_id=1, user_id=test_user_id, expires_in=1)
     old = _t.time
     _t.time = lambda: old() + 10000  # noqa: B023 — verification now sees t > exp
     try:
@@ -681,6 +683,7 @@ def test_asset_download64_base64(client):
 
     # Create a test user and package in the database
     db_session = database.SessionLocal()
+    test_user_id = None
     try:
         # Create a test user
         test_user = User(
@@ -690,6 +693,7 @@ def test_asset_download64_base64(client):
         db_session.add(test_user)
         db_session.commit()
         db_session.refresh(test_user)
+        test_user_id = test_user.id
 
         # Create the package with ID=1 that the test expects
         test_package = Package(
@@ -716,7 +720,7 @@ def test_asset_download64_base64(client):
     finally:
         db_session.close()
 
-    tok = catalog.make_download_token(cfg.SECRET_KEY, listing_id=1)
+    tok = catalog.make_download_token(cfg.SECRET_KEY, listing_id=1, user_id=test_user_id)
     r = client.get("/api/assets/1/download64", params={"token": tok})
     assert r.status_code == 200
     body = r.json()

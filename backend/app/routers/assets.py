@@ -262,15 +262,23 @@ def get_asset_preview(asset_id: int, request: Request, db: Session = Depends(get
 @router.get("/{asset_id}/download")
 def download_asset(asset_id: int, token: str, db: Session = Depends(get_db)):
     """Download an asset using a token."""
-    # Verify token format
+    # Verify token format: {listing_id}:{user_id}:{timestamp}:{signature}
     try:
         parts = token.split(":")
-        if len(parts) != 3:
+        if len(parts) == 4:
+            # New format with user_id
+            listing_id_str, user_id_str, timestamp_str, signature = parts
+            listing_id = int(listing_id_str)
+            user_id = int(user_id_str)
+            timestamp = int(timestamp_str)
+        elif len(parts) == 3:
+            # Legacy format without user_id
+            listing_id_str, timestamp_str, signature = parts
+            listing_id = int(listing_id_str)
+            timestamp = int(timestamp_str)
+            user_id = 0
+        else:
             raise HTTPException(status_code=401, detail="Invalid token")
-
-        listing_id_str, timestamp_str, signature = parts
-        listing_id = int(listing_id_str)
-        timestamp = int(timestamp_str)
     except (ValueError, IndexError):
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -280,7 +288,7 @@ def download_asset(asset_id: int, token: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Token expired")
 
     # Verify signature
-    data = f"{listing_id}:{timestamp}"
+    data = f"{listing_id}:{user_id}:{timestamp}" if user_id else f"{listing_id}:{timestamp}"
     expected_signature = hashlib.sha256((data + app_config.SECRET_KEY).encode()).hexdigest()
     if not hmac.compare_digest(expected_signature.encode(), signature.encode()):
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -354,15 +362,23 @@ def download_asset(asset_id: int, token: str, db: Session = Depends(get_db)):
 @router.get("/{asset_id}/download64")
 def download_asset_base64(asset_id: int, token: str, db: Session = Depends(get_db)):
     """Download an asset as base64 using a token."""
-    # Verify token format (same as download endpoint)
+    # Verify token format: {listing_id}:{user_id}:{timestamp}:{signature}
     try:
         parts = token.split(":")
-        if len(parts) != 3:
+        if len(parts) == 4:
+            # New format with user_id
+            listing_id_str, user_id_str, timestamp_str, signature = parts
+            listing_id = int(listing_id_str)
+            user_id = int(user_id_str)
+            timestamp = int(timestamp_str)
+        elif len(parts) == 3:
+            # Legacy format without user_id
+            listing_id_str, timestamp_str, signature = parts
+            listing_id = int(listing_id_str)
+            timestamp = int(timestamp_str)
+            user_id = 0
+        else:
             raise HTTPException(status_code=401, detail="Invalid token")
-
-        listing_id_str, timestamp_str, signature = parts
-        listing_id = int(listing_id_str)
-        timestamp = int(timestamp_str)
     except (ValueError, IndexError):
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -372,7 +388,7 @@ def download_asset_base64(asset_id: int, token: str, db: Session = Depends(get_d
         raise HTTPException(status_code=401, detail="Token expired")
 
     # Verify signature
-    data = f"{listing_id}:{timestamp}"
+    data = f"{listing_id}:{user_id}:{timestamp}" if user_id else f"{listing_id}:{timestamp}"
     expected_signature = hashlib.sha256((data + app_config.SECRET_KEY).encode()).hexdigest()
     if not hmac.compare_digest(expected_signature.encode(), signature.encode()):
         raise HTTPException(status_code=401, detail="Invalid token")

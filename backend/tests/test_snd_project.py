@@ -357,7 +357,7 @@ def test_push_two_versions_support_gapless_ab(client):
 
     # gapless A/B between the pushed versions (level-matched preview graph)
     r = client.post(
-        "/api/comparisons",
+        "/api/comparisons/versions",
         headers=_auth(token),
         json={
             "base_version_id": v1["version_id"],
