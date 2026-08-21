@@ -106,7 +106,10 @@ class PushOut(BaseModel):
     deduplicated: int = 0
     review_url: str | None = None
     version_id: int | None = None
+    session_id: int | None = None
+    share_token: str | None = None
     message: str = ""
+    manifest_stored: bool = False
 
 
 # ---------- Project Tree / Files ----------
@@ -447,7 +450,7 @@ class VersionDiffOut(BaseModel):
     path: str | None = None
     format: str | None = None
     has_daw: bool = False
-    summary: dict = {}
+    summary: list = []
     raw: str = ""
     truncated: bool = False
 

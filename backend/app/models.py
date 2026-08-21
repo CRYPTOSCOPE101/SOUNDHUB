@@ -532,7 +532,7 @@ class Deliverable(Base):
     __tablename__ = "release_deliverables"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    package_id: Mapped[int] = mapped_column(ForeignKey("release_packages.id"), index=True)
+    package_id: Mapped[int | None] = mapped_column(ForeignKey("release_packages.id"), index=True, nullable=True)
     type: Mapped[str] = mapped_column(String(32))
     filename: Mapped[str] = mapped_column(String(256))
     blob_sha: Mapped[str] = mapped_column(String(64), index=True)
@@ -563,7 +563,7 @@ class DeliveryEvent(Base):
     __tablename__ = "delivery_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    package_id: Mapped[int] = mapped_column(ForeignKey("release_packages.id"), index=True)
+    package_id: Mapped[int | None] = mapped_column(ForeignKey("release_packages.id"), index=True, nullable=True)
     event: Mapped[str] = mapped_column(String(48))
     actor: Mapped[str] = mapped_column(String(128), default="")
     detail: Mapped[str] = mapped_column(Text, default="")
