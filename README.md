@@ -361,16 +361,10 @@ full-snapshot commit model costs almost nothing when little changed.
 
 The backend is a **FastAPI** application with **70 API endpoints**, **32 database tables**, and **20 routers**.
 
-![Project Structure](screenshots-backend/01-project-structure.html)
-![Database Schema](screenshots-backend/02-database-schema.html)
-![API Endpoints](screenshots-backend/03-api-endpoints.html)
-![Architecture](screenshots-backend/04-architecture-diagram.html)
-![Review Flow](screenshots-backend/05-review-flow.html)
-![Auth Flow](screenshots-backend/06-auth-flow.html)
-![Ledger System](screenshots-backend/07-ledger-system.html)
-![Services](screenshots-backend/08-services-overview.html)
-![DAW Parsers](screenshots-backend/09-daw-parsers.html)
-![Deployment](screenshots-backend/10-deployment.html)
+![Project Structure](screenshots-backend/01-project-structure.png)
+![Architecture](screenshots-backend/04-architecture-diagram.png)
+![Auth Flow](screenshots-backend/06-auth-flow.png)
+![Deployment](screenshots-backend/10-deployment.png)
 
 ### Key Components
 
