@@ -38,7 +38,9 @@
 
 ## What is SoundHub?
 
-**SoundHub** is a cloud-based platform for hosting, versioning, and collaborating on music production projects, built on top of a Git-like version control system specifically designed for DAW files.
+**SoundHub** is a collaborative cloud platform and educational hub for music production that brings GitHub-style workflows to DAW projects. 
+It replaces scattered files and “mix_v3_FINAL_FINAL” folders with version control, project branches, Pull Requests, professional review sessions, and automated Audio CI checks for LUFS, True Peak, and file format. Producers, sound designers, mix engineers, studios, and labels can manage projects, compare versions, map stems, validate DAW files, and turn reusable samples, presets, and project assets into searchable artifacts. 
+As an educational hub, SoundHub provides structured learning paths, interactive tutorials, classroom tools, and a community knowledge base that help creators master version control, audio production workflows, collaboration, and release management — from their first project to professional, repeatable production processes.
 
 ---
 
