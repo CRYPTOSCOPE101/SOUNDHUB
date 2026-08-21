@@ -797,12 +797,13 @@ export default function LandingPage() {
         <div className="cr-hero-inner">
           <p className="cr-badge">Review · versions · approval — for music</p>
           <h1 className="cr-title">
-            Music <RotatingWord words={HERO_WORDS} /> and approvals,<br />
-            built for the way tracks are made.
+            Stop losing music projects<br />
+            in folders and chat threads.
           </h1>
           <p className="cr-sub">
-            Send a private review link. Get timestamped notes. Compare versions.
-            Approve the final master — no scattered ZIP archives, no Discord chaos.
+            SoundHub brings GitHub-style version control, review, and automated
+            audio quality checks to DAW workflows — from the first idea to the
+            final release.
           </p>
           <div className="bc-cta">
             <Link to={SAMPLE_REVIEW_URL} className="bc-btn bc-btn-primary">▶ Open a sample review</Link>
