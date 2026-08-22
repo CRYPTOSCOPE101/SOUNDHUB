@@ -2257,3 +2257,115 @@ class ApprovalGate(Base):
     required_approvers: Mapped[int] = mapped_column(Integer, default=1)
     target_pattern: Mapped[str] = mapped_column(String(256), default="main")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Cloud Infrastructure Layer — pluggable object storage
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class StorageObject(Base):
+    """Tracks every blob stored in the object-storage backend.
+
+    Content-addressed: the same file always maps to the same sha256, so
+    different projects / commits merely reference the same row.
+    """
+
+    __tablename__ = "storage_objects"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    sha256: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    storage_provider: Mapped[str] = mapped_column(String(32), default="local")  # local | s3
+    storage_key: Mapped[str] = mapped_column(String(512), index=True)
+    original_filename: Mapped[str] = mapped_column(String(256), default="")
+    content_type: Mapped[str] = mapped_column(String(128), default="application/octet-stream")
+    byte_size: Mapped[int] = mapped_column(Integer, default=0)
+    kind: Mapped[str] = mapped_column(
+        String(32), default="artifact"
+    )  # daw_project | master | stem | preview | sample | preset | artifact
+    status: Mapped[str] = mapped_column(
+        String(32), default="pending_upload"
+    )  # pending_upload | uploaded | processing | ready | failed | deleted
+    uploaded_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True, index=True)
+    commit_id: Mapped[int | None] = mapped_column(ForeignKey("commits.id"), nullable=True, index=True)
+    metadata_json: Mapped[str | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    uploaded_by: Mapped["User | None"] = relationship()
+
+
+class StorageAuditEvent(Base):
+    """Immutable audit log for storage operations."""
+
+    __tablename__ = "storage_audit_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    storage_object_id: Mapped[int] = mapped_column(ForeignKey("storage_objects.id"), index=True)
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    action: Mapped[str] = mapped_column(String(32))  # upload | download | delete | presign
+    ip_address: Mapped[str] = mapped_column(String(45), default="")
+    user_agent: Mapped[str] = mapped_column(String(256), default="")
+    detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    storage_object: Mapped["StorageObject"] = relationship()
+    actor: Mapped["User | None"] = relationship()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Background Jobs — async processing queue
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+JOB_TYPES = [
+    "parse_daw",
+    "generate_waveform",
+    "analyze_loudness",
+    "extract_audio_metadata",
+    "generate_preview",
+    "watermark_preview",
+    "transcode_audio",
+    "build_stem_manifest",
+    "run_audio_ci",
+    "build_release_package",
+]
+
+JOB_STATUSES = ["queued", "running", "completed", "failed", "cancelled"]
+
+
+class Job(Base):
+    """Background processing job.
+
+    Jobs are created via the API and executed by a worker (in-process
+    thread pool for development, or Celery/Redis/Arq in production).
+    """
+
+    __tablename__ = "jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    type: Mapped[str] = mapped_column(String(48), index=True)  # one of JOB_TYPES
+    status: Mapped[str] = mapped_column(String(32), default="queued", index=True)  # one of JOB_STATUSES
+    progress: Mapped[int] = mapped_column(Integer, default=0)  # 0..100
+    storage_object_id: Mapped[int | None] = mapped_column(ForeignKey("storage_objects.id"), nullable=True, index=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True, index=True)
+    commit_id: Mapped[int | None] = mapped_column(ForeignKey("commits.id"), nullable=True, index=True)
+    version_id: Mapped[int | None] = mapped_column(ForeignKey("review_versions.id"), nullable=True, index=True)
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("review_sessions.id"), nullable=True, index=True)
+    input_json: Mapped[str | None] = mapped_column(JSON, nullable=True)
+    output_json: Mapped[str | None] = mapped_column(JSON, nullable=True)
+    error_message: Mapped[str] = mapped_column(Text, default="")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_by: Mapped["User | None"] = relationship()
+
+    @property
+    def is_terminal(self) -> bool:
+        return self.status in ("completed", "failed", "cancelled")

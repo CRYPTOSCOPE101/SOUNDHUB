@@ -13,6 +13,8 @@ from .routers import (
     ai_mix,
     analytics,
     assets,
+    storage as storage_router,
+    jobs as jobs_router,
     audio_checks,
     auth,
     branch_protection,
@@ -121,6 +123,11 @@ app.include_router(deployments_artifacts.router)
 app.include_router(agile_delivery.router)
 app.include_router(search_engine_router.router)
 app.include_router(versions.router)
+app.include_router(storage_router.router)
+app.include_router(jobs_router.router)
+
+# Register background job handlers
+from .services import job_handlers as _job_handlers  # noqa: F401
 
 # GraphQL endpoint
 from strawberry.fastapi import GraphQLRouter

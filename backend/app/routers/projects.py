@@ -9,8 +9,11 @@ GitHub-quality branch management:
 """
 import hashlib
 import json
+import logging
 import re
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
@@ -23,10 +26,12 @@ from ..models import (
     Commit,
     FileSnapshot,
     Project,
+    StorageObject,
     User,
     utcnow,
     AudioCheck,
 )
+from ..services import job_queue
 from ..schemas import (
     BranchCreate,
     BranchOut,
@@ -46,6 +51,7 @@ from ..schemas import (
 )
 from ..security import get_current_user
 from ..services import storage, versioning, loudness
+from .integrations import dispatch_event
 from ..config import MAX_UPLOAD_SIZE
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -621,6 +627,47 @@ def push_branch(
                 has_alsa = True
         # Note: We don't track other file types in the uploaded dict for the API response
 
+        # Create StorageObject record for asset lifecycle tracking
+        # (content-addressed: same file always maps to the same row)
+        existing_obj = db.scalar(
+            select(StorageObject).where(StorageObject.sha256 == blob_sha).limit(1)
+        )
+        if existing_obj is None:
+            so = StorageObject(
+                sha256=blob_sha,
+                storage_provider="local",
+                storage_key=f"blobs/sha256/{blob_sha[:2]}/{blob_sha[2:4]}/{blob_sha}",
+                original_filename=filename,
+                content_type=upload.content_type or "application/octet-stream",
+                byte_size=len(data),
+                kind="daw_project" if ext in DAW_EXTENSIONS else "artifact",
+                status="uploaded",
+                uploaded_by_id=user.id,
+                project_id=project_id,
+            )
+            db.add(so)
+            db.flush()
+        else:
+            # Update project_id if not set
+            if existing_obj.project_id is None:
+                existing_obj.project_id = project_id
+                db.flush()
+
+        # Emit storage.object.uploaded webhook event
+        try:
+            dispatch_event(
+                "storage.object.uploaded",
+                {
+                    "sha256": blob_sha,
+                    "filename": filename,
+                    "size": len(data),
+                    "project_id": project_id,
+                },
+                user.id,
+            )
+        except Exception:
+            pass  # Best-effort webhook delivery
+
         file_snapshots.append((filename, blob_sha, len(data)))
 
     # ── Validate audio extension before processing ──
@@ -1065,6 +1112,54 @@ def push_branch(
 
     db.commit()
 
+    # ── Enqueue background jobs for uploaded assets ──
+    # The sync CI checks above run inline for fast feedback.
+    # These async jobs do heavier processing that should not block the push response.
+    for path, blob_sha, size in file_snapshots:
+        ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+        try:
+            if ext in DAW_EXTENSIONS:
+                # DAW project → parse structure, tracks, plugins, BPM
+                # We need a StorageObject for the job to reference
+                so = db.scalar(
+                    select(StorageObject).where(StorageObject.sha256 == blob_sha).limit(1)
+                )
+                if so:
+                    job_queue.enqueue_job(
+                        "parse_daw",
+                        storage_object_id=so.id,
+                        project_id=project_id,
+                        commit_id=commit.id,
+                        input_json={"sha256": blob_sha, "filename": path},
+                        created_by_id=user.id,
+                    )
+            elif ext in {"wav", "mp3", "flac", "aiff", "aif", "ogg", "m4a", "aac"}:
+                # Audio file → waveform, metadata extraction, loudness analysis
+                job_queue.enqueue_job(
+                    "generate_waveform",
+                    project_id=project_id,
+                    commit_id=commit.id,
+                    input_json={"sha256": blob_sha, "filename": path},
+                    created_by_id=user.id,
+                )
+                job_queue.enqueue_job(
+                    "extract_audio_metadata",
+                    project_id=project_id,
+                    commit_id=commit.id,
+                    input_json={"sha256": blob_sha, "filename": path},
+                    created_by_id=user.id,
+                )
+                job_queue.enqueue_job(
+                    "analyze_loudness",
+                    project_id=project_id,
+                    commit_id=commit.id,
+                    input_json={"sha256": blob_sha, "filename": path},
+                    created_by_id=user.id,
+                )
+        except Exception as e:
+            # Job enqueueing is best-effort — never block the push response
+            logger.warning("Failed to enqueue job for %s: %s", path, e)
+
     # Build the uploaded dict for the API response
     uploaded = {
         "als": has_alsa,
@@ -1072,7 +1167,6 @@ def push_branch(
         "stems": stem_count
     }
 
-    print(f"DEBUG: uploaded dict at return: {uploaded}")
     return PushOut(
         ok=True,
         project_id=project_id,

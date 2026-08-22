@@ -78,6 +78,12 @@ EVENT_TYPES = {
     "discussion.created": "Discussion created",
     "tag.created": "Tag created",
     "release.published": "Release published",
+    # Storage & job lifecycle events
+    "storage.object.uploaded": "Asset uploaded to object storage",
+    "storage.object.ready": "Asset processed and ready",
+    "job.queued": "Background job queued",
+    "job.completed": "Background job completed",
+    "job.failed": "Background job failed",
 }
 
 

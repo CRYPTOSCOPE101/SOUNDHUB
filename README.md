@@ -228,12 +228,12 @@ SoundHub Cloud
 
 | Metric | Count |
 |--------|------:|
-| Database Models | 122 |
-| API Endpoints | 364 |
-| API Routers | 48 |
-| Services | 20+ |
+| Database Models | 125 |
+| API Endpoints | 380 |
+| API Routers | 49 |
+| Services | 25+ |
 | Supported DAWs | 6 |
-| Test Cases | 35 |
+| Test Cases | 90 passing |
 
 ---
 
@@ -317,12 +317,14 @@ SoundHub Cloud
 - Activity Feed
 - Notifications
 
-### API & Integrations (5 features)
-- REST API (364 endpoints)
+### API & Integrations (7 features)
+- REST API (380 endpoints)
 - GraphQL API
 - Full-text Search (SQLite FTS5)
 - Webhooks
 - Metadata
+- Storage API — upload intents, upload completion, object status, usage, expiring download URLs, and stale-upload cleanup
+- Jobs API — create, list, inspect, cancel, and retry background processing jobs
 
 ### Packages & Distribution (4 features)
 - Packages (sample packs, presets, plugins)
@@ -350,11 +352,11 @@ SoundHub Cloud
 ## Scale of the Ecosystem
 
 - **Open source** — MIT license, anyone can self-host
-- **122 database models** — covering every aspect of music production workflow
-- **364 API endpoints** — full REST + GraphQL access
+- **125 database models** — covering every aspect of music production workflow
+- **380 API endpoints** — full REST + GraphQL access
 - **6 DAW formats** supported natively
-- **20+ backend services** — storage, analysis, watermarking, versioning, webhooks, and more
-- **35 automated tests** — ensuring reliability
+- **25+ backend services** — storage, analysis, watermarking, versioning, webhooks, job queue, and more
+- **90 automated tests** — ensuring reliability (9 pre-existing parser-test failures remain)
 
 ---
 
@@ -424,12 +426,12 @@ full-snapshot commit model costs almost nothing when little changed.
 
 - **Backend:** Python 3.12 · FastAPI · SQLAlchemy · SQLite · PyJWT
 - **Frontend:** React 18 · TypeScript · Vite
-- **Storage:** content-addressed blobs on disk (`backend/data/blobs/`),
-  no external services required
+- **Storage:** Pluggable content-addressed storage with local-disk and S3-compatible backends; SHA-256 deduplication, upload intents, signed delivery, usage tracking, and stale-upload cleanup
+- **Processing:** Background job queue for DAW parsing, waveform generation, audio metadata extraction, and loudness analysis. In-process for local dev; pluggable path to Celery/Redis for production
 
 ## Backend Architecture
 
-The backend is a **FastAPI** application with **70 API endpoints**, **32 database tables**, and **20 routers**.
+The backend is a **FastAPI** application with **380 API endpoints**, **125 database tables**, and **49 routers**.
 
 ![Project Structure](screenshots-backend/01-project-structure.png)
 ![Architecture](screenshots-backend/04-architecture-diagram.png)
@@ -440,10 +442,10 @@ The backend is a **FastAPI** application with **70 API endpoints**, **32 databas
 
 | Component | Count | Description |
 |-----------|-------|-------------|
-| API Routers | 20 | Auth, Sessions, Projects, Files, Diffs, Assets, Change Orders, Release Packages, Comparisons, Portfolio, References, Reminders, Roles, Search, Activity, Analytics, Templates, Tags, Groups, Pins, Webhooks |
-| Database Tables | 32 | Users, Projects, Branches, Commits, Review Sessions, Versions, Comments, Rounds, Approvals, Ledgers, Packages, Deliverables, Notifications, Templates, Tags, Groups, Pins, Webhooks |
-| Services | 15+ | Storage, Waveform, Analysis, Watermark, Ledger, Versioning, Roles, Reminders, Activity, Analytics, Webhooks, Templates, Tags, Groups, Stripe Pay, USDC Pay, Reputation, Licenses, Catalog, DAW Parsers |
-| Endpoints | 70 | RESTful API with JWT + Web3 wallet auth |
+| API Routers | 49 | Auth, Projects, Files, Diffs, Assets, Sessions, PRs, Tasks, Jobs, Storage, Release Packages, Comparisons, Portfolio, References, Webhooks, Audio CI, Kanban, Discussions, Roles, Search, Analytics, Templates, Tags, Groups, Pins, Integrations, 2FA, Pipelines, and more |
+| Database Tables | 125 | Users, Projects, Branches, Commits, Review Sessions, Versions, Comments, Approvals, Packages, Deliverables, Jobs, Storage Objects, Audio CI Runs/Checks, Pipelines, Artifacts, Webhooks, and more |
+| Services | 25+ | Object Storage (local/S3), Job Queue, Waveform, Analysis, Watermark, Loudness, DAW Parsers, Ledger, Versioning, Roles, Reminders, Activity, Analytics, Webhooks, Search, Catalog, Stripe/USDC Pay, Reputation, Licenses |
+| Endpoints | 380 | RESTful + GraphQL API with JWT + Web3 wallet auth |
 
 ## Quick start
 
@@ -711,7 +713,8 @@ These are exactly the cases the CI bridge smoke covers
 - [ ] Merges (DAG), audio preview, real-time collab
 - [x] FL Studio & Cubase integration prototypes (`feat/flstudio-integration`, `feat/cubase-integration`)
 - [ ] WalletConnect signing in M4L / relayer; REAPER push via bridge (ReaScript panel ships in `reaper/` — push via `snd` CLI, comments via public export)
-- [ ] S3/Azure blob backend for production scale
+- [x] Cloud asset pipeline: object storage, upload intents, deduplication, storage webhooks, job queue, audio/DAW processing, result persistence, and cleanup
+- [ ] Production operations: managed worker deployment, monitoring, replay tooling, and provider-specific Azure Blob validation
 
 ## Tokenized platform (web3) 🪙
 
