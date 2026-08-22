@@ -308,7 +308,7 @@ Local (CLI / Desktop)
 
 ---
 
-## Where SoundHub is NOT
+## SoundHub is NOT
 
 SoundHub is **not**:
 - A DAW (no audio editing, no real-time collaboration)
@@ -317,7 +317,7 @@ SoundHub is **not**:
 - A social network (no follower feeds, no likes)
 - A mobile app (desktop + web only, for now)
 
-SoundHub **is** a **version control and collaboration platform** for music production — the place where producers, engineers, and labels manage their projects, review mixes, and deliver releases.
+SoundHub **is** a **cloud platform for music production that combines version control, collaboration, education, and a marketplace for sounds and production assets** — a place where producers, sound designers, engineers, students, studios & labels manage projects, discover unique sounds, review mixes, learn professional workflows, and deliver releases.
 
 ---
 
