@@ -98,6 +98,22 @@ As an educational hub, SoundHub provides structured learning paths, interactive 
 
 ---
 
+## Architecture Philosophy
+
+SoundHub combines **GitHub-style workflows for music** with **cloud-native infrastructure for production assets**.
+
+The platform separates the creative workflow from the storage layer:
+
+- **GitHub-inspired workflow** — projects, commits, branches, Pull Requests, reviews, approvals, and release history.
+- **AWS-inspired cloud layer** — scalable object storage, secure file delivery, background processing, and production infrastructure.
+- **Music-aware intelligence** — DAW parsing, smart diffs, stems, waveforms, plugins, BPM, loudness, and release metadata.
+- **Local-first creation** — producers can work locally and push project snapshots through the CLI, desktop app, or DAW integrations.
+- **Cloud collaboration** — teams can review, discuss, validate, approve, and deliver music projects from one shared workspace.
+
+SoundHub is not simply file storage. It is a **cloud universe for music production**, where projects, assets, metadata, rights, collaboration, and release workflows stay connected.
+
+---
+
 ## Architecture
 
 ```
