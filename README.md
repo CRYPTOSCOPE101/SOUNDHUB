@@ -44,6 +44,19 @@ As an educational hub, SoundHub provides structured learning paths, interactive 
 
 ---
 
+> [!DISCLAIMER]
+> ## Early-Stage Product!
+>
+> SoundHub is an open-source, early-stage platform for DAW project versioning, review, and delivery. Its core goal is to reduce file chaos by helping creators save project versions, compare changes, collect timestamped feedback, and prepare releases.
+>
+> Some features are prototypes, experimental, or planned, including selected DAW integrations, merges, real-time collaboration, hosted cloud storage, and production-scale infrastructure. Marketplace, tokenized payments, NFTs, DAO, and wallet features are optional experiments — they are not required for the core production workflow.
+>
+> Do not use SoundHub as the only storage location for unreleased or business-critical work. Keep independent backups, review access permissions carefully, and avoid treating public or password-protected review links as strong security controls. Smart contracts are unaudited and should be used on testnet only.
+>
+> SoundHub aims to complement—not replace—your DAW, existing backup system, or established client-delivery workflow.
+
+---
+
 ## Core Components
 
 ### 1. Version Control Engine (Git for Music)
