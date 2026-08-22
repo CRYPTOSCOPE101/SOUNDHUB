@@ -44,7 +44,7 @@ As an educational hub, SoundHub provides structured learning paths, interactive 
 
 ---
 
-> **[!DISCLAIMER!]**
+## [!DISCLAIMER!]
 
 > ## Early-Stage Product
 >
