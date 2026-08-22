@@ -312,7 +312,7 @@ Local (CLI / Desktop)
 
 
 - A DAW (no audio editing, no real-time collaboration)
-- A sample marketplace (no buying/selling of sounds)
+- A sample marketplace only — its catalog is part of a broader platform for production, collaboration, and learning (no buying/selling of sounds)
 - A streaming platform (no Spotify-like playback)
 - A social network (no follower feeds, no likes)
 - A mobile app (desktop + web only, for now)
