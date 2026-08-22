@@ -44,8 +44,9 @@ As an educational hub, SoundHub provides structured learning paths, interactive 
 
 ---
 
-> [!DISCLAIMER]
-> ## Early-Stage Product!
+> **[!DISCLAIMER!]**
+
+> ## Early-Stage Product
 >
 > SoundHub is an open-source, early-stage platform for DAW project versioning, review, and delivery. Its core goal is to reduce file chaos by helping creators save project versions, compare changes, collect timestamped feedback, and prepare releases.
 >
