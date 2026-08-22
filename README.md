@@ -310,7 +310,7 @@ Local (CLI / Desktop)
 
 ## SoundHub is NOT
 
-SoundHub is **not**:
+
 - A DAW (no audio editing, no real-time collaboration)
 - A sample marketplace (no buying/selling of sounds)
 - A streaming platform (no Spotify-like playback)
