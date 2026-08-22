@@ -139,18 +139,12 @@ Local (CLI / Desktop)
 
 ### A sound designer discovering unique sounds
 
-*   1.  
-    Search for unique sounds, samples, presets, and project assets
-*   2.  
-    Filter results by instrument, genre, BPM, key, format, and license
-*   3.  
-    Preview and compare assets before adding them to a project
-*   4.  
-    Buy or license the perfect sound and download it with its metadata
-*   5.  
-    Import it into the DAW and continue building the track
-*   6.  
-    Publish original sounds as searchable artifacts and grow a creative portfolio
+1. Search for unique sounds, samples, presets, and project assets
+2. Filter results by instrument, genre, BPM, key, format, and license
+3. Preview and compare assets before adding them to a project
+4. Buy or license the perfect sound and download it with its metadata
+5. Import it into the DAW and continue building the track
+6. Publish original sounds as searchable artifacts and grow a creative portfolio
 
 ### A mix engineer working with a client
 
