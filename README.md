@@ -137,6 +137,21 @@ Local (CLI / Desktop)
 5. Every push creates a commit with full history
 6. Compare any two versions with smart diff
 
+### A sound designer discovering unique sounds
+
+*   1.  
+    Search for unique sounds, samples, presets, and project assets
+*   2.  
+    Filter results by instrument, genre, BPM, key, format, and license
+*   3.  
+    Preview and compare assets before adding them to a project
+*   4.  
+    Buy or license the perfect sound and download it with its metadata
+*   5.  
+    Import it into the DAW and continue building the track
+*   6.  
+    Publish original sounds as searchable artifacts and grow a creative portfolio
+
 ### A mix engineer working with a client
 
 1. Engineer creates a Review Session, uploads mix v1
@@ -144,6 +159,15 @@ Local (CLI / Desktop)
 3. Client leaves timestamped comments: "at 1:32 vocals too loud"
 4. Engineer sees comments, fixes, uploads v2
 5. Client approves → release package → delivery
+
+### A student learning music production
+
+1. Follow structured tutorials and guided learning paths
+2. Practice inside real DAW projects instead of isolated exercises
+3. Study project versions, mix decisions, stems, plugins, and production workflows
+4. Submit assignments or project updates for instructor and peer review
+5. Receive timestamped feedback and track progress through project history
+6. Build a portfolio of completed projects and demonstrate professional skills
 
 ### A label managing multiple artists
 
