@@ -116,23 +116,45 @@ SoundHub is not simply file storage. It is a **cloud universe for music producti
 
 ## Architecture
 
-```
-SoundHub (Cloud)
-├── Projects (DAW project storage)
-├── Pull Requests (mix review + approval)
-├── Tasks (project management)
-├── Workflows (CI/CD pipelines)
-├── Kanban (release management)
-├── Packages (distribution registry)
-├── Portfolio (public showcase)
-└── API (REST + GraphQL + Webhooks)
-
-Local (CLI / Desktop)
-├── Commits (project snapshots)
-├── Branches (parallel versions)
-├── Merges (combine versions)
-├── Diffs (compare what changed)
-└── snd CLI (push from terminal or DAW)
+```text
+SoundHub Cloud
+│
+├── Collaboration & Workflow Layer
+│   ├── Projects and repositories
+│   ├── Pull Requests, reviews, approvals, and release history
+│   ├── Tasks, Kanban, Wiki, discussions, and portfolios
+│   ├── Roles, permissions, share links, audit log, and notifications
+│   └── REST API, GraphQL API, and webhooks
+│
+├── Music Intelligence Layer
+│   ├── DAW parsing (.als, .flp, .logic, .song, .rpp, .cpr)
+│   ├── Smart diffs (tracks, plugins, BPM, structure, metadata)
+│   ├── Waveforms, timestamped comments, and A/B comparison
+│   ├── Audio CI (LUFS, True Peak, sample rate, channels)
+│   ├── Watermarking, transcoding, previews, and analysis
+│   └── Stems, assets, licenses, credits, and release metadata
+│
+├── Cloud Infrastructure Layer
+│   ├── API and application services
+│   ├── Relational database
+│   │   └── Users, projects, commits, branches, reviews, permissions, metadata
+│   ├── Content-addressed object storage
+│   │   └── DAW files, audio, stems, previews, samples, presets, artifacts
+│   ├── Background workers
+│   │   └── Parsing, waveform generation, QC, transcoding, watermarking
+│   └── Secure asset delivery
+│       └── Signed URLs, access rules, expiry, and audit trail
+│
+└── Local Creation Layer
+    ├── snd CLI
+    ├── Desktop app
+    ├── DAW integrations
+    │   ├── Ableton Live / Max for Live
+    │   ├── REAPER / ReaScript
+    │   ├── FL Studio
+    │   └── Cubase
+    └── Local-first workflow
+        └── Create locally → commit → push → review → approve → release
 ```
 
 ---
